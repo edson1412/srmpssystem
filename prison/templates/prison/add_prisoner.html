@@ -1,0 +1,259 @@
+<!-- add_prisoner.html -->
+{% extends "prison/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block page_title %}Add New Prisoner{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 24px 28px;
+        margin-bottom: 24px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        transition: box-shadow 0.2s ease;
+    }
+
+    .form-section:hover {
+        box-shadow: var(--card-hover-shadow);
+    }
+
+    .form-section-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .form-section-title i {
+        font-size: 1.1rem;
+        color: #1a73e8;
+    }
+
+    .form-section-title .badge-section {
+        font-size: 0.6rem;
+        font-weight: 600;
+        padding: 2px 10px;
+        border-radius: 12px;
+        background: #dbeafe;
+        color: #1a73e8;
+        margin-left: auto;
+    }
+
+    .btn-save {
+        padding: 10px 32px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #1a73e8;
+        border: none;
+        transition: all 0.2s ease;
+    }
+
+    .btn-save:hover {
+        background: #1557b0;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+    }
+
+    .btn-cancel {
+        padding: 10px 28px;
+        font-weight: 600;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        background: #fff;
+        transition: all 0.2s ease;
+    }
+
+    .btn-cancel:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+
+    .form-control, .form-select {
+        border-radius: 8px;
+        border-color: #e2e8f0;
+        padding: 8px 14px;
+        font-size: 0.875rem;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #1a73e8;
+        box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+    }
+
+    .form-label {
+        font-weight: 500;
+        font-size: 0.8rem;
+        color: #334155;
+    }
+
+    .image-preview {
+        max-height: 120px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        padding: 4px;
+        background: #f8fafc;
+    }
+
+    .image-upload-wrapper {
+        border: 2px dashed #e2e8f0;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .image-upload-wrapper:hover {
+        border-color: #1a73e8;
+        background: #f8fafc;
+    }
+
+    @media (max-width: 768px) {
+        .form-section {
+            padding: 16px 18px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h1 class="h3 fw-bold mb-1">Add New Prisoner</h1>
+            <p class="text-muted small mb-0">
+                <i class="bi bi-plus-circle me-1"></i>
+                Create a new prisoner record in the system
+            </p>
+        </div>
+        <a href="{% url 'prisoner_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to List
+        </a>
+    </div>
+
+    {% if prisoner_form.errors %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <div class="d-flex align-items-start gap-2">
+            <i class="bi bi-exclamation-circle-fill mt-1"></i>
+            <div>
+                <strong>Please correct the errors below.</strong>
+                <ul class="mb-0 mt-1 ps-3 small">
+                    {% for field, errors in prisoner_form.errors.items %}
+                        {% for error in errors %}
+                            <li>{{ field|title }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <!-- Basic Information -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-person-fill"></i> Basic Information
+                <span class="badge-section">Required</span>
+            </div>
+            <div class="row g-3">
+                <div class="col-12">
+                    {{ prisoner_form.prisoner_number|as_crispy_field }}
+                </div>
+                <div class="col-md-4">
+                    {{ prisoner_form.first_name|as_crispy_field }}
+                </div>
+                <div class="col-md-4">
+                    {{ prisoner_form.middle_name|as_crispy_field }}
+                </div>
+                <div class="col-md-4">
+                    {{ prisoner_form.surname|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
+                    {{ prisoner_form.sex|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
+                    {{ prisoner_form.age|as_crispy_field }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Prison Details -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-building-fill"></i> Prison Details
+                <span class="badge-section">Required</span>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    {{ prisoner_form.prisoner_class|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
+                    {{ prisoner_form.prison_station|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
+                    {{ prisoner_form.block_number|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
+                    {{ prisoner_form.cell_number|as_crispy_field }}
+                </div>
+                <div class="col-12">
+                    {{ prisoner_form.date_admitted|as_crispy_field }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Photo Upload -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-image"></i> Prisoner Photo
+                <span class="badge-section">Optional</span>
+            </div>
+            <div class="row g-3">
+                <div class="col-12">
+                    {{ prisoner_form.image|as_crispy_field }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Document Upload -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-file-earmark-pdf"></i> Document Upload
+                <span class="badge-section">Optional</span>
+            </div>
+            <div class="row g-3">
+                <div class="col-12">
+                    {{ prisoner_form.document|as_crispy_field }}
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Upload PDF documents such as court orders, medical reports, or other official documents.
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex gap-3 flex-wrap">
+            <button type="submit" class="btn btn-save">
+                <i class="bi bi-arrow-right-circle me-2"></i> Save and Continue
+            </button>
+            <a href="{% url 'prisoner_list' %}" class="btn-cancel">
+                <i class="bi bi-x-lg me-1"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

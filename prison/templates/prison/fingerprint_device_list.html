@@ -1,0 +1,244 @@
+{% extends "prison/base.html" %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block page_title %}Fingerprint Devices{% endblock %}
+
+{% block extra_css %}
+<style>
+    .device-card {
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        padding: 20px;
+        transition: all 0.2s ease;
+        height: 100%;
+    }
+
+    .device-card:hover {
+        box-shadow: var(--card-hover-shadow);
+        transform: translateY(-2px);
+    }
+
+    .device-card .device-icon {
+        font-size: 2.5rem;
+        color: #1a73e8;
+        margin-bottom: 12px;
+    }
+
+    .device-card .device-name {
+        font-weight: 600;
+        font-size: 1rem;
+        color: #0f172a;
+    }
+
+    .device-card .device-type {
+        font-size: 0.75rem;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .device-card .device-serial {
+        font-size: 0.75rem;
+        color: #64748b;
+        font-family: monospace;
+    }
+
+    .device-card .status-badge {
+        font-size: 0.6rem;
+        font-weight: 600;
+        padding: 3px 12px;
+        border-radius: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .status-badge.active {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    .status-badge.inactive {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .status-badge.maintenance {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .status-badge.offline {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    .device-stats {
+        font-size: 0.75rem;
+        color: #64748b;
+        padding-top: 12px;
+        margin-top: 12px;
+        border-top: 1px solid #f1f5f9;
+    }
+
+    .form-section {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 24px 28px;
+        margin-bottom: 24px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+    }
+
+    .form-section-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .form-section-title i {
+        color: #1a73e8;
+    }
+
+    .btn-add {
+        padding: 10px 32px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #1a73e8;
+        border: none;
+        color: #fff;
+        transition: all 0.2s ease;
+    }
+
+    .btn-add:hover {
+        background: #1557b0;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(26, 115, 232, 0.3);
+    }
+
+    @media (max-width: 768px) {
+        .form-section {
+            padding: 16px 18px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h1 class="h3 fw-bold mb-1">Fingerprint Devices</h1>
+            <p class="text-muted small mb-0">
+                <i class="bi bi-usb-plug me-1"></i>
+                Manage fingerprint scanner devices
+            </p>
+        </div>
+        <a href="{% url 'fingerprint_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Add Device Form -->
+    <div class="form-section">
+        <div class="form-section-title">
+            <i class="bi bi-plus-circle"></i> Add New Device
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-md-4">
+                    {{ form.name|as_crispy_field }}
+                </div>
+                <div class="col-md-3">
+                    {{ form.device_type|as_crispy_field }}
+                </div>
+                <div class="col-md-3">
+                    {{ form.serial_number|as_crispy_field }}
+                </div>
+                <div class="col-md-2">
+                    {{ form.status|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.prison_station|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.notes|as_crispy_field }}
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn-add">
+                        <i class="bi bi-plus-lg me-2"></i> Add Device
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Device List -->
+    <div class="row g-4">
+        {% if devices %}
+            {% for device in devices %}
+            <div class="col-md-6 col-lg-4">
+                <div class="device-card">
+                    <div class="d-flex align-items-start justify-content-between">
+                        <div>
+                            <div class="device-icon">
+                                <i class="bi bi-usb"></i>
+                            </div>
+                            <div class="device-name">{{ device.name }}</div>
+                            <div class="device-type">{{ device.get_device_type_display }}</div>
+                            <div class="device-serial">S/N: {{ device.serial_number }}</div>
+                        </div>
+                        <span class="status-badge {{ device.status }}">
+                            {{ device.get_status_display }}
+                        </span>
+                    </div>
+
+                    <div class="device-stats">
+                        <div class="d-flex justify-content-between">
+                            <span>
+                                <i class="bi bi-building me-1"></i>
+                                {{ device.prison_station.name }}
+                            </span>
+                            <span>
+                                <i class="bi bi-clock me-1"></i>
+                                {% if device.last_used_at %}
+                                    Last used: {{ device.last_used_at|timesince }} ago
+                                {% else %}
+                                    Never used
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 d-flex gap-2">
+                        <a href="#" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-pencil"></i> Edit
+                        </a>
+                        <button class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-usb-plug" style="font-size: 3rem; display: block; margin-bottom: 16px; color: #cbd5e1;"></i>
+                    <p>No fingerprint devices have been added yet.</p>
+                    <small>Use the form above to add your first device.</small>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

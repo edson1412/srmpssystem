@@ -1,0 +1,165 @@
+{% extends "prison/base.html" %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}Ration Items{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-color: rgba(173, 216, 230, 0.6); /* Light blue with 60% opacity */
+    }
+    .status-badge.active {
+        background-color: #28a745; /* Green for active */
+        color: white;
+    }
+    .status-badge.inactive {
+        background-color: #dc3545; /* Red for inactive */
+        color: white;
+    }
+    .low-stock-alert {
+        color: #dc3545; /* Red for critical alert */
+        font-weight: bold;
+    }
+    .low-stock-warning {
+        color: #ffc107; /* Orange for warning */
+        font-weight: bold;
+    }
+    .days-remaining {
+        font-weight: 600;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+    }
+    .days-remaining.healthy {
+        background: #dcfce7;
+        color: #166534;
+    }
+    .days-remaining.warning {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    .days-remaining.critical {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    .days-remaining.out {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Ration Items</h1>
+    </div>
+
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if ration_items %}
+    <div class="card mb-4">
+        <div class="card-header">
+            Current Ration Stock
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-sm">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Current Stock (kg)</th>
+                            <th>Daily/Person (kg)</th>
+                            <th>Low Stock Threshold (kg)</th>
+                            <th>Days Remaining</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in ration_items %}
+                        <tr class="{% if item.is_low_stock %}table-warning{% endif %}">
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.current_stock_kg|floatformat:3 }}</td>
+                            <td>{{ item.daily_consumption_per_prisoner_kg|floatformat:4 }}</td>
+                            <td>{{ item.low_stock_threshold_kg|floatformat:3 }}</td>
+                            <td>
+                                {% if item.estimated_days_remaining > 0 %}
+                                    <span class="badge {% if item.estimated_days_remaining >= 30 %}bg-success{% elif item.estimated_days_remaining >= 14 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                                        {{ item.estimated_days_remaining }} days
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Out of Stock</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.is_active %}
+                                    <span class="badge status-badge active">Active</span>
+                                {% else %}
+                                    <span class="badge status-badge inactive">Inactive</span>
+                                {% endif %}
+                                {% if item.is_low_stock %}
+                                    <span class="low-stock-warning ms-2"><i class="fas fa-exclamation-triangle"></i> Low Stock!</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'edit_ration_item' pk=item.pk %}" class="btn btn-sm btn-info me-2">Edit</a>
+                                <a href="{% url 'delete_ration_item' pk=item.pk %}" class="btn btn-sm btn-danger">Delete</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {# Pagination if needed #}
+            {% if is_paginated %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mt-4">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page=1">&laquo; First</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>
+                    {% endif %}
+                    <li class="page-item active"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+                    {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last &raquo;</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info" role="alert">
+        No ration items found for your prison station.
+    </div>
+    {% endif %}
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Add New Ration Item
+        </div>
+        <div class="card-body">
+            {# Form action now points to the same URL as the list view #}
+            <form method="post" action="{% url 'ration_item_list' %}">
+                {% csrf_token %}
+                {{ form|crispy }}
+                <div class="mt-3">
+                    <button type="submit" class="btn btn-primary">Add Ration Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

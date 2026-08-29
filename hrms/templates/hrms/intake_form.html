@@ -1,0 +1,453 @@
+{% extends 'training_base.html' %}
+{% load static %}
+
+{% block training_title %}Create Training Intake - Prison HRMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .intake-create-shell {
+        position: relative;
+        min-height: calc(100vh - 200px);
+        padding: 1rem;
+    }
+
+    .intake-create-shell::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at top left, rgba(74,108,247,0.1), transparent 50%),
+                    radial-gradient(circle at 80% 20%, rgba(34,197,94,0.1), transparent 45%);
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    .intake-create-content {
+        position: relative;
+        z-index: 1;
+    }
+
+    .page-header {
+        background: linear-gradient(135deg, #111827, #1f2937);
+        color: #fff;
+        border-radius: 1.5rem;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 25px 60px rgba(15, 23, 42, 0.45);
+    }
+
+    .form-section {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        border: 1px solid rgba(0,0,0,0.06);
+        margin-bottom: 2rem;
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .section-title i {
+        color: var(--primary-color);
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-control, .form-select {
+        border: 2px solid #e5e7eb;
+        border-radius: 0.5rem;
+        padding: 0.75rem 1rem;
+        transition: all 0.2s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .btn-primary {
+        background: var(--primary-color);
+        border: none;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        border-radius: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-dark);
+        transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+        background: #6b7280;
+        border: none;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        border-radius: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+        background: #4b5563;
+        transform: translateY(-1px);
+    }
+
+    .required-field {
+        color: #ef4444;
+    }
+
+    .help-text {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+
+    .alert {
+        border-radius: 0.75rem;
+        border: none;
+        padding: 1rem 1.5rem;
+    }
+
+    .alert-info {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .alert-warning {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .progress-indicator {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+        position: relative;
+    }
+
+    .progress-indicator::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: #e5e7eb;
+        z-index: 0;
+    }
+
+    .progress-step {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #e5e7eb;
+        color: #6b7280;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        position: relative;
+        z-index: 1;
+    }
+
+    .progress-step.active {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .progress-step.completed {
+        background: #10b981;
+        color: white;
+    }
+
+    .date-input-group {
+        position: relative;
+    }
+
+    .date-input-group i {
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6b7280;
+        pointer-events: none;
+    }
+</style>
+{% endblock %}
+
+{% block training_content %}
+<div class="intake-create-shell">
+    <div class="intake-create-content">
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="display-6 fw-bold mb-3">
+                        <i class="fas fa-plus-circle me-3"></i>Create Training Intake
+                    </h1>
+                    <p class="lead mb-0 opacity-90">
+                        Set up a new training intake batch with custom naming and scheduling.
+                    </p>
+                </div>
+                <div>
+                    <a href="{% url 'hrms:intake_list' %}" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Intakes
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Indicator -->
+        <div class="progress-indicator">
+            <div class="progress-step active">1</div>
+            <div class="progress-step">2</div>
+            <div class="progress-step">3</div>
+        </div>
+
+        <!-- Form Section -->
+        <div class="form-section">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} mb-4">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                {% if form.errors %}
+                    <div class="alert alert-danger">
+                        <ul class="mb-0">
+                            {% for field in form %}
+                                {% for error in field.errors %}
+                                    <li>{{ field.label }}: {{ error }}</li>
+                                {% endfor %}
+                            {% endfor %}
+                            {% for error in form.non_field_errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+
+                <!-- Intake Information -->
+                <div class="mb-4">
+                    <h3 class="section-title">
+                        <i class="fas fa-info-circle"></i>
+                        Intake Information
+                    </h3>
+                    
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label for="intake_number" class="form-label">
+                                Intake Number <span class="required-field">*</span>
+                            </label>
+                            <input type="number" name="intake_number" id="intake_number" class="form-control" 
+                                   value="{{ form_data.intake_number|default:'' }}" required>
+                            <div class="help-text">e.g., 7 for "7th Intake"</div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label for="intake_suffix" class="form-label">
+                                Intake Suffix <span class="required-field">*</span>
+                            </label>
+                            <select name="intake_suffix" id="intake_suffix" class="form-select" required>
+                                <option value="th" {% if form_data.intake_suffix == 'th' %}selected{% endif %}>th</option>
+                                <option value="st" {% if form_data.intake_suffix == 'st' %}selected{% endif %}>st</option>
+                                <option value="nd" {% if form_data.intake_suffix == 'nd' %}selected{% endif %}>nd</option>
+                                <option value="rd" {% if form_data.intake_suffix == 'rd' %}selected{% endif %}>rd</option>
+                                <option value="custom" {% if form_data.intake_suffix == 'custom' %}selected{% endif %}>Custom</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label for="custom_suffix" class="form-label">
+                                Custom Suffix
+                            </label>
+                            <input type="text" name="custom_suffix" id="custom_suffix" class="form-control" 
+                                   value="{{ form_data.custom_suffix|default:'' }}">
+                            <div class="help-text">Only used when "Custom" suffix is selected</div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label for="year" class="form-label">
+                                Year <span class="required-field">*</span>
+                            </label>
+                            <input type="number" name="year" id="year" class="form-control" 
+                                   value="{{ form_data.year|default:now.year }}" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Schedule Information -->
+                <div class="mb-4">
+                    <h3 class="section-title">
+                        <i class="fas fa-calendar-alt"></i>
+                        Schedule Information
+                    </h3>
+                    
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="start_date" class="form-label">
+                                Start Date <span class="required-field">*</span>
+                            </label>
+                            <div class="date-input-group">
+                                <input type="date" name="start_date" id="start_date" class="form-control"
+                                       value="{{ form_data.start_date|default:'' }}" required>
+                                <i class="fas fa-calendar"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label for="estimated_end_date" class="form-label">
+                                Estimated End Date <span class="required-field">*</span>
+                            </label>
+                            <div class="date-input-group">
+                                <input type="date" name="estimated_end_date" id="estimated_end_date" class="form-control"
+                                       value="{{ form_data.estimated_end_date|default:'' }}" required>
+                                <i class="fas fa-calendar"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label for="pass_out_date" class="form-label">
+                                Pass Out Date <span class="required-field">*</span>
+                            </label>
+                            <div class="date-input-group">
+                                <input type="date" name="pass_out_date" id="pass_out_date" class="form-control"
+                                       value="{{ form_data.pass_out_date|default:'' }}" required>
+                                <i class="fas fa-calendar"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional Information -->
+                <div class="mb-4">
+                    <h3 class="section-title">
+                        <i class="fas fa-file-alt"></i>
+                        Additional Information
+                    </h3>
+                    
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label for="description" class="form-label">
+                                Description
+                            </label>
+                            <textarea name="description" id="description" class="form-control" rows="4">{{ form_data.description|default:'' }}</textarea>
+                            <div class="help-text">Optional description of the intake program</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuration -->
+                <div class="mb-4">
+                    <h3 class="section-title">
+                        <i class="fas fa-cog"></i>
+                        Configuration
+                    </h3>
+                    
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="last_pass_out_number" class="form-label">
+                                Last Pass Out Number
+                            </label>
+                            <input type="number" name="last_pass_out_number" id="last_pass_out_number" class="form-control" 
+                                   value="{{ form_data.last_pass_out_number|default:'' }}">
+                            <div class="help-text">Last service number from previous intake</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label d-block">Status</label>
+                            <div class="form-check">
+                                <input type="checkbox" name="is_active" id="is_active" class="form-check-input"
+                                       {% if not form_data or form_data.is_active %}checked{% endif %}>
+                                <label class="form-check-label" for="is_active">Intake is active</label>
+                            </div>
+                            <div class="help-text">Active intakes accept new recruits and marks</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Information Alert -->
+                <div class="alert alert-info mb-4">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Note:</strong> After creating this intake, you'll be able to add recruits, assign courses, and manage their training progress.
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex justify-content-between">
+                    <a href="{% url 'hrms:intake_list' %}" class="btn btn-secondary btn-lg">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-save me-2"></i>Create Intake
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle custom suffix field visibility
+    const suffixSelect = document.getElementById('intake_suffix');
+    const customSuffixField = document.getElementById('custom_suffix');
+    
+    function toggleCustomSuffix() {
+        if (suffixSelect.value === 'custom') {
+            customSuffixField.parentElement.style.display = 'block';
+            customSuffixField.required = true;
+        } else {
+            customSuffixField.parentElement.style.display = 'none';
+            customSuffixField.required = false;
+            customSuffixField.value = '';
+        }
+    }
+    
+    suffixSelect.addEventListener('change', toggleCustomSuffix);
+    toggleCustomSuffix(); // Initial check
+    
+    // Date validation
+    const startDate = document.getElementById('start_date');
+    const endDate = document.getElementById('estimated_end_date');
+    const passOutDate = document.getElementById('pass_out_date');
+    
+    function validateDates() {
+        if (startDate.value && endDate.value && endDate.value <= startDate.value) {
+            endDate.setCustomValidity('End date must be after start date');
+        } else {
+            endDate.setCustomValidity('');
+        }
+        
+        if (startDate.value && passOutDate.value && passOutDate.value <= startDate.value) {
+            passOutDate.setCustomValidity('Pass out date must be after start date');
+        } else {
+            passOutDate.setCustomValidity('');
+        }
+    }
+    
+    startDate.addEventListener('change', validateDates);
+    endDate.addEventListener('change', validateDates);
+    passOutDate.addEventListener('change', validateDates);
+});
+</script>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "prison/base.html" %}
+
+{% block title %}Visitors{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-color: rgba(173, 216, 230, 0.6); /* Light blue with 60% opacity */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Visitors</h1>
+        <a href="{% url 'visitor_add' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Register New Visitor
+        </a>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Full Name</th>
+                            <th>ID Number</th>
+                            <th>Prisoner Visited</th>
+                            <th>Visit Date</th>
+                            <th>Approved</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for visitor in object_list %} {# object_list is common for ListView #}
+                        <tr>
+                            <td>{{ visitor.full_name }}</td>
+                            <td>{{ visitor.id_number }}</td>
+                            <td><a href="{% url 'prisoner_detail' visitor.prisoner.id %}">{{ visitor.prisoner.full_name }} ({{ visitor.prisoner.prisoner_number }})</a></td>
+                           <td>{{ visitor.visit_date|date:"Y-m-d" }} {{ visitor.visit_date|time:"H:i" }}</td>
+                            <td>
+                                {% if visitor.is_approved %}
+                                    <span class="badge bg-success">Yes</span>
+                                {% else %}
+                                    <span class="badge bg-warning">No</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'visitor_detail' visitor.id %}" class="btn btn-sm btn-outline-primary" title="View">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{% url 'visitor_edit' visitor.id %}" class="btn btn-sm btn-outline-secondary" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                {% if not visitor.is_approved %}
+                                <a href="{% url 'visitor_approve' visitor.id %}" class="btn btn-sm btn-outline-success" title="Approve">
+                                    <i class="bi bi-check-circle"></i>
+                                </a>
+                                {% endif %}
+                                {# Assuming a delete URL for visitors exists #}
+                                {# <a href="{% url 'visitor_delete' visitor.id %}" class="btn btn-sm btn-outline-danger delete-btn" title="Delete"> #}
+                                {#     <i class="bi bi-trash"></i> #}
+                                {# </a> #}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">No visitors found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {# Pagination can be added here if needed, similar to prisoner_list.html #}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,295 @@
+<!-- edit_prisoner.html -->
+{% extends "prison/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block page_title %}Edit Prisoner - {{ prisoner.prisoner_number }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 24px 28px;
+        margin-bottom: 24px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        transition: box-shadow 0.2s ease;
+    }
+
+    .form-section:hover {
+        box-shadow: var(--card-hover-shadow);
+    }
+
+    .form-section-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .form-section-title i {
+        font-size: 1.1rem;
+        color: #1a73e8;
+    }
+
+    .form-section-title .badge-section {
+        font-size: 0.6rem;
+        font-weight: 600;
+        padding: 2px 10px;
+        border-radius: 12px;
+        background: #dbeafe;
+        color: #1a73e8;
+        margin-left: auto;
+    }
+
+    .btn-update {
+        padding: 10px 32px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #1a73e8;
+        border: none;
+        transition: all 0.2s ease;
+    }
+
+    .btn-update:hover {
+        background: #1557b0;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+    }
+
+    .btn-cancel {
+        padding: 10px 28px;
+        font-weight: 600;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        background: #fff;
+        transition: all 0.2s ease;
+    }
+
+    .btn-cancel:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+
+    .form-control, .form-select {
+        border-radius: 8px;
+        border-color: #e2e8f0;
+        padding: 8px 14px;
+        font-size: 0.875rem;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #1a73e8;
+        box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+    }
+
+    .form-label {
+        font-weight: 500;
+        font-size: 0.8rem;
+        color: #334155;
+    }
+
+    .image-preview {
+        max-height: 120px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        padding: 4px;
+        background: #f8fafc;
+    }
+
+    .image-upload-wrapper {
+        border: 2px dashed #e2e8f0;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .image-upload-wrapper:hover {
+        border-color: #1a73e8;
+        background: #f8fafc;
+    }
+
+    .prisoner-badge {
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 8px 16px;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .prisoner-badge .number {
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .prisoner-badge .name {
+        color: #64748b;
+    }
+
+    @media (max-width: 768px) {
+        .form-section {
+            padding: 16px 18px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h1 class="h3 fw-bold mb-1">Edit Prisoner</h1>
+            <div class="prisoner-badge">
+                <span class="number">{{ prisoner.prisoner_number }}</span>
+                <span class="name">{{ prisoner.full_name }}</span>
+                <span class="badge {% if prisoner.prisoner_class == 'convicted' %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                    {{ prisoner.get_prisoner_class_display }}
+                </span>
+            </div>
+        </div>
+        <a href="{% url 'prisoner_detail' prisoner.id %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Profile
+        </a>
+    </div>
+
+    {% if form.errors %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <div class="d-flex align-items-start gap-2">
+            <i class="bi bi-exclamation-circle-fill mt-1"></i>
+            <div>
+                <strong>Please correct the errors below.</strong>
+                <ul class="mb-0 mt-1 ps-3 small">
+                    {% for field, errors in form.errors.items %}
+                        {% for error in errors %}
+                            <li>{{ field|title }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <!-- Basic Information -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-person-fill"></i> Basic Information
+                <span class="badge-section">Required</span>
+            </div>
+            <div class="row g-3">
+                <div class="col-12">
+                    {{ form.prisoner_number|as_crispy_field }}
+                </div>
+                <div class="col-md-4">
+                    {{ form.first_name|as_crispy_field }}
+                </div>
+                <div class="col-md-4">
+                    {{ form.middle_name|as_crispy_field }}
+                </div>
+                <div class="col-md-4">
+                    {{ form.surname|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.sex|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.age|as_crispy_field }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Prison Details -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-building-fill"></i> Prison Details
+                <span class="badge-section">Required</span>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    {{ form.prisoner_class|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.prison_station|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.block_number|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.cell_number|as_crispy_field }}
+                </div>
+                <div class="col-12">
+                    {{ form.date_admitted|as_crispy_field }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Photo -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-image"></i> Prisoner Photo
+                <span class="badge-section">Optional</span>
+            </div>
+            <div class="row g-3">
+                <div class="col-12">
+                    {{ form.image|as_crispy_field }}
+                    {% if prisoner.image %}
+                    <div class="mt-2">
+                        <small class="text-muted">Current Image:</small><br>
+                        <img src="{{ prisoner.image.url }}" alt="Current image" class="image-preview">
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Document Upload -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-file-earmark-pdf"></i> Document Upload
+                <span class="badge-section">Optional</span>
+            </div>
+            <div class="row g-3">
+                <div class="col-12">
+                    {{ form.document|as_crispy_field }}
+                    {% if prisoner.document %}
+                    <div class="mt-2">
+                        <small class="text-muted">Current Document:</small><br>
+                        <a href="{{ prisoner.document.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-file-earmark-pdf me-1"></i> View Document
+                        </a>
+                    </div>
+                    {% endif %}
+                    <small class="text-muted mt-2 d-block">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Upload PDF documents such as court orders, medical reports, or other official documents.
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex gap-3 flex-wrap">
+            <button type="submit" class="btn btn-update">
+                <i class="bi bi-check-lg me-2"></i> Update Prisoner
+            </button>
+            <a href="{% url 'prisoner_detail' prisoner.id %}" class="btn-cancel">
+                <i class="bi bi-x-lg me-1"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

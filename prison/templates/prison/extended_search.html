@@ -1,0 +1,370 @@
+<!-- extended_search.html -->
+{% extends "prison/base.html" %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block page_title %}Extended Prisoner Search{% endblock %}
+
+{% block extra_css %}
+<style>
+    .search-section {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 24px 28px;
+        margin-bottom: 24px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        transition: box-shadow 0.2s ease;
+    }
+
+    .search-section:hover {
+        box-shadow: var(--card-hover-shadow);
+    }
+
+    .search-section-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .search-section-title i {
+        font-size: 1.1rem;
+        color: #1a73e8;
+    }
+
+    .results-section {
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+    }
+
+    .results-header {
+        padding: 16px 24px;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .results-header h5 {
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+        font-size: 0.9rem;
+    }
+
+    .results-header .count-badge {
+        background: #dbeafe;
+        color: #1a73e8;
+        padding: 2px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .btn-search {
+        padding: 8px 28px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #1a73e8;
+        border: none;
+        transition: all 0.2s ease;
+    }
+
+    .btn-search:hover {
+        background: #1557b0;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+    }
+
+    .btn-reset {
+        padding: 8px 24px;
+        font-weight: 600;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        background: #fff;
+        transition: all 0.2s ease;
+    }
+
+    .btn-reset:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+
+    .form-control, .form-select {
+        border-radius: 8px;
+        border-color: #e2e8f0;
+        padding: 8px 14px;
+        font-size: 0.875rem;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #1a73e8;
+        box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+    }
+
+    .form-label {
+        font-weight: 500;
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-bottom: 4px;
+    }
+
+    .table-prisoner {
+        font-size: 0.85rem;
+        margin-bottom: 0;
+    }
+
+    .table-prisoner thead th {
+        background: #f8fafc;
+        color: #64748b;
+        font-weight: 600;
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 10px 14px;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .table-prisoner tbody td {
+        padding: 10px 14px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        color: #334155;
+    }
+
+    .table-prisoner tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .table-prisoner .prisoner-link {
+        color: #1a73e8;
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .table-prisoner .prisoner-link:hover {
+        text-decoration: underline;
+    }
+
+    .empty-state {
+        padding: 40px 20px;
+        text-align: center;
+        color: #94a3b8;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        display: block;
+        margin-bottom: 12px;
+        color: #cbd5e1;
+    }
+
+    .badge-class {
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 3px 10px;
+        border-radius: 12px;
+    }
+
+    .badge-class.convicted { background: #dcfce7; color: #16a34a; }
+    .badge-class.remand { background: #fef3c7; color: #d97706; }
+
+    .action-btns {
+        display: flex;
+        gap: 4px;
+    }
+
+    .action-btns .btn-sm {
+        padding: 4px 8px;
+        font-size: 0.7rem;
+        border-radius: 6px;
+    }
+
+    @media (max-width: 768px) {
+        .search-section {
+            padding: 16px 18px;
+        }
+        .results-header {
+            padding: 12px 16px;
+        }
+        .table-prisoner {
+            font-size: 0.75rem;
+        }
+        .table-prisoner thead th,
+        .table-prisoner tbody td {
+            padding: 6px 10px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h1 class="h3 fw-bold mb-1">Extended Prisoner Search</h1>
+            <p class="text-muted small mb-0">
+                <i class="bi bi-search me-1"></i>
+                Advanced search with multiple filter criteria
+            </p>
+        </div>
+        <a href="{% url 'prisoner_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to List
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            <i class="bi bi-info-circle me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Search Form -->
+    <div class="search-section">
+        <div class="search-section-title">
+            <i class="bi bi-funnel"></i> Search Filters
+            <span class="badge bg-light text-muted ms-auto">{{ form.fields|length }} filters</span>
+        </div>
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                {{ form.search_query|as_crispy_field }}
+            </div>
+            <div class="col-md-2">
+                {{ form.gender|as_crispy_field }}
+            </div>
+            <div class="col-md-2">
+                {{ form.prisoner_class|as_crispy_field }}
+            </div>
+            <div class="col-md-2">
+                {{ form.previous_conviction|as_crispy_field }}
+            </div>
+            {% if user.is_super_admin %}
+            <div class="col-md-2">
+                {{ form.prison_station|as_crispy_field }}
+            </div>
+            {% endif %}
+            <div class="col-md-3">
+                {{ form.release_date_from|as_crispy_field }}
+            </div>
+            <div class="col-md-3">
+                {{ form.release_date_to|as_crispy_field }}
+            </div>
+            <div class="col-12 d-flex gap-2 justify-content-end mt-3">
+                <button type="submit" class="btn btn-search">
+                    <i class="bi bi-search me-2"></i> Search
+                </button>
+                <a href="{% url 'extended_prisoner_search' %}" class="btn-reset">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Results -->
+    <div class="results-section">
+        <div class="results-header">
+            <div class="d-flex align-items-center gap-3">
+                <h5><i class="bi bi-people me-2"></i>Search Results</h5>
+                <span class="count-badge">{{ prisoners|length }} found</span>
+            </div>
+            {% if prisoners %}
+            <span class="text-muted small">
+                <i class="bi bi-download me-1"></i>
+                <a href="?{{ request.GET.urlencode }}&export=csv" class="text-decoration-none text-muted">Export CSV</a>
+            </span>
+            {% endif %}
+        </div>
+
+        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+            {% if prisoners %}
+            <table class="table table-prisoner">
+                <thead>
+                    <tr>
+                        <th>Prisoner No.</th>
+                        <th>Name</th>
+                        <th>Gender</th>
+                        <th>Class</th>
+                        <th>Station</th>
+                        <th>Prev. Conviction</th>
+                        <th>Release Date</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for prisoner in prisoners %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'prisoner_detail' prisoner.id %}" class="prisoner-link">
+                                {{ prisoner.prisoner_number }}
+                            </a>
+                        </td>
+                        <td>{{ prisoner.full_name|truncatechars:25 }}</td>
+                        <td>{{ prisoner.get_sex_display }}</td>
+                        <td>
+                            <span class="badge-class {% if prisoner.prisoner_class == 'convicted' %}convicted{% else %}remand{% endif %}">
+                                {{ prisoner.get_prisoner_class_display }}
+                            </span>
+                        </td>
+                        <td>{{ prisoner.prison_station.name|truncatechars:15 }}</td>
+                        <td>
+                            {% if prisoner.risk_assessment %}
+                                {% if prisoner.risk_assessment.previous_conviction %}
+                                    <span class="badge bg-danger">Yes</span>
+                                {% else %}
+                                    <span class="badge bg-success">No</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted small">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if prisoner.prisoner_class == 'convicted' and prisoner.convicted_details.date_of_release_on_remission %}
+                                <span class="small">{{ prisoner.convicted_details.date_of_release_on_remission|date:"Y-m-d" }}</span>
+                            {% else %}
+                                <span class="text-muted small">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <div class="action-btns justify-content-end">
+                                <a href="{% url 'prisoner_detail' prisoner.id %}" class="btn btn-outline-primary btn-sm" title="View">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{% url 'generate_prisoner_report' prisoner.id %}" class="btn btn-outline-danger btn-sm" title="PDF Report">
+                                    <i class="bi bi-file-pdf"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <p class="mb-0">No prisoners found matching your search criteria.</p>
+                <small class="text-muted">Try adjusting your filters or reset the search.</small>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

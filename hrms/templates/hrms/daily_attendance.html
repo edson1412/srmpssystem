@@ -1,0 +1,629 @@
+{% extends 'hrms/layouts/page.html' %}
+{% load static %}
+
+{% block title %}Daily Attendance - Prison HRMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .attendance-container {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--border-color);
+        border-radius: 1.25rem;
+        box-shadow: var(--shadow-soft);
+        overflow: hidden;
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .attendance-header {
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+        color: white;
+        padding: 2rem;
+        border-radius: 1.25rem 1.25rem 0 0;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .attendance-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: rotate 20s linear infinite;
+    }
+
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
+    .date-selector {
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 0.75rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        backdrop-filter: blur(10px);
+    }
+
+    .attendance-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+        text-align: center;
+        transition: var(--transition-quick);
+    }
+
+    .stat-card:hover {
+        background: rgba(255, 255, 255, 0.25);
+        transform: translateY(-2px);
+    }
+
+    .stat-number {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .attendance-table {
+        background: white;
+        border-radius: 0.75rem;
+        overflow: hidden;
+        box-shadow: var(--shadow-soft);
+    }
+
+    .attendance-table .table {
+        margin-bottom: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .attendance-table .table thead th {
+        background: linear-gradient(135deg, var(--gray-100), var(--gray-200));
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.05em;
+        border: none;
+        padding: 1rem;
+        color: var(--gray-700);
+    }
+
+    .attendance-table .table tbody tr {
+        transition: var(--transition-quick);
+        border-bottom: 1px solid var(--border-color);
+        animation: slideInLeft 0.4s ease-out;
+    }
+
+    @keyframes slideInLeft {
+        from {
+            opacity: 0;
+            transform: translateX(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .attendance-table .table tbody tr:hover {
+        background: var(--primary-light);
+        transform: scale(1.01);
+        box-shadow: var(--shadow-soft);
+    }
+
+    .attendance-table .table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+        border: none;
+    }
+
+    .attendance-checkbox {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        accent-color: var(--primary-color);
+    }
+
+    .attendance-checkbox:checked + .checkbox-label {
+        background: var(--primary-light);
+        color: var(--primary-color);
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .checkbox-label {
+        transition: var(--transition-quick);
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        padding: 2rem;
+        background: var(--gray-50);
+        border-top: 1px solid var(--border-color);
+    }
+
+    .btn-action {
+        padding: 0.75rem 2rem;
+        border-radius: 0.75rem;
+        font-weight: 600;
+        transition: var(--transition-smooth);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-action::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+
+    .btn-action:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .btn-save {
+        background: linear-gradient(135deg, var(--success-color), #059669);
+        color: white;
+        border: none;
+    }
+
+    .btn-save:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-reset {
+        background: linear-gradient(135deg, var(--gray-500), var(--gray-600));
+        color: white;
+        border: none;
+    }
+
+    .btn-reset:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(107, 114, 128, 0.3);
+    }
+
+    .officer-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin-right: 0.75rem;
+        border: 2px solid var(--border-color);
+    }
+
+    .officer-info {
+        display: flex;
+        align-items: center;
+    }
+
+    .officer-details {
+        flex: 1;
+    }
+
+    .officer-name {
+        font-weight: 600;
+        color: var(--gray-800);
+        margin-bottom: 0.25rem;
+    }
+
+    .officer-meta {
+        font-size: 0.85rem;
+        color: var(--gray-500);
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .status-present {
+        background: rgba(16, 185, 129, 0.1);
+        color: var(--success-color);
+    }
+
+    .status-absent {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--danger-color);
+    }
+
+    .status-leave {
+        background: rgba(245, 158, 11, 0.1);
+        color: var(--warning-color);
+    }
+
+    @media (max-width: 768px) {
+        .attendance-stats {
+            grid-template-columns: 1fr;
+        }
+
+        .attendance-table .table thead th {
+            font-size: 0.75rem;
+            padding: 0.75rem 0.5rem;
+        }
+
+        .attendance-table .table tbody td {
+            padding: 0.75rem 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .btn-action {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block page_title %}Daily Attendance{% endblock %}
+
+{% block page_description %}
+<p class="page-subtitle">Mark and manage daily attendance for all officers.</p>
+{% endblock %}
+
+{% block page_actions %}
+<div class="d-flex gap-2">
+    <button class="btn btn-primary btn-action" onclick="exportAttendance()">
+        <i class="fas fa-download me-2"></i>Export
+    </button>
+    <button class="btn btn-success btn-action" onclick="saveAttendance()">
+        <i class="fas fa-save me-2"></i>Save
+    </button>
+</div>
+{% endblock %}
+
+{% block page_body %}
+<div class="attendance-container">
+    <div class="attendance-header">
+        <div class="position-relative">
+            <h2 class="mb-3">Daily Attendance Management</h2>
+            
+            <div class="date-selector">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <label for="attendanceDate" class="form-label text-white fw-semibold">
+                            <i class="fas fa-calendar me-2"></i>Select Date
+                        </label>
+                        <input type="date" id="attendanceDate" class="form-control" value="{{ today|date:'Y-m-d' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="stationFilter" class="form-label text-white fw-semibold">
+                            <i class="fas fa-building me-2"></i>Station
+                        </label>
+                        <select id="stationFilter" class="form-select">
+                            <option value="">All Stations</option>
+                            {% for station in stations %}
+                            <option value="{{ station.id }}">{{ station.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="shiftFilter" class="form-label text-white fw-semibold">
+                            <i class="fas fa-clock me-2"></i>Shift
+                        </label>
+                        <select id="shiftFilter" class="form-select">
+                            <option value="">All Shifts</option>
+                            <option value="early_morning">Early Morning (6:00 AM - 12:00 PM)</option>
+                            <option value="morning">Morning (7:30 AM - 4:30 PM)</option>
+                            <option value="afternoon">Afternoon (12:00 PM - 6:00 PM)</option>
+                            <option value="night">Night (6:00 PM - 6:00 AM)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="attendance-stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalOfficers">{{ officers|length }}</div>
+                    <div class="stat-label">Total Officers</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="presentCount">0</div>
+                    <div class="stat-label">Present</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="absentCount">0</div>
+                    <div class="stat-label">Absent</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="attendanceRate">0%</div>
+                    <div class="stat-label">Attendance Rate</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="attendance-table">
+        <form id="attendanceForm" method="post">
+            {% csrf_token %}
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">
+                            <input type="checkbox" id="selectAll" class="attendance-checkbox">
+                        </th>
+                        <th>Officer</th>
+                        <th>Service Number</th>
+                        <th>Rank</th>
+                        <th>Station</th>
+                        <th>Shift</th>
+                        <th>Status</th>
+                        <th>Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for officer in officers %}
+                    <tr>
+                        <td>
+                            <input type="checkbox" 
+                                   name="attendance_{{ officer.id }}" 
+                                   id="attendance_{{ officer.id }}" 
+                                   class="attendance-checkbox officer-checkbox"
+                                   data-officer-id="{{ officer.id }}">
+                            <label for="attendance_{{ officer.id }}" class="checkbox-label d-none">Present</label>
+                        </td>
+                        <td>
+                            <div class="officer-info">
+                                {% if officer.officer_picture %}
+                                    <img src="{{ officer.officer_picture.url }}" alt="{{ officer.full_name }}" class="officer-avatar">
+                                {% else %}
+                                    <div class="officer-avatar d-flex align-items-center justify-content-center bg-light">
+                                        <i class="fas fa-user text-muted"></i>
+                                    </div>
+                                {% endif %}
+                                <div class="officer-details">
+                                    <div class="officer-name">{{ officer.full_name }}</div>
+                                    <div class="officer-meta">{{ officer.rank.get_name_display|default:"N/A" }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td><code class="bg-light px-2 py-1 rounded">{{ officer.service_number }}</code></td>
+                        <td><span class="badge bg-primary bg-opacity-10 text-primary">{{ officer.rank.get_name_display|default:"N/A" }}</span></td>
+                        <td>{{ officer.prison_station.name|default:"N/A" }}</td>
+                        <td>
+                            <select name="shift_{{ officer.id }}" class="form-select form-select-sm">
+                                <option value="early_morning">Early Morning (6:00 AM - 12:00 PM)</option>
+                                <option value="morning">Morning (7:30 AM - 4:30 PM)</option>
+                                <option value="afternoon">Afternoon (12:00 PM - 6:00 PM)</option>
+                                <option value="night">Night (6:00 PM - 6:00 AM)</option>
+                            </select>
+                        </td>
+                        <td>
+                            <span class="status-badge status-absent" id="status_{{ officer.id }}">Absent</span>
+                        </td>
+                        <td>
+                            <input type="text" 
+                                   name="remarks_{{ officer.id }}" 
+                                   class="form-control form-control-sm" 
+                                   placeholder="Add remarks...">
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </form>
+    </div>
+
+    <div class="action-buttons">
+        <button type="button" class="btn btn-action btn-reset" onclick="resetAttendance()">
+            <i class="fas fa-undo me-2"></i>Reset
+        </button>
+        <button type="button" class="btn btn-action btn-save" onclick="saveAttendance()">
+            <i class="fas fa-save me-2"></i>Save Attendance
+        </button>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    updateAttendanceStats();
+    
+    // Select all functionality
+    document.getElementById('selectAll').addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('.officer-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+            updateOfficerStatus(checkbox);
+        });
+        updateAttendanceStats();
+    });
+
+    // Individual checkbox changes
+    document.querySelectorAll('.officer-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            updateOfficerStatus(this);
+            updateAttendanceStats();
+        });
+    });
+
+    // Date change handler
+    document.getElementById('attendanceDate').addEventListener('change', function() {
+        loadAttendanceForDate(this.value);
+    });
+
+    // Station filter handler
+    document.getElementById('stationFilter').addEventListener('change', function() {
+        filterOfficers();
+    });
+
+    // Shift filter handler
+    document.getElementById('shiftFilter').addEventListener('change', function() {
+        filterOfficers();
+    });
+});
+
+function updateOfficerStatus(checkbox) {
+    const officerId = checkbox.dataset.officerId;
+    const statusBadge = document.getElementById(`status_${officerId}`);
+    
+    if (checkbox.checked) {
+        statusBadge.className = 'status-badge status-present';
+        statusBadge.textContent = 'Present';
+    } else {
+        statusBadge.className = 'status-badge status-absent';
+        statusBadge.textContent = 'Absent';
+    }
+}
+
+function updateAttendanceStats() {
+    const totalOfficers = document.querySelectorAll('.officer-checkbox').length;
+    const presentOfficers = document.querySelectorAll('.officer-checkbox:checked').length;
+    const absentOfficers = totalOfficers - presentOfficers;
+    const attendanceRate = totalOfficers > 0 ? Math.round((presentOfficers / totalOfficers) * 100) : 0;
+
+    document.getElementById('totalOfficers').textContent = totalOfficers;
+    document.getElementById('presentCount').textContent = presentOfficers;
+    document.getElementById('absentCount').textContent = absentOfficers;
+    document.getElementById('attendanceRate').textContent = attendanceRate + '%';
+}
+
+function saveAttendance() {
+    const form = document.getElementById('attendanceForm');
+    const formData = new FormData(form);
+    const attendanceDate = document.getElementById('attendanceDate').value;
+    
+    formData.append('attendance_date', attendanceDate);
+    
+    fetch('/attendance/save/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Attendance saved successfully!', 'success');
+        } else {
+            showToast('Error saving attendance: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showToast('Error saving attendance', 'error');
+    });
+}
+
+function resetAttendance() {
+    if (confirm('Are you sure you want to reset all attendance marks?')) {
+        document.querySelectorAll('.officer-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+            updateOfficerStatus(checkbox);
+        });
+        updateAttendanceStats();
+        showToast('Attendance reset', 'info');
+    }
+}
+
+function loadAttendanceForDate(date) {
+    // Load existing attendance for the selected date
+    fetch(`/attendance/${date}/`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.attendance) {
+            data.attendance.forEach(record => {
+                const checkbox = document.getElementById(`attendance_${record.officer_id}`);
+                if (checkbox) {
+                    checkbox.checked = record.present;
+                    updateOfficerStatus(checkbox);
+                }
+            });
+            updateAttendanceStats();
+        }
+    })
+    .catch(error => {
+        console.error('Error loading attendance:', error);
+    });
+}
+
+function filterOfficers() {
+    const stationFilter = document.getElementById('stationFilter').value;
+    const shiftFilter = document.getElementById('shiftFilter').value;
+    
+    // Implement filtering logic here
+    console.log('Filtering by station:', stationFilter, 'shift:', shiftFilter);
+}
+
+function exportAttendance() {
+    const attendanceDate = document.getElementById('attendanceDate').value;
+    window.open(`/attendance/export/${attendanceDate}/`, '_blank');
+}
+
+function showToast(message, type) {
+    // Create toast notification
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white border-0 fade show bg-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'}`;
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    
+    const container = document.querySelector('.toast-container') || createToastContainer();
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 5000);
+}
+
+function createToastContainer() {
+    const container = document.createElement('div');
+    container.className = 'toast-container';
+    container.style.cssText = 'position: fixed; top: 1rem; right: 1rem; z-index: 1080;';
+    document.body.appendChild(container);
+    return container;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,446 @@
+<!-- prisoner_list.html -->
+{% extends "prison/base.html" %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block page_title %}Prisoners{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .page-header h1 {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .page-header h1 i {
+        color: #1a73e8;
+    }
+
+    .btn-add {
+        padding: 8px 20px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #1a73e8;
+        border: none;
+        transition: all 0.2s ease;
+        color: #fff;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-add:hover {
+        background: #1557b0;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+        color: #fff;
+    }
+
+    .btn-search-ext {
+        padding: 8px 18px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #8b5cf6;
+        border: none;
+        transition: all 0.2s ease;
+        color: #fff;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-search-ext:hover {
+        background: #7c3aed;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        color: #fff;
+    }
+
+    .search-section {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 20px 24px;
+        margin-bottom: 24px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+    }
+
+    .search-section .section-title {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #64748b;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .search-section .section-title i {
+        color: #1a73e8;
+    }
+
+    .btn-search {
+        padding: 8px 24px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #1a73e8;
+        border: none;
+        transition: all 0.2s ease;
+        color: #fff;
+    }
+
+    .btn-search:hover {
+        background: #1557b0;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+    }
+
+    .btn-reset {
+        padding: 8px 20px;
+        font-weight: 600;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        background: #fff;
+        transition: all 0.2s ease;
+    }
+
+    .btn-reset:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+
+    .form-control, .form-select {
+        border-radius: 8px;
+        border-color: #e2e8f0;
+        padding: 8px 14px;
+        font-size: 0.875rem;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #1a73e8;
+        box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+    }
+
+    .form-label {
+        font-weight: 500;
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-bottom: 4px;
+    }
+
+    .table-prisoners {
+        font-size: 0.85rem;
+        margin-bottom: 0;
+    }
+
+    .table-prisoners thead th {
+        background: #f8fafc;
+        color: #64748b;
+        font-weight: 600;
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 10px 14px;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .table-prisoners tbody td {
+        padding: 10px 14px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        color: #334155;
+    }
+
+    .table-prisoners tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .table-prisoners .prisoner-link {
+        color: #1a73e8;
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .table-prisoners .prisoner-link:hover {
+        text-decoration: underline;
+    }
+
+    .badge-class {
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 3px 12px;
+        border-radius: 12px;
+    }
+
+    .badge-class.convicted { background: #dcfce7; color: #16a34a; }
+    .badge-class.remand { background: #fef3c7; color: #d97706; }
+
+    .btn-action-sm {
+        padding: 4px 8px;
+        font-size: 0.7rem;
+        border-radius: 6px;
+        border: none;
+        transition: all 0.15s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .btn-action-sm:hover {
+        transform: translateY(-1px);
+    }
+
+    .empty-state {
+        padding: 40px 20px;
+        text-align: center;
+        color: #94a3b8;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        display: block;
+        margin-bottom: 12px;
+        color: #cbd5e1;
+    }
+
+    .section-card {
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+    }
+
+    .section-card .card-header {
+        background: transparent;
+        padding: 14px 20px;
+        border-bottom: 1px solid #f1f5f9;
+        font-weight: 600;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .section-card .card-header i {
+        color: #1a73e8;
+    }
+
+    .section-card .card-body {
+        padding: 0;
+    }
+
+    .pagination-custom {
+        padding: 16px 20px;
+        border-top: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: center;
+    }
+
+    @media (max-width: 768px) {
+        .page-header h1 {
+            font-size: 1.1rem;
+        }
+        .search-section {
+            padding: 16px;
+        }
+        .table-prisoners {
+            font-size: 0.75rem;
+        }
+        .table-prisoners thead th,
+        .table-prisoners tbody td {
+            padding: 6px 10px;
+        }
+        .btn-add, .btn-search-ext {
+            padding: 6px 14px;
+            font-size: 0.8rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="page-header">
+        <h1>
+            <i class="bi bi-people"></i>
+            Prisoners
+        </h1>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'extended_prisoner_search' %}" class="btn-search-ext">
+                <i class="bi bi-search"></i> Extended Search
+            </a>
+            <a href="{% url 'add_prisoner' %}" class="btn-add">
+                <i class="bi bi-plus-circle"></i> Add Prisoner
+            </a>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            <i class="bi bi-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}x-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Search Filters -->
+    <div class="search-section">
+        <div class="section-title">
+            <i class="bi bi-funnel"></i> Quick Search Filters
+        </div>
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                {{ form.search_query|as_crispy_field }}
+            </div>
+            <div class="col-md-2">
+                {{ form.prisoner_class|as_crispy_field }}
+            </div>
+            {% if user.is_super_admin %}
+            <div class="col-md-2">
+                {{ form.prison_station|as_crispy_field }}
+            </div>
+            {% endif %}
+            <div class="col-md-2">
+                {{ form.risk_level|as_crispy_field }}
+            </div>
+            <div class="col-md-3 d-flex align-items-end gap-2">
+                <button type="submit" class="btn-search">
+                    <i class="bi bi-search me-1"></i> Search
+                </button>
+                <a href="{% url 'prisoner_list' %}" class="btn-reset">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Results -->
+    <div class="section-card">
+        <div class="card-header">
+            <span><i class="bi bi-list-ul"></i> All Prisoners</span>
+            <span class="badge bg-light text-muted">{{ page_obj.paginator.count }} total</span>
+        </div>
+        <div class="card-body">
+            {% if prisoners %}
+            <div class="table-responsive">
+                <table class="table table-prisoners">
+                    <thead>
+                        <tr>
+                            <th>Prisoner No.</th>
+                            <th>Name</th>
+                            <th>Class</th>
+                            <th>Station</th>
+                            <th>Admission Date</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for prisoner in prisoners %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'prisoner_detail' prisoner.id %}" class="prisoner-link">
+                                    {{ prisoner.prisoner_number }}
+                                </a>
+                            </td>
+                            <td>{{ prisoner.full_name|truncatechars:25 }}</td>
+                            <td>
+                                <span class="badge-class {% if prisoner.prisoner_class == 'convicted' %}convicted{% else %}remand{% endif %}">
+                                    {{ prisoner.get_prisoner_class_display }}
+                                </span>
+                            </td>
+                            <td>{{ prisoner.prison_station.name|truncatechars:15 }}</td>
+                            <td>{{ prisoner.date_admitted|date:"Y-m-d" }}</td>
+                            <td class="text-end">
+                                <div class="d-flex gap-1 justify-content-end">
+                                    <a href="{% url 'prisoner_detail' prisoner.id %}" class="btn-action-sm btn-outline-primary" title="View">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'generate_prisoner_report' prisoner.id %}" class="btn-action-sm btn-outline-danger" title="PDF Report">
+                                        <i class="bi bi-file-pdf"></i>
+                                    </a>
+                                    {% if user.is_super_admin %}
+                                    <a href="{% url 'transfer_prisoner' prisoner.id %}" class="btn-action-sm btn-outline-warning" title="Transfer">
+                                        <i class="bi bi-arrow-left-right"></i>
+                                    </a>
+                                    <a href="{% url 'delete_prisoner' prisoner.id %}" class="btn-action-sm btn-outline-danger" title="Deactivate">
+                                        <i class="bi bi-person-x"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <p class="mb-0">No prisoners found.</p>
+                <small class="text-muted">Try adjusting your search filters.</small>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <div class="pagination-custom">
+            <nav aria-label="Page navigation">
+                <ul class="pagination pagination-sm mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1">&laquo; First</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                    </li>
+                    {% endif %}
+
+                    <li class="page-item active">
+                        <span class="page-link">
+                            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

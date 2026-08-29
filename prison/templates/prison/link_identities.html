@@ -1,0 +1,198 @@
+{% extends "prison/base.html" %}
+{% load static %}
+
+{% block page_title %}Link Prisoner Identities{% endblock %}
+
+{% block extra_css %}
+<style>
+    .link-container {
+        background: #ffffff;
+        border-radius: 14px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        padding: 32px;
+        max-width: 700px;
+        margin: 0 auto;
+    }
+
+    .identity-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin: 8px 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .identity-card .info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .identity-card .info .number {
+        font-weight: 700;
+        color: #1a73e8;
+    }
+
+    .identity-card .info .name {
+        font-weight: 500;
+    }
+
+    .link-arrow {
+        text-align: center;
+        font-size: 2rem;
+        color: #1a73e8;
+        padding: 8px 0;
+    }
+
+    .btn-link-identities {
+        padding: 12px 40px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #1a73e8;
+        border: none;
+        color: #fff;
+        transition: all 0.2s ease;
+        font-size: 1rem;
+    }
+
+    .btn-link-identities:hover {
+        background: #1557b0;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(26, 115, 232, 0.3);
+    }
+
+    .btn-link-identities:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .info-box {
+        background: #f8fafc;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-top: 16px;
+        font-size: 0.8rem;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-align: left;
+    }
+
+    .info-box i {
+        color: #1a73e8;
+        font-size: 1.2rem;
+    }
+
+    @media (max-width: 768px) {
+        .link-container {
+            padding: 16px;
+        }
+        .identity-card {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .link-arrow {
+            font-size: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h1 class="h3 fw-bold mb-1">Link Prisoner Identities</h1>
+            <p class="text-muted small mb-0">
+                <i class="bi bi-link-45deg me-1"></i>
+                Link two prisoner records that belong to the same person
+            </p>
+        </div>
+        <a href="{% url 'fingerprint_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <div class="link-container">
+        {% if prisoner1 and prisoner2 %}
+        <h5 class="text-center mb-3">Are these the same person?</h5>
+
+        <div class="identity-card">
+            <div class="info">
+                <span class="number">{{ prisoner1.prisoner_number }}</span>
+                <span class="name">{{ prisoner1.full_name }}</span>
+                <span class="badge {% if prisoner1.prisoner_class == 'convicted' %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                    {{ prisoner1.get_prisoner_class_display }}
+                </span>
+                <span class="badge bg-secondary">{{ prisoner1.prison_station.name }}</span>
+            </div>
+            <div>
+                <span class="badge {% if prisoner1.is_identity_verified %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                    {% if prisoner1.is_identity_verified %}Verified{% else %}Unverified{% endif %}
+                </span>
+            </div>
+        </div>
+
+        <div class="link-arrow">
+            <i class="bi bi-arrow-down"></i>
+        </div>
+
+        <div class="identity-card">
+            <div class="info">
+                <span class="number">{{ prisoner2.prisoner_number }}</span>
+                <span class="name">{{ prisoner2.full_name }}</span>
+                <span class="badge {% if prisoner2.prisoner_class == 'convicted' %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                    {{ prisoner2.get_prisoner_class_display }}
+                </span>
+                <span class="badge bg-secondary">{{ prisoner2.prison_station.name }}</span>
+            </div>
+            <div>
+                <span class="badge {% if prisoner2.is_identity_verified %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                    {% if prisoner2.is_identity_verified %}Verified{% else %}Unverified{% endif %}
+                </span>
+            </div>
+        </div>
+
+        <form method="post" class="mt-4">
+            {% csrf_token %}
+            {{ form|crispy }}
+            
+            <div class="d-flex flex-wrap gap-3 justify-content-center mt-4">
+                <button type="submit" class="btn-link-identities">
+                    <i class="bi bi-link-45deg me-2"></i> Link Identities
+                </button>
+                <a href="{% url 'fingerprint_dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-lg me-1"></i> Cancel
+                </a>
+            </div>
+        </form>
+
+        <div class="info-box">
+            <i class="bi bi-exclamation-triangle"></i>
+            <div>
+                <strong>Warning:</strong> Linking identities will mark both records as verified and create a permanent link.
+                This action should only be performed when you are certain they are the same person.
+            </div>
+        </div>
+
+        {% else %}
+        <div class="text-center py-4">
+            <i class="bi bi-exclamation-circle" style="font-size: 3rem; color: #94a3b8; display: block; margin-bottom: 16px;"></i>
+            <p>Please select two prisoners to link.</p>
+            <a href="{% url 'fingerprint_match_history' %}" class="btn btn-primary">
+                <i class="bi bi-search me-2"></i> Search for Matches
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,1558 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}HRMS Dashboard - Prison HRMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-shell {
+        position: relative;
+        min-height: calc(100vh - 200px);
+        padding: 1rem;
+    }
+
+    .dashboard-shell::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at top left, rgba(74,108,247,0.15), transparent 50%),
+                    radial-gradient(circle at 80% 20%, rgba(34,197,94,0.15), transparent 45%);
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    .dashboard-content {
+        position: relative;
+        z-index: 1;
+    }
+
+    .dashboard-hero {
+        background: linear-gradient(135deg, #111827, #1f2937);
+        color: #fff;
+        border-radius: 1.5rem;
+        overflow: hidden;
+        box-shadow: 0 25px 60px rgba(15, 23, 42, 0.45);
+    }
+
+    .hero-bg-pattern {
+        position: absolute;
+        inset: 0;
+        opacity: 0.25;
+        background-image: url("data:image/svg+xml,%3Csvg width='160' height='160' viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 80 L80 0 L160 80 L80 160 Z' stroke='%23ffffff' fill='none' stroke-width='0.5' opacity='0.35'/%3E%3C/svg%3E");
+    }
+
+    .hero-body {
+        position: relative;
+        padding: 2.5rem;
+    }
+
+    .hero-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.4rem 1rem;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.1);
+        backdrop-filter: blur(6px);
+        font-size: 0.9rem;
+        letter-spacing: 0.04em;
+    }
+
+    .hero-indicator .pulse {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #34d399;
+        box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7);
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% {
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.4);
+        }
+        70% {
+            transform: scale(1);
+            box-shadow: 0 0 0 12px rgba(52, 211, 153, 0);
+        }
+        100% {
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
+        }
+    }
+
+    .hero-stat {
+        background: rgba(255,255,255,0.08);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        backdrop-filter: blur(12px);
+        min-height: 100%;
+        border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .hero-stat h2 {
+        font-size: clamp(2.8rem, 3.2vw, 3.5rem);
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .hero-stat p {
+        margin: 0;
+        opacity: 0.8;
+    }
+
+    .metric-card {
+        border-radius: 1.25rem;
+        background: #fff;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: var(--shadow-soft);
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        transition: var(--transition-smooth);
+        height: 100%;
+        animation: slideInUp 0.6s ease-out;
+    }
+
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .metric-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--primary-color), var(--primary-dark));
+        transform: scaleX(0);
+        transform-origin: left;
+        transition: transform 0.6s ease;
+    }
+
+    .metric-card:hover::before {
+        transform: scaleX(1);
+    }
+
+    .metric-card::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at top right, rgba(74,108,247,0.15), transparent 55%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .metric-card:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: var(--shadow-large);
+        border-color: var(--primary-color);
+    }
+
+    .metric-card:hover .metric-icon {
+        transform: scale(1.1) rotate(5deg);
+    }
+
+    /* Enhanced animations */
+    .metric-card {
+        animation: slideInUp 0.6s ease-out backwards;
+    }
+
+    .metric-card:nth-child(1) { animation-delay: 0.1s; }
+    .metric-card:nth-child(2) { animation-delay: 0.2s; }
+    .metric-card:nth-child(3) { animation-delay: 0.3s; }
+    .metric-card:nth-child(4) { animation-delay: 0.4s; }
+
+    /* Quick Actions Section */
+    .quick-actions {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 1.5rem;
+        padding: 2rem;
+        color: white;
+        margin-bottom: 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .quick-actions::before {
+        content: "";
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: rotate 25s linear infinite;
+    }
+
+    .quick-actions h3 {
+        margin-bottom: 1.5rem;
+        font-weight: 700;
+        position: relative;
+        z-index: 1;
+    }
+
+    .action-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .action-btn {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        text-align: center;
+        color: white;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .action-btn:hover {
+        background: rgba(255, 255, 255, 0.25);
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        color: white;
+    }
+
+    .action-btn i {
+        font-size: 2rem;
+        opacity: 0.9;
+    }
+
+    .action-btn span {
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    /* Activity Feed Enhancements */
+    .activity-feed {
+        background: white;
+        border-radius: 1.25rem;
+        padding: 1.5rem;
+        box-shadow: var(--shadow-soft);
+        margin-bottom: 2rem;
+    }
+
+    .activity-item {
+        display: flex;
+        align-items: start;
+        gap: 1rem;
+        padding: 1rem 0;
+        border-bottom: 1px solid var(--border-color);
+        animation: slideInRight 0.5s ease-out backwards;
+    }
+
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+
+    .activity-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    .activity-content {
+        flex: 1;
+    }
+
+    .activity-content h6 {
+        margin: 0 0 0.25rem 0;
+        font-weight: 600;
+        color: var(--dark-color);
+    }
+
+    .activity-content p {
+        margin: 0;
+        font-size: 0.9rem;
+        color: var(--secondary-color);
+    }
+
+    .activity-time {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-top: 0.25rem;
+    }
+
+    /* Performance Metrics */
+    .performance-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 1.5rem;
+        padding: 2rem;
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .performance-card::after {
+        content: "";
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+        animation: rotate 30s linear infinite reverse;
+    }
+
+    .performance-header {
+        position: relative;
+        z-index: 1;
+        margin-bottom: 1.5rem;
+    }
+
+    .performance-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .perf-stat {
+        text-align: center;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .perf-stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .perf-stat-label {
+        font-size: 0.85rem;
+        opacity: 0.9;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .metric-card:hover::after {
+        opacity: 1;
+    }
+
+    .metric-icon {
+        width: 3rem;
+        height: 3rem;
+        border-radius: 0.85rem;
+        display: grid;
+        place-items: center;
+        font-size: 1.6rem;
+        color: #fff;
+        transition: var(--transition-quick);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .metric-icon::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.2) 50%, transparent 70%);
+        transform: translateX(-100%);
+        transition: transform 0.6s ease;
+    }
+
+    .metric-card:hover .metric-icon::before {
+        transform: translateX(100%);
+    }
+
+    .metric-card:hover .metric-icon {
+        transform: scale(1.1) rotate(5deg);
+    }
+
+    .metric-value {
+        font-size: clamp(2.2rem, 2.5vw, 2.8rem);
+        font-weight: 700;
+        margin: 0.75rem 0 0 0;
+        color: #0f172a;
+    }
+
+    .metric-subtitle {
+        color: #6b7280;
+        font-weight: 500;
+        font-size: 0.95rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+    }
+
+    .metric-trend {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-weight: 600;
+        margin-top: 0.6rem;
+    }
+
+    .trend-up {
+        color: #16a34a;
+    }
+
+    .trend-down {
+        color: #dc2626;
+    }
+
+    .section-title {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .section-title span {
+        font-size: 0.95rem;
+        color: #6b7280;
+    }
+
+    .status-chart-card {
+        position: relative;
+        border-radius: 1.25rem;
+        padding: 1.75rem;
+        background: radial-gradient(circle at top, #111b33, #050917);
+        color: #fff;
+        box-shadow: var(--shadow-large);
+        animation: slideInLeft 0.8s ease-out;
+        overflow: hidden;
+    }
+
+    @keyframes slideInLeft {
+        from {
+            opacity: 0;
+            transform: translateX(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .status-chart-card::before {
+        content: "";
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+        animation: rotate 20s linear infinite;
+    }
+
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
+    .status-chart-card.empty canvas {
+        opacity: 0.12;
+        filter: grayscale(100%);
+    }
+
+    .status-chart-hint {
+        margin-top: 1rem;
+        font-size: 0.9rem;
+        color: rgba(255,255,255,0.75);
+        text-align: center;
+    }
+
+    .status-placeholder {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 0.75rem;
+        text-align: center;
+        min-height: 220px;
+        color: rgba(255,255,255,0.75);
+    }
+
+    .status-chart-card.empty .status-placeholder {
+        display: flex;
+    }
+
+    .placeholder-ring {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: 2px dashed rgba(255,255,255,0.3);
+        position: relative;
+    }
+
+    .placeholder-ring::after {
+        content: "";
+        position: absolute;
+        inset: 18px;
+        border-radius: 50%;
+        border: 2px solid rgba(255,255,255,0.15);
+    }
+
+    .status-stats {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+        flex-wrap: wrap;
+    }
+
+    .status-pill {
+        flex: 1;
+        min-width: 140px;
+        background: rgba(255,255,255,0.08);
+        border-radius: 0.9rem;
+        padding: 0.9rem 1rem;
+        border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .status-pill span {
+        display: block;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
+        color: rgba(255,255,255,0.6);
+        margin-bottom: 0.3rem;
+    }
+
+    .status-pill strong {
+        font-size: 1.8rem;
+        font-weight: 700;
+        display: flex;
+        align-items: baseline;
+        gap: 0.35rem;
+    }
+
+    .status-pill strong small {
+        font-size: 0.85rem;
+        color: rgba(255,255,255,0.65);
+        font-weight: 500;
+    }
+
+    .app-card {
+        border-radius: 1.25rem;
+        background: #fff;
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        box-shadow: var(--shadow-soft);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        transition: var(--transition-smooth);
+        animation: fadeIn 0.8s ease-out;
+        position: relative;
+        overflow: hidden;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    .app-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, var(--primary-color), var(--info-color), var(--success-color));
+        transform: scaleX(0);
+        transform-origin: left;
+        transition: transform 0.8s ease;
+    }
+
+    .app-card:hover::before {
+        transform: scaleX(1);
+    }
+
+    .app-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-large);
+        border-color: var(--primary-color);
+    }
+
+    .app-card-header {
+        padding: 1.5rem 1.5rem 0.5rem 1.5rem;
+        border-bottom: 1px solid rgba(15, 23, 42, 0.07);
+    }
+
+    .app-card-body {
+        padding: 1.5rem;
+        flex: 1;
+    }
+
+    .timeline-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .timeline-list li {
+        padding-left: 2rem;
+        position: relative;
+    }
+
+    .timeline-list li::before {
+        content: "";
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        border: 2px solid #4a6cf7;
+        position: absolute;
+        left: 0.3rem;
+        top: 0.35rem;
+        background: #fff;
+    }
+
+    .timeline-list li::after {
+        content: "";
+        position: absolute;
+        left: 0.65rem;
+        top: 1.5rem;
+        bottom: -0.5rem;
+        width: 2px;
+        background: linear-gradient(180deg, rgba(74,108,247,0.45), transparent);
+    }
+
+    .timeline-list li:last-child::after {
+        display: none;
+    }
+
+    .timeline-title {
+        font-weight: 600;
+        color: #0f172a;
+    }
+
+    .timeline-meta {
+        font-size: 0.9rem;
+        color: #6b7280;
+    }
+
+    .badge-soft {
+        border-radius: 999px;
+        padding: 0.35rem 0.9rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .badge-soft.success {
+        background: rgba(34, 197, 94, 0.15);
+        color: #15803d;
+    }
+
+    .badge-soft.warning {
+        background: rgba(251, 191, 36, 0.15);
+        color: #b45309;
+    }
+
+    .badge-soft.info {
+        background: rgba(59, 130, 246, 0.15);
+        color: #1d4ed8;
+    }
+
+    .badge-soft.danger {
+        background: rgba(248, 113, 113, 0.15);
+        color: #b91c1c;
+    }
+
+    .list-modern {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .list-modern li {
+        display: flex;
+        gap: 1rem;
+        padding: 0.75rem;
+        border-radius: 1rem;
+        border: 1px solid rgba(15, 23, 42, 0.05);
+        background: rgba(249, 250, 251, 0.7);
+        transition: var(--transition-smooth);
+        position: relative;
+        overflow: hidden;
+        animation: slideInRight 0.6s ease-out;
+    }
+
+    @keyframes slideInRight {
+        from {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .list-modern li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: linear-gradient(180deg, var(--primary-color), var(--info-color));
+        transform: scaleY(0);
+        transform-origin: top;
+        transition: transform 0.3s ease;
+    }
+
+    .list-modern li:hover {
+        border-color: rgba(74, 108, 247, 0.45);
+        background: #fff;
+        transform: translateX(8px);
+        box-shadow: var(--shadow-medium);
+    }
+
+    .list-modern li:hover::before {
+        transform: scaleY(1);
+    }
+
+    .list-modern .list-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
+        background: rgba(74, 108, 247, 0.12);
+        display: grid;
+        place-items: center;
+        font-size: 1.3rem;
+        color: #4a6cf7;
+    }
+
+    .list-modern .list-content h6 {
+        margin: 0;
+        font-weight: 600;
+    }
+
+    .list-modern .list-content small {
+        display: block;
+        color: #6b7280;
+    }
+
+    .live-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-top: 1px solid rgba(255,255,255,0.15);
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        font-size: 0.95rem;
+        opacity: 0.9;
+    }
+
+    .live-footer code {
+        background: rgba(15, 23, 42, 0.35);
+        padding: 0.4rem 0.9rem;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        color: #a5b4fc;
+    }
+
+    @media (max-width: 991.98px) {
+        .hero-body {
+            padding: 1.75rem;
+        }
+    }
+
+    @media (max-width: 575.98px) {
+        .metrics-row > [class*="col"] {
+            width: 100%;
+        }
+
+        .quick-actions {
+            padding: 1.5rem;
+        }
+
+        .action-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .action-btn {
+            padding: 1rem;
+        }
+
+        .action-btn i {
+            font-size: 1.5rem;
+        }
+
+        .action-btn span {
+            font-size: 0.85rem;
+        }
+
+        .dashboard-hero {
+            border-radius: 1rem;
+        }
+
+        .hero-body {
+            padding: 1.5rem;
+        }
+
+        .hero-stat {
+            padding: 1rem;
+        }
+
+        .status-chart-card {
+            padding: 1rem;
+        }
+
+        .app-card {
+            margin-bottom: 1rem;
+        }
+    }
+
+    @media (max-width: 400px) {
+        .action-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .quick-actions h3 {
+            font-size: 1.25rem;
+        }
+    }
+
+    /* Enhanced hover effects */
+    .metric-card {
+        transform-origin: center bottom;
+    }
+
+    .metric-card:hover {
+        transform: translateY(-8px) scale(1.02);
+        z-index: 10;
+    }
+
+    /* Loading skeleton animation */
+    @keyframes shimmer {
+        0% {
+            background-position: -1000px 0;
+        }
+        100% {
+            background-position: 1000px 0;
+        }
+    }
+
+    .skeleton {
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 1000px 100%;
+        animation: shimmer 2s infinite;
+    }
+
+    /* Floating animation for quick actions */
+    @keyframes float {
+        0%, 100% {
+            transform: translateY(0px);
+        }
+        50% {
+            transform: translateY(-10px);
+        }
+    }
+
+    .quick-actions .action-btn:nth-child(1) { animation: float 3s ease-in-out infinite; }
+    .quick-actions .action-btn:nth-child(2) { animation: float 3s ease-in-out infinite 0.5s; }
+    .quick-actions .action-btn:nth-child(3) { animation: float 3s ease-in-out infinite 1s; }
+    .quick-actions .action-btn:nth-child(4) { animation: float 3s ease-in-out infinite 1.5s; }
+    .quick-actions .action-btn:nth-child(5) { animation: float 3s ease-in-out infinite 2s; }
+    .quick-actions .action-btn:nth-child(6) { animation: float 3s ease-in-out infinite 2.5s; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid dashboard-shell">
+    <div class="dashboard-content">
+        <section class="dashboard-hero mb-5 position-relative">
+            <div class="hero-bg-pattern"></div>
+            <div class="hero-body">
+                <div class="row g-4 align-items-center">
+                    <div class="col-lg-7">
+                        <div class="hero-indicator mb-3">
+                            <span class="pulse"></span>
+                            Live Control Center
+                        </div>
+                        <h1 class="display-5 fw-bold mb-3">Welcome back, {{ user.get_full_name|default:user.username }}.</h1>
+                        <p class="lead text-white-50">
+                            Monitoring <strong>{{ total_officers }}</strong> officers across all divisions.
+                            You are currently operating with <strong>{{ user_role }}</strong> clearance level.
+                        </p>
+                        <div class="d-flex flex-wrap gap-3 mt-4">
+                            <div class="badge-soft info">
+                                <i class="bi bi-clock-history"></i>
+                                Last sync:
+                                <span data-last-refreshed>{{ last_refreshed|date:"M d, Y - h:i A" }}</span>
+                            </div>
+                            <div class="badge-soft success">
+                                <i class="bi bi-wifi"></i>
+                                Real-time feed secured
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-5">
+                        <div class="hero-stat">
+                            <p class="text-uppercase text-white-50 mb-1">Active Workforce</p>
+                            <h2 id="metric-total-officers">{{ total_officers }}</h2>
+                            <p class="mb-4">Personnel currently managed by this station hierarchy.</p>
+                            <div class="row g-3">
+                                <div class="col-6">
+                                    <p class="text-white-50 text-uppercase small mb-1">Engaged</p>
+                                    <h4 class="fw-bold mb-0" id="metric-active-officers">{{ active_officers }}</h4>
+                                </div>
+                                <div class="col-6">
+                                    <p class="text-white-50 text-uppercase small mb-1">On Leave</p>
+                                    <h4 class="fw-bold mb-0" id="metric-onleave-officers">{{ on_leave_officers }}</h4>
+                                </div>
+                                <div class="col-12 mt-3">
+                                    <div class="progress" style="height: 6px; background: rgba(255,255,255,0.15);">
+                                        <div class="progress-bar bg-success" role="progressbar" id="activeProgress"
+                                             data-initial-progress="{{ active_percentage }}"
+                                             style="width: 0%"
+                                             aria-valuenow="0"
+                                             aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="live-footer">
+                                <span>Live data updates every 30 seconds</span>
+                                <code>API: /dashboard/data</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="row g-4 metrics-row mb-4">
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-icon" style="background: linear-gradient(135deg,#6366f1,#4f46e5);">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                    <p class="metric-subtitle">Total Officers</p>
+                    <h3 class="metric-value" data-metric="total">{{ total_officers }}</h3>
+                    <div class="metric-trend trend-up">
+                        <i class="bi bi-arrow-up-right"></i> Operational strength
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-icon" style="background: linear-gradient(135deg,#22c55e,#16a34a);">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+                    <p class="metric-subtitle">Active</p>
+                    <h3 class="metric-value" data-metric="active">{{ active_officers }}</h3>
+                    <div class="metric-trend trend-up">
+                        <i class="bi bi-activity"></i> Field ready
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-icon" style="background: linear-gradient(135deg,#f97316,#fb923c);">
+                        <i class="bi bi-sunrise-fill"></i>
+                    </div>
+                    <p class="metric-subtitle">On Leave</p>
+                    <h3 class="metric-value" data-metric="leave">{{ on_leave_officers }}</h3>
+                    <div class="metric-trend trend-down">
+                        <i class="bi bi-hourglass"></i> Expected returns pending
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card">
+                    <div class="metric-icon" style="background: linear-gradient(135deg,#f43f5e,#e11d48);">
+                        <i class="bi bi-emoji-sunglasses"></i>
+                    </div>
+                    <p class="metric-subtitle">Retired</p>
+                    <h3 class="metric-value" data-metric="retired">{{ retired_officers }}</h3>
+                    <div class="metric-trend trend-down">
+                        <i class="bi bi-flag-fill"></i> Legacy alumni
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions Section -->
+        <div class="quick-actions">
+            <h3>Quick Actions</h3>
+            <div class="action-grid">
+                <a href="{% url 'hrms:officer_create' %}" class="action-btn">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Add Officer</span>
+                </a>
+                <a href="{% url 'hrms:daily_attendance' %}" class="action-btn">
+                    <i class="fas fa-calendar-check"></i>
+                    <span>Mark Attendance</span>
+                </a>
+                <a href="{% url 'hrms:leave_request_list' %}" class="action-btn">
+                    <i class="fas fa-plane"></i>
+                    <span>Leave Requests</span>
+                </a>
+                <a href="{% url 'hrms:report_list' %}" class="action-btn">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>View Reports</span>
+                </a>
+                <a href="{% url 'hrms:notification_list' %}" class="action-btn">
+                    <i class="fas fa-bell"></i>
+                    <span>Notifications</span>
+                </a>
+                <a href="{% url 'hrms:office_assignment_list' %}" class="action-btn">
+                    <i class="fas fa-building"></i>
+                    <span>Manage Offices</span>
+                </a>
+                {% if user.is_superuser or user.is_staff %}
+                    <a href="{% url 'audit:audit_summary' %}" class="action-btn">
+                        <i class="fas fa-user-shield"></i>
+                        <span>Audit Trail</span>
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-xl-5">
+                <div class="status-chart-card h-100" id="statusChartContainer">
+                    <div class="section-title">
+                        <div>
+                            <h5 class="mb-1 text-uppercase text-white-50">Health Pulse</h5>
+                            <h3 class="mb-0">Status Distribution</h3>
+                        </div>
+                        <span><i class="bi bi-broadcast-pin me-1"></i>Real-time radar</span>
+                    </div>
+                    <div class="position-relative">
+                        <canvas id="statusDistributionChart" height="280"></canvas>
+                        <div class="status-placeholder" id="statusChartPlaceholder">
+                            <div class="placeholder-ring"></div>
+                            <p>No officer data to visualize yet.</p>
+                            <small>Assign officers to this scope to unlock real-time insights.</small>
+                        </div>
+                    </div>
+                    <p class="status-chart-hint" id="statusChartHint"></p>
+                    <div class="status-stats" id="statusStats">
+                        <div class="status-pill">
+                            <span>Active</span>
+                            <strong>
+                                <span data-stat="active-count">{{ active_officers }}</span>
+                                <small data-stat="active-percent">{{ active_percentage }}%</small>
+                            </strong>
+                        </div>
+                        <div class="status-pill">
+                            <span>On Leave</span>
+                            <strong>
+                                <span data-stat="onleave-count">{{ on_leave_officers }}</span>
+                                <small data-stat="onleave-percent">{{ on_leave_percentage }}%</small>
+                            </strong>
+                        </div>
+                        <div class="status-pill">
+                            <span>Retired</span>
+                            <strong>
+                                <span data-stat="retired-count">{{ retired_officers }}</span>
+                                <small data-stat="retired-percent">{{ retired_percentage }}%</small>
+                            </strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-7">
+                <div class="app-card h-100">
+                    <div class="app-card-header section-title">
+                        <div>
+                            <p class="text-uppercase text-muted small mb-1">Live signals</p>
+                            <h4 class="mb-0">Recent Notifications</h4>
+                        </div>
+                        <a class="btn btn-outline-primary btn-sm rounded-pill" href="{% url 'hrms:notification_list' %}">
+                            View Inbox
+                        </a>
+                    </div>
+                    <div class="app-card-body">
+                        {% if unread_notifications %}
+                            <ul class="list-modern" id="notification-feed">
+                                {% for notification in unread_notifications %}
+                                <li>
+                                    <div class="list-icon bg-dark-subtle text-dark">
+                                        <i class="bi bi-bell"></i>
+                                    </div>
+                                    <div class="list-content w-100">
+                                        <div class="d-flex justify-content-between">
+                                            <h6>{{ notification.message|truncatechars:70 }}</h6>
+                                            <small>{{ notification.created_at|timesince }} ago</small>
+                                        </div>
+                                        <small>From: {{ notification.sender.get_full_name|default:"System" }}</small>
+                                        <div class="mt-2">
+                                            <a class="btn btn-sm btn-outline-secondary rounded-pill" href="{% url 'hrms:notification_detail' notification.pk %}">
+                                                Open notification
+                                            </a>
+                                        </div>
+                                    </div>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <div class="text-center text-muted py-4">
+                                <i class="bi bi-bell-slash fs-2 d-block mb-2"></i>
+                                No unread notifications right now.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-xl-6">
+                <div class="app-card h-100">
+                    <div class="app-card-header section-title">
+                        <div>
+                            <p class="text-uppercase text-muted small mb-1">recent uploads</p>
+                            <h4 class="mb-0">Officer Files</h4>
+                        </div>
+                        <span class="badge-soft info">{{ recent_files_total }} total files visible</span>
+                    </div>
+                    <div class="app-card-body">
+                        {% if recent_files %}
+                            <ul class="list-modern" id="file-feed">
+                                {% for file in recent_files %}
+                                <li>
+                                    <div class="list-icon" style="background: rgba(251,191,36,0.15); color:#b45309;">
+                                        <i class="bi bi-file-earmark-text"></i>
+                                    </div>
+                                    <div class="list-content w-100">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <h6>{{ file.file_name|truncatechars:48 }}</h6>
+                                                <small>Uploaded by {{ file.officer.full_name }} · {{ file.uploaded_at|date:"M d, Y" }}</small>
+                                            </div>
+                                            <span class="badge-soft {% if file.status == 'approved' %}success{% elif file.status == 'rejected' %}danger{% else %}warning{% endif %}">
+                                                {{ file.get_status_display }}
+                                            </span>
+                                        </div>
+                                        <div class="mt-2">
+                                            <a class="btn btn-sm btn-outline-primary rounded-pill" href="{% url 'hrms:officer_file_detail' file.pk %}">
+                                                Open file
+                                            </a>
+                                        </div>
+                                    </div>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <div class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                                No documents uploaded yet.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-6">
+                <div class="app-card h-100">
+                    <div class="app-card-header section-title">
+                        <div>
+                            <p class="text-uppercase text-muted small mb-1">approaching retirement</p>
+                            <h4 class="mb-0">Succession Radar</h4>
+                        </div>
+                        <span class="badge-soft warning">{{ retirement_alerts_4|length }} alerts · 4 months</span>
+                    </div>
+                    <div class="app-card-body">
+                        <div class="row g-3">
+                            <div class="col-sm-6">
+                                <h6 class="text-muted text-uppercase small mb-3">Next 4 Months</h6>
+                                {% if retirement_alerts_4 %}
+                                    <ul class="timeline-list" id="retirement-short-feed">
+                                        {% for alert in retirement_alerts_4 %}
+                                        <li>
+                                            <a class="timeline-title d-block text-decoration-none" href="{{ alert.detail_url }}">
+                                                {{ alert.full_name }} · {{ alert.service_number }}
+                                            </a>
+                                            <div class="timeline-meta">
+                                                Retires {{ alert.retirement_date|date:"M d, Y" }}
+                                                <br>
+                                                {{ alert.station_name }}
+                                            </div>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <p class="text-muted">No retirements in the next 4 months.</p>
+                                {% endif %}
+                            </div>
+                            <div class="col-sm-6">
+                                <h6 class="text-muted text-uppercase small mb-3">Next 12 Months</h6>
+                                {% if retirement_alerts_12 %}
+                                    <ul class="timeline-list" id="retirement-long-feed">
+                                        {% for alert in retirement_alerts_12 %}
+                                        <li>
+                                            <a class="timeline-title d-block text-decoration-none" href="{{ alert.detail_url }}">
+                                                {{ alert.full_name }} · {{ alert.service_number }}
+                                            </a>
+                                            <div class="timeline-meta">
+                                                Retires {{ alert.retirement_date|date:"M d, Y" }}
+                                                <br>
+                                                {{ alert.station_name }}
+                                            </div>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <p class="text-muted">No retirements in the next 12 months.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-xl-6">
+                <div class="app-card h-100">
+                    <div class="app-card-header section-title">
+                        <div>
+                            <p class="text-uppercase text-muted small mb-1">Leave desk</p>
+                            <h4 class="mb-0">Pending Leave Requests</h4>
+                        </div>
+                        <span class="badge-soft danger">{{ pending_leave_requests_total }} awaiting decisions</span>
+                    </div>
+                    <div class="app-card-body">
+                        {% if pending_leave_requests %}
+                            <ul class="list-modern" id="leave-feed">
+                                {% for leave in pending_leave_requests %}
+                                <li>
+                                    <div class="list-icon" style="background: rgba(190,242,100,0.15); color:#4d7c0f;">
+                                        <i class="bi bi-briefcase"></i>
+                                    </div>
+                                    <div class="list-content w-100">
+                                        <div class="d-flex justify-content-between">
+                                            <div>
+                                                <h6>{{ leave.officer.full_name }} · {{ leave.leave_type.name }}</h6>
+                                                <small>{{ leave.start_date|date:"M d" }} → {{ leave.end_date|date:"M d, Y" }}</small>
+                                            </div>
+                                            <span class="text-muted">{{ leave.requested_at|timesince }} ago</span>
+                                        </div>
+                                        <div class="mt-2">
+                                            <a class="btn btn-sm btn-outline-dark rounded-pill" href="{% url 'hrms:leave_request_detail' leave.pk %}">
+                                                Review request
+                                            </a>
+                                        </div>
+                                    </div>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <div class="text-center text-muted py-4">
+                                <i class="bi bi-check-circle fs-2 d-block mb-2"></i>
+                                No pending leave applications.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ status_distribution|json_script:"status-distribution-data" }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.5/dist/chart.umd.min.js" integrity="sha384-YgGum4LEbSI/Tf2Qlzf1nKtlM3ufwQMMrXoz9woEqWbcHynyfeLRkkNtHdAEN9su" crossorigin="anonymous"></script>
+<script>
+    const dashboardApiUrl = "{% url 'hrms:dashboard_data_api' %}";
+
+    const statusDistribution = JSON.parse(document.getElementById('status-distribution-data').textContent);
+    const statusChartCtx = document.getElementById('statusDistributionChart').getContext('2d');
+    const statusChartContainer = document.getElementById('statusChartContainer');
+    const statusPlaceholder = document.getElementById('statusChartPlaceholder');
+    const statusChartHint = document.getElementById('statusChartHint');
+    const statusStats = document.getElementById('statusStats');
+    const activeProgressBar = document.getElementById('activeProgress');
+
+    const statusChart = new Chart(statusChartCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Active', 'On Leave', 'Retired'],
+            datasets: [{
+                data: [statusDistribution.active, statusDistribution.on_leave, statusDistribution.retired],
+                backgroundColor: ['#4ade80', '#fb923c', '#f43f5e'],
+                borderWidth: 0,
+                hoverOffset: 12
+            }]
+        },
+        options: {
+            responsive: true,
+            cutout: '72%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#fff',
+                        usePointStyle: true
+                    }
+                }
+            }
+        }
+    });
+
+    function toggleStatusPlaceholder(total) {
+        if (!statusChartContainer) return;
+        const isEmpty = total === 0;
+        statusChartContainer.classList.toggle('empty', isEmpty);
+    }
+
+    function updateStatusHint(active, onLeave, retired) {
+        if (!statusChartHint) return;
+        const total = active + onLeave + retired;
+        toggleStatusPlaceholder(total);
+
+        if (!total) {
+            statusChartHint.textContent = 'No officer metrics available for your current visibility scope.';
+            return;
+        }
+        const activePct = Math.round((active / total) * 100);
+        const leavePct = Math.round((onLeave / total) * 100);
+        const retiredPct = Math.round((retired / total) * 100);
+        statusChartHint.textContent = `${activePct}% active · ${leavePct}% on leave · ${retiredPct}% retired`;
+    }
+
+    updateStatusHint(statusDistribution.active, statusDistribution.on_leave, statusDistribution.retired);
+
+    function updateStatusPills(active, onLeave, retired) {
+        if (!statusStats) return;
+        const total = active + onLeave + retired || 1;
+        const mappings = [
+            { key: 'active', count: active, percent: Math.round((active / total) * 100) },
+            { key: 'onleave', count: onLeave, percent: Math.round((onLeave / total) * 100) },
+            { key: 'retired', count: retired, percent: Math.round((retired / total) * 100) },
+        ];
+
+        mappings.forEach(({ key, count, percent }) => {
+            const countEl = statusStats.querySelector(`[data-stat="${key}-count"]`);
+            const percentEl = statusStats.querySelector(`[data-stat="${key}-percent"]`);
+            if (countEl) countEl.textContent = count.toLocaleString();
+            if (percentEl) percentEl.textContent = `${percent}%`;
+        });
+    }
+
+    updateStatusPills(statusDistribution.active, statusDistribution.on_leave, statusDistribution.retired);
+
+    function updateProgressBar(percent) {
+        if (!activeProgressBar) return;
+        activeProgressBar.style.width = `${percent}%`;
+        activeProgressBar.setAttribute('aria-valuenow', percent);
+    }
+
+    const initialProgress = parseFloat(activeProgressBar?.dataset.initialProgress || '0');
+    requestAnimationFrame(() => updateProgressBar(initialProgress));
+
+    function animateNumber(el, value) {
+        if (!el) return;
+        const duration = 700;
+        const start = parseInt(el.textContent.replace(/,/g, ''), 10) || 0;
+        const startTime = performance.now();
+        function update(currentTime) {
+            const progress = Math.min((currentTime - startTime) / duration, 1);
+            const currentValue = Math.floor(start + (value - start) * progress);
+            el.textContent = currentValue.toLocaleString();
+            if (progress < 1) requestAnimationFrame(update);
+        }
+        requestAnimationFrame(update);
+    }
+
+    function formatDate(value) {
+        if (!value) return 'N/A';
+        return new Date(value).toLocaleString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    function buildNotificationMarkup(notification) {
+        return `
+            <li>
+                <div class="list-icon bg-dark-subtle text-dark"><i class="bi bi-bell"></i></div>
+                <div class="list-content w-100">
+                    <div class="d-flex justify-content-between">
+                        <h6>${notification.message}</h6>
+                        <small>${formatDate(notification.created_at)}</small>
+                    </div>
+                    <small>From: ${notification.sender}</small>
+                    <div class="mt-2">
+                        <a class="btn btn-sm btn-outline-secondary rounded-pill" href="${notification.detail_url}">
+                            Open notification
+                        </a>
+                    </div>
+                </div>
+            </li>`;
+    }
+
+    function buildFileMarkup(file) {
+        return `
+            <li>
+                <div class="list-icon" style="background: rgba(251,191,36,0.15); color:#b45309;">
+                    <i class="bi bi-file-earmark-text"></i>
+                </div>
+                <div class="list-content w-100">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6>${file.file_name}</h6>
+                            <small>Uploaded by ${file.uploader} · ${formatDate(file.uploaded_at)}</small>
+                        </div>
+                        <span class="badge-soft ${file.status === 'approved' ? 'success' : file.status === 'rejected' ? 'danger' : 'warning'}">
+                            ${file.status_display}
+                        </span>
+                    </div>
+                    <div class="mt-2">
+                        <a class="btn btn-sm btn-outline-primary rounded-pill" href="${file.detail_url}">
+                            Open file
+                        </a>
+                    </div>
+                </div>
+            </li>`;
+    }
+
+    function buildRetirementMarkup(alert) {
+        return `
+            <li>
+                <a class="timeline-title d-block text-decoration-none" href="${alert.detail_url}">
+                    ${alert.full_name} · ${alert.service_number}
+                </a>
+                <div class="timeline-meta">
+                    Retires ${formatDate(alert.retirement_date)}
+                    <br>
+                    ${alert.station_name}
+                </div>
+            </li>`;
+    }
+
+    function buildLeaveMarkup(leave) {
+        return `
+            <li>
+                <div class="list-icon" style="background: rgba(190,242,100,0.15); color:#4d7c0f;">
+                    <i class="bi bi-briefcase"></i>
+                </div>
+                <div class="list-content w-100">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6>${leave.officer_name} · ${leave.leave_type}</h6>
+                            <small>${formatDate(leave.start_date)} → ${formatDate(leave.end_date)}</small>
+                        </div>
+                        <span class="text-muted">${formatDate(leave.requested_at)}</span>
+                    </div>
+                    <div class="mt-2">
+                        <a class="btn btn-sm btn-outline-dark rounded-pill" href="${leave.detail_url}">
+                            Review request
+                        </a>
+                    </div>
+                </div>
+            </li>`;
+    }
+
+    async function refreshDashboard() {
+        try {
+            const response = await fetch(dashboardApiUrl);
+            if (!response.ok) return;
+            const payload = await response.json();
+
+            animateNumber(document.querySelector('[data-metric="total"]'), payload.metrics.total_officers);
+            animateNumber(document.getElementById('metric-total-officers'), payload.metrics.total_officers);
+            animateNumber(document.querySelector('[data-metric="active"]'), payload.metrics.active_officers);
+            animateNumber(document.getElementById('metric-active-officers'), payload.metrics.active_officers);
+            animateNumber(document.querySelector('[data-metric="leave"]'), payload.metrics.on_leave_officers);
+            animateNumber(document.getElementById('metric-onleave-officers'), payload.metrics.on_leave_officers);
+            animateNumber(document.querySelector('[data-metric="retired"]'), payload.metrics.retired_officers);
+
+            statusChart.data.datasets[0].data = [
+                payload.metrics.active_officers,
+                payload.metrics.on_leave_officers,
+                payload.metrics.retired_officers
+            ];
+            statusChart.update();
+            updateStatusHint(
+                payload.metrics.active_officers,
+                payload.metrics.on_leave_officers,
+                payload.metrics.retired_officers
+            );
+            updateStatusPills(
+                payload.metrics.active_officers,
+                payload.metrics.on_leave_officers,
+                payload.metrics.retired_officers
+            );
+
+            const total = payload.metrics.total_officers || 1;
+            const refreshedActivePercent = Math.round((payload.metrics.active_officers / total) * 100);
+            updateProgressBar(refreshedActivePercent);
+
+            document.querySelector('[data-last-refreshed]').textContent = new Date(payload.timestamp).toLocaleString();
+
+            const notificationFeed = document.getElementById('notification-feed');
+            if (notificationFeed && payload.notifications) {
+                notificationFeed.innerHTML = payload.notifications.map(buildNotificationMarkup).join('');
+            }
+
+            const fileFeed = document.getElementById('file-feed');
+            if (fileFeed && payload.recent_files) {
+                fileFeed.innerHTML = payload.recent_files.map(buildFileMarkup).join('');
+            }
+
+            const retirementShort = document.getElementById('retirement-short-feed');
+            if (retirementShort && payload.retirement_alerts.next_four_months) {
+                retirementShort.innerHTML = payload.retirement_alerts.next_four_months.map(buildRetirementMarkup).join('');
+            }
+
+            const retirementLong = document.getElementById('retirement-long-feed');
+            if (retirementLong && payload.retirement_alerts.next_twelve_months) {
+                retirementLong.innerHTML = payload.retirement_alerts.next_twelve_months.map(buildRetirementMarkup).join('');
+            }
+
+            const leaveFeed = document.getElementById('leave-feed');
+            if (leaveFeed && payload.pending_leave_requests) {
+                leaveFeed.innerHTML = payload.pending_leave_requests.map(buildLeaveMarkup).join('');
+            }
+        } catch (error) {
+            console.error('Dashboard refresh failed', error);
+        }
+    }
+
+    refreshDashboard();
+    setInterval(refreshDashboard, 30000);
+</script>
+{% endblock %}
+

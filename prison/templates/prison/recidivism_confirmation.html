@@ -1,0 +1,293 @@
+{% extends "prison/base.html" %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block page_title %}Recidivism Detected!{% endblock %}
+
+{% block extra_css %}
+<style>
+    .recidivism-container {
+        background: #ffffff;
+        border-radius: 14px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        padding: 32px;
+        max-width: 700px;
+        margin: 0 auto;
+    }
+
+    .alert-recidivism {
+        background: #fef3c7;
+        border: 2px solid #f59e0b;
+        border-radius: 12px;
+        padding: 20px 24px;
+        margin-bottom: 24px;
+    }
+
+    .alert-recidivism .icon {
+        font-size: 3rem;
+        color: #d97706;
+        margin-right: 16px;
+    }
+
+    .alert-recidivism h4 {
+        color: #92400e;
+        font-weight: 700;
+    }
+
+    .alert-recidivism p {
+        color: #78350f;
+        margin-bottom: 0;
+    }
+
+    .match-details {
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin: 16px 0;
+    }
+
+    .match-details .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .match-details .detail-row:last-child {
+        border-bottom: none;
+    }
+
+    .match-details .label {
+        font-weight: 600;
+        color: #64748b;
+        font-size: 0.8rem;
+    }
+
+    .match-details .value {
+        color: #0f172a;
+        font-weight: 500;
+    }
+
+    .match-details .value.high {
+        color: #dc2626;
+        font-weight: 700;
+    }
+
+    .btn-confirm {
+        padding: 12px 40px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #dc2626;
+        border: none;
+        color: #fff;
+        transition: all 0.2s ease;
+        font-size: 1rem;
+    }
+
+    .btn-confirm:hover {
+        background: #b91c1c;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(220, 38, 38, 0.3);
+    }
+
+    .btn-confirm:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .btn-cancel {
+        padding: 10px 28px;
+        font-weight: 600;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        background: #fff;
+        transition: all 0.2s ease;
+    }
+
+    .btn-cancel:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+
+    .btn-skip {
+        padding: 10px 28px;
+        font-weight: 600;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        background: #fff;
+        transition: all 0.2s ease;
+    }
+
+    .btn-skip:hover {
+        background: #fee2e2;
+        border-color: #dc2626;
+        color: #dc2626;
+    }
+
+    .info-box {
+        background: #dbeafe;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-top: 16px;
+        font-size: 0.8rem;
+        color: #1e40af;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-align: left;
+    }
+
+    .info-box i {
+        font-size: 1.2rem;
+    }
+
+    @media (max-width: 768px) {
+        .recidivism-container {
+            padding: 16px;
+        }
+        .alert-recidivism {
+            padding: 16px;
+        }
+        .alert-recidivism .icon {
+            font-size: 2rem;
+        }
+        .match-details .detail-row {
+            flex-direction: column;
+            gap: 2px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h1 class="h3 fw-bold mb-1">⚠️ Recidivism Detected</h1>
+            <p class="text-muted small mb-0">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                Fingerprint matches a previous prisoner record
+            </p>
+        </div>
+        <a href="{% url 'prisoner_detail' prisoner.id %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Profile
+        </a>
+    </div>
+
+    <div class="recidivism-container">
+        <!-- Alert -->
+        <div class="alert-recidivism d-flex align-items-start">
+            <div class="icon flex-shrink-0">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+            </div>
+            <div>
+                <h4>Recidivism Detected!</h4>
+                <p>
+                    The captured fingerprint matches a person who has been incarcerated before.
+                    Please review the details below and confirm if this is the same person.
+                </p>
+            </div>
+        </div>
+
+        <!-- Match Details -->
+        <div class="match-details">
+            <h6 class="fw-bold mb-3 text-danger">
+                <i class="bi bi-person-badge me-2"></i> Previous Record Match
+            </h6>
+            <div class="detail-row">
+                <span class="label">Match Confidence</span>
+                <span class="value high">{{ recidivism_data.match_score|floatformat:1 }}%</span>
+            </div>
+            <div class="detail-row">
+                <span class="label">Previous Prisoner Number</span>
+                <span class="value">{{ recidivism_data.previous_prisoner_number }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="label">Previous Name</span>
+                <span class="value">{{ recidivism_data.previous_full_name }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="label">Previous Status</span>
+                <span class="value">
+                    <span class="badge {% if recidivism_data.previous_status %}bg-success{% else %}bg-secondary{% endif %}">
+                        {{ recidivism_data.previous_status|yesno:"Active,Released" }}
+                    </span>
+                </span>
+            </div>
+            {% if recidivism_data.previous_release_date %}
+            <div class="detail-row">
+                <span class="label">Release Date</span>
+                <span class="value">{{ recidivism_data.previous_release_date }}</span>
+            </div>
+            {% endif %}
+            <div class="detail-row">
+                <span class="label">Previous Class</span>
+                <span class="value">{{ recidivism_data.previous_class|title }}</span>
+            </div>
+        </div>
+
+        <!-- Current Prisoner Info -->
+        <div class="match-details" style="background: #f0fdf4; border: 1px solid #86efac;">
+            <h6 class="fw-bold mb-3 text-success">
+                <i class="bi bi-person-plus me-2"></i> New Prisoner Record
+            </h6>
+            <div class="detail-row">
+                <span class="label">New Prisoner Number</span>
+                <span class="value">{{ prisoner.prisoner_number }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="label">New Name</span>
+                <span class="value">{{ prisoner.full_name }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="label">New Class</span>
+                <span class="value">{{ prisoner.get_prisoner_class_display }}</span>
+            </div>
+            <div class="detail-row" style="border-bottom: none;">
+                <span class="label">New Station</span>
+                <span class="value">{{ prisoner.prison_station.name }}</span>
+            </div>
+        </div>
+
+        <!-- Confirmation Form -->
+        <form method="post" class="mt-4">
+            {% csrf_token %}
+            <input type="hidden" name="recidivism_confirmed" value="1">
+            <input type="hidden" name="fingerprint_data" value="{{ fingerprint_data }}">
+            <input type="hidden" name="quality_score" value="{{ quality_score }}">
+            <input type="hidden" name="device_id" value="{{ device_id }}">
+            
+            {{ confirmation_form|crispy }}
+            
+            <div class="d-flex flex-wrap gap-3 justify-content-between mt-4">
+                <div class="d-flex gap-3 flex-wrap">
+                    <button type="submit" class="btn-confirm">
+                        <i class="bi bi-check-lg me-2"></i> Confirm Recidivism
+                    </button>
+                    <a href="{% url 'prisoner_detail' prisoner.id %}" class="btn-skip">
+                        <i class="bi bi-x-lg me-1"></i> Skip (Not Recidivist)
+                    </a>
+                </div>
+                <a href="{% url 'prisoner_detail' prisoner.id %}" class="btn-cancel">
+                    <i class="bi bi-arrow-left me-1"></i> Cancel
+                </a>
+            </div>
+        </form>
+
+        <div class="info-box">
+            <i class="bi bi-info-circle"></i>
+            <div>
+                <strong>What happens next?</strong>
+                If you confirm recidivism, the prisoner will be flagged as a recidivist
+                and linked to their previous record. This helps track repeat offenders
+                and identify patterns.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

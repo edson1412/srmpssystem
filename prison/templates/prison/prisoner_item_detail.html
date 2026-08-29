@@ -1,0 +1,141 @@
+{% extends "prison/base.html" %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}Item Details - {{ item.description }}{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" xintegrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" xintegrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==>" crossorigin="anonymous">
+<link rel="stylesheet" href="{% static 'css/styles.css' %}">
+<style>
+    body {
+        background-color: rgba(173, 216, 230, 0.6); /* Light blue with 60% opacity */
+    }
+    .card-header {
+        background-color: #0d6efd;
+        color: white;
+        font-weight: bold;
+    }
+    .detail-section h5 {
+        color: #0d6efd;
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
+        border-bottom: 2px solid #0d6efd;
+        padding-bottom: 0.5rem;
+    }
+    .table thead th {
+        background-color: #e9ecef;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Item Details: {{ item.description }}</h1>
+        <a href="{% url 'prisoner_item_list' item.prisoner.id %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Items List
+        </a>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <i class="fas fa-info-circle"></i> Item Information
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Prisoner:</strong> <a href="{% url 'prisoner_detail' item.prisoner.id %}">{{ item.prisoner.full_name }} ({{ item.prisoner.prisoner_number }})</a></p>
+                    <p><strong>Item Type:</strong> {{ item.get_item_type_display }}</p>
+                    <p><strong>Description:</strong> {{ item.description }}</p>
+                    <p><strong>Date Received:</strong> {{ item.date_received|date:"Y-m-d" }}</p>
+                    <p><strong>Received By:</strong> {{ item.received_by.get_full_name|default:item.received_by.username }}</p>
+                </div>
+                <div class="col-md-6">
+                    {% if item.item_type == 'money' %}
+                        <p><strong>Initial Amount:</strong> {{ item.initial_amount|floatformat:2 }} {{ item.currency }}</p>
+                        <p><strong>Current Balance:</strong> <span class="fw-bold text-success">{{ item.current_amount|floatformat:2 }} {{ item.currency }}</span></p>
+                        <p><strong>Currency:</strong> {{ item.currency }}</p>
+                        <a href="{% url 'withdraw_prisoner_money' item.id %}" class="btn btn-warning btn-sm mt-2">
+                            <i class="fas fa-money-bill-transfer"></i> Withdraw Money
+                        </a>
+                    {% else %}
+                        <p><strong>Quantity:</strong> {{ item.quantity }}</p>
+                        <p><strong>Notes:</strong> {{ item.notes|default:"N/A" }}</p>
+                        <p><strong>Status:</strong>
+                            {% if item.is_collected %}
+                                <span class="badge bg-success">Collected</span>
+                            {% else %}
+                                <span class="badge bg-info">In Custody</span>
+                            {% endif %}
+                        </p>
+                        {% if not item.is_collected %} {# Show collect button only if not collected #}
+                            <form action="{% url 'collect_prisoner_item' item.id %}" method="post" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success btn-sm mt-2" title="Mark as Collected" onclick="return confirm('Are you sure you want to mark this item as collected?')">
+                                    <i class="fas fa-hand-holding"></i> Mark as Collected
+                                </button>
+                            </form>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if item.item_type == 'money' %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <i class="fas fa-history"></i> Transaction History
+        </div>
+        <div class="card-body">
+            {% if transactions %}
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <thead>
+                        <tr>
+                            <th>Transaction Type</th>
+                            <th>Amount</th>
+                            <th>Date & Time</th>
+                            <th>Transacted By</th>
+                            <th>Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in transactions %}
+                        <tr>
+                            <td>
+                                {% if transaction.transaction_type == 'deposit' %}
+                                    <span class="badge bg-success"><i class="fas fa-arrow-down"></i> Deposit</span>
+                                {% else %}
+                                    <span class="badge bg-danger"><i class="fas fa-arrow-up"></i> Withdrawal</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ transaction.amount|floatformat:2 }} {{ item.currency }}</td>
+                            <td>{{ transaction.transaction_date|date:"Y-m-d H:i" }}</td>
+                            <td>{{ transaction.transacted_by.get_full_name|default:transaction.transacted_by.username }}</td>
+                            <td>{{ transaction.reason|default:"-" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-center text-muted">No transactions recorded for this item.</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="text-center mt-4">
+        <a href="{% url 'prisoner_detail' item.prisoner.id %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Prisoner Details
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" xintegrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+{% endblock %}

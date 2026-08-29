@@ -1,0 +1,27 @@
+LEAVE REQUEST REJECTED
+
+Dear {{ officer.full_name }},
+
+We regret to inform you that your leave request has been reviewed and could not be approved at this time.
+
+Leave Details:
+- Leave Type: {{ leave_type }}
+- Requested Start Date: {{ leave_request.start_date|date:"d F Y" }}
+- Requested Number of Days: {{ leave_request.number_of_days }}
+- Date of Decision: {{ rejected_date }}
+
+{% if rejection_notes %}
+Reason for Rejection:
+{{ rejection_notes }}
+{% endif %}
+
+If you wish to discuss this decision further or need clarification,
+please contact your in-charge or the HR department.
+
+You may submit a new leave request after addressing the concerns
+mentioned above or when circumstances permit.
+
+We appreciate your understanding.
+
+Best regards,
+Prison Service Admin

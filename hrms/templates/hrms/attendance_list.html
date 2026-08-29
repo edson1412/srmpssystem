@@ -1,0 +1,126 @@
+{% extends 'hrms/layouts/page.html' %}
+{% load static %}
+
+{% block title %}{{ title }} - Prison HRMS{% endblock %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block page_description %}
+<p class="page-subtitle">
+    {% if officer_filter %}
+        Attendance intelligence focused on <strong>{{ officer_filter.full_name }}</strong>.
+    {% else %}
+        Live visibility into officer availability and duty coverage.
+    {% endif %}
+</p>
+{% endblock %}
+
+{% block page_actions %}
+    {% if officer_filter %}
+        <a href="{% url 'hrms:attendance_record_create' service_number=officer_filter.service_number %}" class="btn btn-primary btn-pill">
+            <i class="fas fa-plus-circle me-2"></i> Add Attendance Record
+        </a>
+        <a href="{% url 'hrms:export_officer_attendance' service_number=officer_filter.service_number %}" class="btn btn-outline-success btn-pill">
+            <i class="fas fa-file-csv me-2"></i> Export CSV
+        </a>
+    {% endif %}
+    <a href="{% if officer_filter %}{% url 'hrms:officer_detail' service_number=officer_filter.service_number %}{% else %}{% url 'hrms:dashboard' %}{% endif %}" class="btn btn-outline-secondary btn-pill">
+        <i class="fas fa-arrow-left me-2"></i> Back
+    </a>
+{% endblock %}
+
+{% block page_filters %}
+<form method="get" class="filter-bar w-100">
+    <input type="hidden" name="officer_service_number" value="{{ officer_filter.service_number|default:'' }}">
+    <div class="flex-grow-1">
+        <label for="attendance-search" class="visually-hidden">Search</label>
+        <input id="attendance-search" type="text" name="search" class="form-control" placeholder="Search by officer or notes..." value="{{ search_query|default:'' }}">
+    </div>
+    <div class="flex-grow-1">
+        <label for="attendance-status" class="visually-hidden">Status</label>
+        <select id="attendance-status" name="status" class="form-select">
+            <option value="all" {% if not current_status_filter or current_status_filter == 'all' %}selected{% endif %}>All Statuses</option>
+            <option value="present" {% if current_status_filter == 'present' %}selected{% endif %}>Present</option>
+            <option value="absent" {% if current_status_filter == 'absent' %}selected{% endif %}>Absent</option>
+            <option value="on_leave" {% if current_status_filter == 'on_leave' %}selected{% endif %}>On Leave</option>
+            <option value="sick" {% if current_status_filter == 'sick' %}selected{% endif %}>Sick</option>
+            <option value="official_duty" {% if current_status_filter == 'official_duty' %}selected{% endif %}>Official Duty</option>
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary btn-pill">
+        <i class="fas fa-filter me-2"></i> Filter
+    </button>
+</form>
+{% endblock %}
+
+{% block page_body %}
+<div class="surface-card table-modern">
+    {% if officer_filter %}
+        <div class="detail-grid mb-4">
+            <div class="detail-grid__item">
+                <p class="detail-grid__label">Officer</p>
+                <p class="detail-grid__value">
+                    <a href="{% url 'hrms:officer_detail' service_number=officer_filter.service_number %}" class="link-underline">{{ officer_filter.full_name }}</a>
+                </p>
+            </div>
+            <div class="detail-grid__item">
+                <p class="detail-grid__label">Service Number</p>
+                <p class="detail-grid__value">{{ officer_filter.service_number }}</p>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if attendance_records %}
+        <div class="table-responsive">
+            <table class="table align-middle table-hover">
+                <thead>
+                    <tr>
+                        <th scope="col">#</th>
+                        {% if not officer_filter %}<th scope="col">Officer</th>{% endif %}
+                        <th scope="col">Date</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Remarks</th>
+                        <th scope="col">Marked By</th>
+                        <th scope="col" class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in attendance_records %}
+                    <tr>
+                        <th scope="row">{{ forloop.counter }}</th>
+                        {% if not officer_filter %}
+                            <td>
+                                <a href="{% url 'hrms:officer_detail' service_number=record.officer.service_number %}" class="fw-semibold">{{ record.officer.full_name }}</a>
+                            </td>
+                        {% endif %}
+                        <td>{{ record.date|date:"M d, Y" }}</td>
+                        <td>
+                            <span class="badge bg-{% if record.status == 'present' %}success{% elif record.status == 'absent' %}danger{% else %}warning text-dark{% endif %}">
+                                {{ record.get_status_display }}
+                            </span>
+                        </td>
+                        <td>{{ record.remarks|default:"-" }}</td>
+                        <td>{{ record.marked_by.get_full_name|default:record.marked_by.username|default:"N/A" }}</td>
+                        <td>
+                            <div class="action-stack justify-content-end">
+                                <a href="{% url 'hrms:attendance_record_update' pk=record.pk %}" class="btn btn-outline-warning btn-sm btn-pill">
+                                    <i class="fas fa-edit me-1"></i> Edit
+                                </a>
+                                <a href="{% url 'hrms:attendance_record_delete' pk=record.pk %}" class="btn btn-outline-danger btn-sm btn-pill">
+                                    <i class="fas fa-trash me-1"></i> Delete
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <i class="fas fa-clipboard-check"></i>
+            <p>No attendance records found {% if officer_filter %}for {{ officer_filter.full_name }}{% endif %}.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

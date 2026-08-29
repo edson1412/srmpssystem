@@ -1,0 +1,114 @@
+{% extends 'training_base.html' %}
+{% load static %}
+
+{% block training_title %}Create Training Course - Prison HRMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .course-form-shell {
+        min-height: calc(100vh - 150px);
+        padding: 1.5rem;
+    }
+
+    .course-form-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(226, 232, 240, 1);
+    }
+
+    .form-section-title {
+        font-size: 1.5rem;
+        margin-bottom: 1.25rem;
+        font-weight: 700;
+    }
+</style>
+{% endblock %}
+
+{% block training_content %}
+<div class="course-form-shell">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 fw-bold">Create Training Course</h1>
+            <p class="text-muted mb-0">Capture course details, total marks and passing criteria.</p>
+        </div>
+        <a href="{% url 'hrms:course_list' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Courses
+        </a>
+    </div>
+
+    <div class="course-form-card">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}" role="alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <h2 class="form-section-title">Course Information</h2>
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+            {% endif %}
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    {{ form.course_code.label_tag }}
+                    {{ form.course_code }}
+                    {{ form.course_code.errors }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.category.label_tag }}
+                    {{ form.category }}
+                    {{ form.category.errors }}
+                </div>
+            </div>
+            <div class="mb-3">
+                {{ form.name.label_tag }}
+                {{ form.name }}
+                <div class="form-text">{{ form.name.help_text }}</div>
+                {{ form.name.errors }}
+            </div>
+            <div class="mb-3">
+                {{ form.description.label_tag }}
+                {{ form.description }}
+                {{ form.description.errors }}
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    {{ form.total_marks.label_tag }}
+                    {{ form.total_marks }}
+                    {{ form.total_marks.errors }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.passing_mark.label_tag }}
+                    {{ form.passing_mark }}
+                    {{ form.passing_mark.errors }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.duration_hours.label_tag }}
+                    {{ form.duration_hours }}
+                    {{ form.duration_hours.errors }}
+                </div>
+            </div>
+            <div class="mb-4">
+                <div class="form-check">
+                    {{ form.is_required }}
+                    <label class="form-check-label" for="id_is_required">Required course</label>
+                </div>
+                {{ form.is_required.errors }}
+                <div class="form-check">
+                    {{ form.is_active }}
+                    <label class="form-check-label" for="id_is_active">Active</label>
+                </div>
+                {{ form.is_active.errors }}
+            </div>
+            <button type="submit" class="btn btn-success btn-lg">
+                <i class="fas fa-save me-2"></i>Save Course
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

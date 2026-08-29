@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+{% load static %}
+
+{% block title %}{{ title }} - Prison HRMS{% endblock %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+    <div class="card shadow-lg p-4" style="border-radius: 15px;">
+        <div class="card-body">
+            <h2 class="card-title text-center mb-4" style="color: #0056b3; font-weight: bold;">{{ title }}</h2>
+            <hr class="mb-4">
+
+            <form method="post">
+                {% csrf_token %}
+                {% crispy form %}
+                <div class="d-grid gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg rounded-pill custom-button">
+                        <i class="fas fa-save me-2"></i> Save Station
+                    </button>
+                    <a href="{% url 'hrms:prison_station_list' %}" class="btn btn-outline-secondary btn-lg rounded-pill">
+                        <i class="fas fa-times-circle me-2"></i> Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

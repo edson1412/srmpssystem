@@ -1,0 +1,153 @@
+{% extends 'ict_base.html' %}
+{% load static %}
+
+{% block title %}Update User - {{ user_to_edit.username }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container {
+        background: #fff;
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    }
+
+    .form-section {
+        margin-bottom: 2rem;
+    }
+
+    .form-section h5 {
+        color: #1e293b;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-1">Update User</h1>
+                    <p class="text-muted mb-0">{{ user_to_edit.get_full_name|default:user_to_edit.username }}</p>
+                </div>
+                <a href="{% url 'hrms:ict_user_list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Users
+                </a>
+            </div>
+
+            <div class="form-container">
+                <form method="POST">
+                    {% csrf_token %}
+
+                    <!-- Basic Information -->
+                    <div class="form-section">
+                        <h5><i class="fas fa-user me-2"></i>Basic Information</h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Username</label>
+                                <input type="text" class="form-control" value="{{ user_to_edit.username }}" disabled>
+                                <small class="text-muted">Username cannot be changed</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                <input type="email" name="email" class="form-control" value="{{ user_to_edit.email }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">First Name</label>
+                                <input type="text" name="first_name" class="form-control" value="{{ user_to_edit.first_name }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Last Name</label>
+                                <input type="text" name="last_name" class="form-control" value="{{ user_to_edit.last_name }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Role Assignment -->
+                    <div class="form-section">
+                        <h5><i class="fas fa-user-tag me-2"></i>Role Assignment</h5>
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Role</label>
+                                <select name="role" class="form-select">
+                                    <option value="national_commissioner" {% if user_to_edit.role == 'national_commissioner' %}selected{% endif %}>National Commissioner</option>
+                                    <option value="national_hr" {% if user_to_edit.role == 'national_hr' %}selected{% endif %}>National HR</option>
+                                    <option value="regional_commanding_officer" {% if user_to_edit.role == 'regional_commanding_officer' %}selected{% endif %}>Regional Commanding Officer</option>
+                                    <option value="regional_headquarters_officer" {% if user_to_edit.role == 'regional_headquarters_officer' %}selected{% endif %}>Regional HQ Officer</option>
+                                    <option value="regional_hr" {% if user_to_edit.role == 'regional_hr' %}selected{% endif %}>Regional HR</option>
+                                    <option value="station_officer_in_charge" {% if user_to_edit.role == 'station_officer_in_charge' %}selected{% endif %}>Station Officer in Charge</option>
+                                    <option value="station_officer" {% if user_to_edit.role == 'station_officer' %}selected{% endif %}>Station Officer</option>
+                                    <option value="station_hr" {% if user_to_edit.role == 'station_hr' %}selected{% endif %}>Station HR</option>
+                                    <option value="training_wing_officer" {% if user_to_edit.role == 'training_wing_officer' %}selected{% endif %}>Training Wing Officer</option>
+                                    <option value="ict_personnel" {% if user_to_edit.role == 'ict_personnel' %}selected{% endif %}>ICT Personnel</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Location Assignment -->
+                    <div class="form-section">
+                        <h5><i class="fas fa-map-marker-alt me-2"></i>Location Assignment</h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Region</label>
+                                <select name="region" class="form-select">
+                                    <option value="">No region</option>
+                                    {% for region in regions %}
+                                        <option value="{{ region.id }}" {% if user_to_edit.region and user_to_edit.region.id == region.id %}selected{% endif %}>{{ region.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Prison Station</label>
+                                <select name="station" class="form-select">
+                                    <option value="">No station</option>
+                                    {% for station in stations %}
+                                        <option value="{{ station.id }}" {% if user_to_edit.prison_station and user_to_edit.prison_station.id == station.id %}selected{% endif %}>{{ station.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Security -->
+                    <div class="form-section">
+                        <h5><i class="fas fa-lock me-2"></i>Security</h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">New Password</label>
+                                <input type="password" name="password" class="form-control" minlength="8">
+                                <small class="text-muted">Leave blank to keep current password</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Account Status</label>
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" name="is_active" id="is_active" {% if user_to_edit.is_active %}checked{% endif %}>
+                                    <label class="form-check-label" for="is_active">
+                                        Active
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Update User
+                        </button>
+                        <a href="{% url 'hrms:ict_user_detail' user_to_edit.id %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

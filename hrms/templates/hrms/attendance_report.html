@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} - Prison HRMS{% endblock %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+    <div class="card shadow-lg p-4" style="border-radius: 15px;">
+        <div class="card-body">
+            <h2 class="card-title text-center mb-4 text-primary">{{ title }}</h2>
+            <hr class="mb-4">
+
+            <form method="get" class="mb-4 p-3 border rounded-3 bg-light">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label for="id_year" class="form-label">Year</label>
+                        <select name="year" id="id_year" class="form-select rounded-pill">
+                            <option value="">All Years</option>
+                            {% for year in available_years %}
+                                <option value="{{ year }}" {% if year|stringformat:"s" == selected_year %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="id_month" class="form-label">Month</label>
+                        <select name="month" id="id_month" class="form-select rounded-pill">
+                            <option value="" {% if not selected_month %}selected{% endif %}>All Months</option>
+                            {% for month in months %}
+                                <option value="{{ month.value }}" {% if month.value|stringformat:"s" == selected_month %}selected{% endif %}>{{ month.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="id_region" class="form-label">Region</label>
+                        <select name="region" id="id_region" class="form-select rounded-pill">
+                            <option value="">All Regions</option>
+                            {% for region in regions %}
+                                <option value="{{ region.pk }}" {% if region.pk|stringformat:"s" == selected_region_id %}selected{% endif %}>{{ region.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="id_station" class="form-label">Prison Station</label>
+                        <select name="station" id="id_station" class="form-select rounded-pill" data-selected="{{ selected_station_id }}">
+                            <option value="" data-region="">All Stations</option>
+                            {% for station in stations %}
+                                <option value="{{ station.pk }}" data-region="{{ station.region.pk }}" {% if station.pk|stringformat:"s" == selected_station_id %}selected{% endif %}>{{ station.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 text-end">
+                        <button type="submit" class="btn btn-primary rounded-pill me-2">
+                            <i class="fas fa-filter me-1"></i>Generate Report
+                        </button>
+                        <a href="{% url 'hrms:attendance_report_pdf_export' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success rounded-pill me-2">
+                            <i class="fas fa-file-pdf me-1"></i>Export PDF
+                        </a>
+                        <a href="{% url 'hrms:attendance_report' %}" class="btn btn-outline-secondary rounded-pill">
+                            <i class="fas fa-undo me-1"></i>Reset
+                        </a>
+                    </div>
+                </div>
+            </form>
+
+            <h4 class="text-secondary mb-3"><i class="fas fa-chart-bar me-2"></i>Attendance Summary</h4>
+            {% if total_records > 0 %}
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="card border-info rounded-3 h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">Total Records</h5>
+                                <p class="card-text display-6 mb-0">{{ total_records }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% for status, count in summary_data.items %}
+                        <div class="col-md-4">
+                            <div class="card border-secondary rounded-3 h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title text-capitalize">{{ status|default:'Unknown' }}</h5>
+                                    <p class="card-text display-6 mb-0">{{ count }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col">Status</th>
+                                <th scope="col">Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for status, count in summary_data.items %}
+                                <tr>
+                                    <td class="text-capitalize">{{ status|default:'Unknown' }}</td>
+                                    <td>{{ count }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info" role="alert">
+                    No attendance records found for the selected filters.
+                </div>
+            {% endif %}
+
+            <div class="text-center mt-4">
+                <a href="{% url 'hrms:dashboard' %}" class="btn btn-outline-secondary rounded-pill">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const regionSelect = document.getElementById('id_region');
+        const stationSelect = document.getElementById('id_station');
+        if (!regionSelect || !stationSelect) {
+            return;
+        }
+
+        const originalOptions = Array.from(stationSelect.options).map(option => ({
+            value: option.value,
+            label: option.text,
+            region: option.dataset.region || '',
+            selected: option.selected
+        }));
+        const selectedStation = stationSelect.dataset.selected || '';
+
+        function updateStationOptions() {
+            const regionId = regionSelect.value;
+            stationSelect.innerHTML = '';
+
+            originalOptions.forEach(option => {
+                if (!regionId || option.region === regionId || option.value === '') {
+                    const opt = document.createElement('option');
+                    opt.value = option.value;
+                    opt.text = option.label;
+                    opt.dataset.region = option.region;
+                    if (option.value === selectedStation && (regionId === '' || option.region === regionId || option.value === '')) {
+                        opt.selected = true;
+                    }
+                    stationSelect.appendChild(opt);
+                }
+            });
+
+            if (regionId && stationSelect.value && stationSelect.options[stationSelect.selectedIndex] && stationSelect.options[stationSelect.selectedIndex].dataset.region !== regionId) {
+                stationSelect.value = '';
+            }
+        }
+
+        regionSelect.addEventListener('change', updateStationOptions);
+        updateStationOptions();
+    });
+</script>
+{% endblock %}

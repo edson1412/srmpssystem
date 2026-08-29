@@ -1,0 +1,417 @@
+{% extends "prison/base.html" %}
+{% load static %}
+
+{% block page_title %}Fingerprint Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .stat-card {
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        padding: 20px 24px;
+        transition: all 0.2s ease;
+        text-align: center;
+    }
+
+    .stat-card:hover {
+        box-shadow: var(--card-hover-shadow);
+        transform: translateY(-2px);
+    }
+
+    .stat-card .stat-number {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #0f172a;
+        line-height: 1.2;
+    }
+
+    .stat-card .stat-label {
+        font-size: 0.75rem;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 4px;
+    }
+
+    .stat-card .stat-icon {
+        font-size: 1.5rem;
+        color: #1a73e8;
+        margin-bottom: 8px;
+    }
+
+    .stat-card.primary .stat-number { color: #1a73e8; }
+    .stat-card.success .stat-number { color: #16a34a; }
+    .stat-card.warning .stat-number { color: #d97706; }
+    .stat-card.danger .stat-number { color: #dc2626; }
+    .stat-card.info .stat-number { color: #0ea5e9; }
+
+    .section-card {
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+        margin-bottom: 20px;
+    }
+
+    .section-card .card-header {
+        padding: 14px 20px;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+        background: transparent;
+    }
+
+    .section-card .card-header .title {
+        font-weight: 600;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.9rem;
+    }
+
+    .section-card .card-header .title i {
+        color: #1a73e8;
+    }
+
+    .section-card .card-body {
+        padding: 16px 20px;
+    }
+
+    .device-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #f1f5f9;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .device-item:last-child {
+        border-bottom: none;
+    }
+
+    .device-item .device-name {
+        font-weight: 500;
+        color: #0f172a;
+    }
+
+    .device-item .device-status {
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 2px 12px;
+        border-radius: 12px;
+        text-transform: uppercase;
+    }
+
+    .device-status.active {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    .device-status.inactive {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .device-status.offline {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    .device-status.maintenance {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .quick-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .quick-action-btn {
+        padding: 10px 20px;
+        border-radius: 10px;
+        border: none;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: #fff;
+    }
+
+    .quick-action-btn:hover {
+        transform: translateY(-2px);
+        color: #fff;
+    }
+
+    .quick-action-btn.primary { background: #1a73e8; }
+    .quick-action-btn.primary:hover { background: #1557b0; box-shadow: 0 4px 16px rgba(26, 115, 232, 0.3); }
+
+    .quick-action-btn.success { background: #16a34a; }
+    .quick-action-btn.success:hover { background: #15803d; box-shadow: 0 4px 16px rgba(22, 163, 74, 0.3); }
+
+    .quick-action-btn.warning { background: #f59e0b; color: #1a202c; }
+    .quick-action-btn.warning:hover { background: #d97706; box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3); color: #1a202c; }
+
+    .quick-action-btn.dark { background: #1e293b; }
+    .quick-action-btn.dark:hover { background: #0f172a; box-shadow: 0 4px 16px rgba(30, 41, 59, 0.3); }
+
+    .quick-action-btn.outline {
+        background: transparent;
+        color: #64748b;
+        border: 1px solid #e2e8f0;
+    }
+    .quick-action-btn.outline:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        color: #0f172a;
+        transform: translateY(-2px);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 24px 16px;
+        color: #94a3b8;
+    }
+
+    .empty-state i {
+        font-size: 2rem;
+        display: block;
+        margin-bottom: 8px;
+        color: #cbd5e1;
+    }
+
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .quick-actions {
+            flex-direction: column;
+        }
+        .quick-action-btn {
+            justify-content: center;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h1 class="h3 fw-bold mb-1">Fingerprint Management</h1>
+            <p class="text-muted small mb-0">
+                <i class="bi bi-fingerprint me-1"></i>
+                Biometric system dashboard and statistics
+            </p>
+        </div>
+        <span class="badge bg-success p-2">
+            <i class="bi bi-check-circle me-1"></i> System Active
+        </span>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card primary">
+            <div class="stat-icon"><i class="bi bi-fingerprint"></i></div>
+            <div class="stat-number">{{ stats.with_fingerprint|default:0 }}</div>
+            <div class="stat-label">Prisoners with Fingerprint</div>
+        </div>
+        <div class="stat-card success">
+            <div class="stat-icon"><i class="bi bi-shield-check"></i></div>
+            <div class="stat-number">{{ stats.identity_verified|default:0 }}</div>
+            <div class="stat-label">Identity Verified</div>
+        </div>
+        <div class="stat-card warning">
+            <div class="stat-icon"><i class="bi bi-clock"></i></div>
+            <div class="stat-number">{{ stats.pending_verification|default:0 }}</div>
+            <div class="stat-label">Pending Verification</div>
+        </div>
+        <div class="stat-card info">
+            <div class="stat-icon"><i class="bi bi-person-x"></i></div>
+            <div class="stat-number">{{ stats.no_fingerprint|default:0 }}</div>
+            <div class="stat-label">No Fingerprint</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><i class="bi bi-people"></i></div>
+            <div class="stat-number">{{ stats.total_prisoners|default:0 }}</div>
+            <div class="stat-label">Total Prisoners</div>
+        </div>
+        <div class="stat-card primary">
+            <div class="stat-icon"><i class="bi bi-usb"></i></div>
+            <div class="stat-number">{{ devices|length|default:0 }}</div>
+            <div class="stat-label">Active Devices</div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="section-card">
+        <div class="card-header">
+            <span class="title"><i class="bi bi-lightning"></i> Quick Actions</span>
+        </div>
+        <div class="card-body">
+            <div class="quick-actions">
+                <a href="{% url 'fingerprint_identify' %}" class="quick-action-btn primary">
+                    <i class="bi bi-search"></i> Identify Prisoner
+                </a>
+                <a href="{% url 'fingerprint_match_history' %}" class="quick-action-btn dark">
+                    <i class="bi bi-clock-history"></i> View Match History
+                </a>
+                <a href="{% url 'fingerprint_device_list' %}" class="quick-action-btn warning">
+                    <i class="bi bi-usb-plug"></i> Manage Devices
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Matches -->
+    <div class="section-card">
+        <div class="card-header">
+            <span class="title"><i class="bi bi-clock-history"></i> Recent Matches</span>
+            <span class="badge bg-secondary">{{ recent_matches|length }}</span>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            {% if recent_matches %}
+                {% for match in recent_matches|slice:":10" %}
+                <div class="device-item" style="padding: 8px 20px;">
+                    <div>
+                        <span class="badge-status {{ match.match_status }}" style="font-size: 0.6rem; padding: 2px 10px; border-radius: 12px;">
+                            {{ match.get_match_status_display }}
+                        </span>
+                        <span style="font-weight: 500; font-size: 0.85rem;">
+                            {% if match.matched_prisoner %}
+                                <a href="{% url 'prisoner_detail' match.matched_prisoner.id %}" class="text-decoration-none">
+                                    {{ match.matched_prisoner.prisoner_number }} - {{ match.matched_prisoner.full_name }}
+                                </a>
+                            {% else %}
+                                <span class="text-muted">No match found</span>
+                            {% endif %}
+                        </span>
+                        <span class="badge" style="background: #f1f5f9; color: #0f172a;">
+                            {{ match.match_score|floatformat:0 }}%
+                        </span>
+                    </div>
+                    <div style="font-size: 0.7rem; color: #94a3b8;">
+                        {{ match.search_timestamp|timesince }} ago
+                        {% if match.searched_by %}
+                            by {{ match.searched_by.get_full_name|default:match.searched_by.username }}
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-clock-history"></i>
+                    <p>No recent matches found.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Active Devices -->
+    <div class="section-card">
+        <div class="card-header">
+            <span class="title"><i class="bi bi-usb-plug"></i> Active Devices</span>
+            <span class="badge bg-secondary">{{ devices|length }}</span>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            {% if devices %}
+                {% for device in devices %}
+                <div class="device-item" style="padding: 10px 20px;">
+                    <div>
+                        <span class="device-name">{{ device.name }}</span>
+                        <span class="device-status {{ device.status }}">
+                            {{ device.get_status_display }}
+                        </span>
+                    </div>
+                    <div style="font-size: 0.75rem; color: #64748b;">
+                        <span>{{ device.prison_station.name }}</span>
+                        {% if device.last_used_at %}
+                            <span>• Last used: {{ device.last_used_at|timesince }} ago</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-usb-plug"></i>
+                    <p>No active devices found.</p>
+                    <small>Add a device from the <a href="{% url 'fingerprint_device_list' %}">Device Management</a> page.</small>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Tips -->
+    <div class="section-card">
+        <div class="card-header">
+            <span class="title"><i class="bi bi-lightbulb"></i> Tips & Best Practices</span>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="bi bi-check-circle text-success mt-1"></i>
+                        <div>
+                            <strong>Quality Matters</strong>
+                            <p class="small text-muted mb-0">Ensure fingerprints are captured with quality above 60% for reliable matching.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="bi bi-check-circle text-success mt-1"></i>
+                        <div>
+                            <strong>Verify Identity</strong>
+                            <p class="small text-muted mb-0">Always verify prisoner identity using fingerprints during intake and release.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="bi bi-check-circle text-success mt-1"></i>
+                        <div>
+                            <strong>Device Maintenance</strong>
+                            <p class="small text-muted mb-0">Regularly clean fingerprint scanners for optimal performance.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="bi bi-check-circle text-success mt-1"></i>
+                        <div>
+                            <strong>Link Identities</strong>
+                            <p class="small text-muted mb-0">Use identity linking when the same person appears with different names.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

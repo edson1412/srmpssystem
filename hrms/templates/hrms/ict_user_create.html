@@ -1,0 +1,144 @@
+{% extends 'ict_base.html' %}
+{% load static %}
+
+{% block title %}Create New User - ICT Personnel{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container {
+        background: #fff;
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    }
+
+    .form-section {
+        margin-bottom: 2rem;
+    }
+
+    .form-section h5 {
+        color: #1e293b;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-1">Create New User</h1>
+                    <p class="text-muted mb-0">Add a new user to the system</p>
+                </div>
+                <a href="{% url 'hrms:ict_user_list' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Users
+                </a>
+            </div>
+
+            <div class="form-container">
+                <form method="POST">
+                    {% csrf_token %}
+
+                    <!-- Basic Information -->
+                    <div class="form-section">
+                        <h5><i class="fas fa-user me-2"></i>Basic Information</h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Username *</label>
+                                <input type="text" name="username" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email *</label>
+                                <input type="email" name="email" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">First Name *</label>
+                                <input type="text" name="first_name" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Last Name *</label>
+                                <input type="text" name="last_name" class="form-control" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Role Assignment -->
+                    <div class="form-section">
+                        <h5><i class="fas fa-user-tag me-2"></i>Role Assignment</h5>
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Role *</label>
+                                <select name="role" class="form-select" required>
+                                    <option value="">Select a role</option>
+                                    <option value="national_commissioner">National Commissioner</option>
+                                    <option value="national_hr">National HR</option>
+                                    <option value="regional_commanding_officer">Regional Commanding Officer</option>
+                                    <option value="regional_headquarters_officer">Regional HQ Officer</option>
+                                    <option value="regional_hr">Regional HR</option>
+                                    <option value="station_officer_in_charge">Station Officer in Charge</option>
+                                    <option value="station_officer">Station Officer</option>
+                                    <option value="station_hr">Station HR</option>
+                                    <option value="training_wing_officer">Training Wing Officer</option>
+                                    <option value="ict_personnel">ICT Personnel</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Location Assignment -->
+                    <div class="form-section">
+                        <h5><i class="fas fa-map-marker-alt me-2"></i>Location Assignment</h5>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Region</label>
+                                <select name="region" class="form-select">
+                                    <option value="">Select a region (optional)</option>
+                                    {% for region in regions %}
+                                        <option value="{{ region.id }}">{{ region.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Prison Station</label>
+                                <select name="station" class="form-select">
+                                    <option value="">Select a station (optional)</option>
+                                    {% for station in stations %}
+                                        <option value="{{ station.id }}">{{ station.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Security -->
+                    <div class="form-section">
+                        <h5><i class="fas fa-lock me-2"></i>Security</h5>
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Password *</label>
+                                <input type="password" name="password" class="form-control" required minlength="8">
+                                <small class="text-muted">Password must be at least 8 characters long</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Create User
+                        </button>
+                        <a href="{% url 'hrms:ict_user_list' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

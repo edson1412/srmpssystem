@@ -1,0 +1,866 @@
+<!-- prisoner_report_pdf.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Prisoner Report - {{ prisoner.prisoner_number }}</title>
+    <style>
+        /* ===== BASE STYLES ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            font-size: 9pt;
+            line-height: 1.5;
+            color: #1a1a2e;
+            background: #ffffff;
+            padding: 30px 35px;
+        }
+
+        /* ===== HEADER ===== */
+        .report-header {
+            text-align: center;
+            border-bottom: 3px solid #1a4d2e;
+            padding-bottom: 18px;
+            margin-bottom: 25px;
+        }
+
+        .report-header .logo-section {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 6px;
+        }
+
+        .report-header .logo-placeholder {
+            width: 60px;
+            height: 60px;
+            border: 2px solid #1a4d2e;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8pt;
+            font-weight: 700;
+            color: #1a4d2e;
+            background: #f0f7f0;
+        }
+
+        .report-header h1 {
+            font-size: 16pt;
+            color: #1a4d2e;
+            letter-spacing: 1px;
+            margin: 0;
+            text-transform: uppercase;
+        }
+
+        .report-header .subtitle {
+            font-size: 10pt;
+            color: #4a5568;
+            font-weight: 500;
+        }
+
+        .report-header .report-id {
+            font-size: 8pt;
+            color: #718096;
+            margin-top: 4px;
+        }
+
+        .report-header .report-id strong {
+            color: #2d3748;
+        }
+
+        /* ===== PRISONER ID CARD ===== */
+        .id-card {
+            display: flex;
+            align-items: stretch;
+            gap: 20px;
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+        }
+
+        .id-card .photo-section {
+            flex-shrink: 0;
+            width: 100px;
+            height: 120px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #edf2f7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .id-card .photo-section img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .id-card .photo-section .no-photo {
+            font-size: 7pt;
+            color: #a0aec0;
+            text-align: center;
+            padding: 8px;
+        }
+
+        .id-card .details-section {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px 20px;
+            align-content: center;
+        }
+
+        .id-card .details-section .field {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            padding: 2px 0;
+        }
+
+        .id-card .details-section .field .label {
+            font-size: 7pt;
+            font-weight: 600;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            min-width: 60px;
+        }
+
+        .id-card .details-section .field .value {
+            font-size: 9pt;
+            font-weight: 500;
+            color: #1a202c;
+        }
+
+        .id-card .details-section .field .badge {
+            display: inline-block;
+            padding: 1px 10px;
+            border-radius: 12px;
+            font-size: 7pt;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .badge-convicted { background: #c6f6d5; color: #22543d; }
+        .badge-remand { background: #fefcbf; color: #744210; }
+        .badge-male { background: #bee3f8; color: #2a4365; }
+        .badge-female { background: #fbb6ce; color: #702459; }
+
+        /* ===== SECTION STYLES ===== */
+        .section {
+            margin-bottom: 18px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            overflow: hidden;
+            page-break-inside: avoid;
+        }
+
+        .section-title {
+            background: #edf2f7;
+            padding: 8px 16px;
+            font-size: 9pt;
+            font-weight: 700;
+            color: #1a202c;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .section-title .section-badge {
+            font-size: 6.5pt;
+            font-weight: 600;
+            color: #718096;
+            background: #fff;
+            padding: 1px 10px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .section-body {
+            padding: 10px 16px;
+            background: #ffffff;
+        }
+
+        /* ===== TABLE STYLES ===== */
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 8.5pt;
+        }
+
+        .info-table tr {
+            border-bottom: 1px solid #f0f4f8;
+        }
+
+        .info-table tr:last-child {
+            border-bottom: none;
+        }
+
+        .info-table th {
+            text-align: left;
+            padding: 5px 8px 5px 0;
+            font-weight: 600;
+            color: #4a5568;
+            width: 30%;
+            font-size: 7.5pt;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+        }
+
+        .info-table td {
+            padding: 5px 8px;
+            color: #1a202c;
+            width: 20%;
+        }
+
+        .info-table td:last-child {
+            width: 30%;
+        }
+
+        /* ===== LIST TABLE (for transfers, medical) ===== */
+        .list-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 8pt;
+        }
+
+        .list-table thead th {
+            background: #f7fafc;
+            padding: 6px 10px;
+            text-align: left;
+            font-size: 7pt;
+            font-weight: 600;
+            color: #4a5568;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .list-table tbody td {
+            padding: 5px 10px;
+            border-bottom: 1px solid #f0f4f8;
+            color: #2d3748;
+        }
+
+        .list-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* ===== RISK LEVEL BADGES ===== */
+        .risk-high { color: #e53e3e; font-weight: 700; }
+        .risk-medium { color: #d69e2e; font-weight: 700; }
+        .risk-low { color: #38a169; font-weight: 700; }
+        .risk-support { color: #3182ce; font-weight: 700; }
+
+        /* ===== STATUS INDICATORS ===== */
+        .status-confirmed { color: #38a169; font-weight: 600; }
+        .status-pending { color: #d69e2e; font-weight: 600; }
+        .status-rejected { color: #e53e3e; font-weight: 600; }
+
+        /* ===== SIGNATURE SECTION ===== */
+        .signature-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            gap: 30px;
+        }
+
+        .signature-box {
+            flex: 1;
+            text-align: center;
+        }
+
+        .signature-box .signature-line {
+            border-bottom: 1px solid #4a5568;
+            margin: 30px 0 6px 0;
+            width: 80%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .signature-box .signature-label {
+            font-size: 7pt;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        /* ===== FOOTER ===== */
+        .report-footer {
+            margin-top: 25px;
+            padding-top: 12px;
+            border-top: 1px solid #e2e8f0;
+            text-align: center;
+            font-size: 7pt;
+            color: #a0aec0;
+        }
+
+        .report-footer .generated-by {
+            color: #718096;
+        }
+
+        /* ===== PRINT OPTIMIZATION ===== */
+        @media print {
+            body { padding: 20px; }
+            .section { page-break-inside: avoid; }
+            .report-header { border-bottom-color: #1a4d2e; }
+            .id-card { background: #f7fafc; }
+        }
+
+        /* ===== RESPONSIVE GRID ===== */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px 30px;
+        }
+
+        .grid-2 .field {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            padding: 2px 0;
+        }
+
+        .grid-2 .field .label {
+            font-size: 7pt;
+            font-weight: 600;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            min-width: 80px;
+        }
+
+        .grid-2 .field .value {
+            font-size: 8.5pt;
+            color: #1a202c;
+        }
+
+        /* ===== DIVIDER ===== */
+        .divider {
+            height: 1px;
+            background: #e2e8f0;
+            margin: 8px 0;
+        }
+
+        /* ===== TWO COLUMN LAYOUT ===== */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .two-col .section {
+            margin-bottom: 0;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 600px) {
+            .id-card {
+                flex-direction: column;
+                align-items: center;
+            }
+            .id-card .details-section {
+                grid-template-columns: 1fr;
+                width: 100%;
+            }
+            .two-col {
+                grid-template-columns: 1fr;
+            }
+            .signature-section {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== HEADER ===== -->
+    <div class="report-header">
+        <div class="logo-section">
+            <div class="logo-placeholder">MPS</div>
+            <div>
+                <h1>Malawi Prison Service</h1>
+                <div class="subtitle">{{ prisoner.prison_station.name|default:"Headquarters" }}</div>
+            </div>
+        </div>
+        <div class="report-id">
+            <strong>Prisoner Record</strong> &bull; Report ID: {{ prisoner.prisoner_number }} &bull; Generated: {{ today|date:"d M Y" }}
+        </div>
+    </div>
+
+    <!-- ===== ID CARD ===== -->
+    <div class="id-card">
+        <div class="photo-section">
+            {% if prisoner.image %}
+                <img src="{{ prisoner.image.path }}" alt="Prisoner Photo">
+            {% else %}
+                <div class="no-photo">
+                    <span style="font-size: 24pt; display: block;">👤</span>
+                    No Photo
+                </div>
+            {% endif %}
+        </div>
+        <div class="details-section">
+            <div class="field">
+                <span class="label">Prisoner No.</span>
+                <span class="value">{{ prisoner.prisoner_number|default:"N/A" }}</span>
+            </div>
+            <div class="field">
+                <span class="label">Full Name</span>
+                <span class="value">{{ prisoner.full_name|default:"N/A" }}</span>
+            </div>
+            <div class="field">
+                <span class="label">Sex</span>
+                <span class="value">
+                    <span class="badge {% if prisoner.sex == 'male' %}badge-male{% elif prisoner.sex == 'female' %}badge-female{% endif %}">
+                        {{ prisoner.get_sex_display|default:"N/A" }}
+                    </span>
+                </span>
+            </div>
+            <div class="field">
+                <span class="label">Age</span>
+                <span class="value">{{ prisoner.age|default:"N/A" }} years</span>
+            </div>
+            <div class="field">
+                <span class="label">Class</span>
+                <span class="value">
+                    <span class="badge {% if prisoner.prisoner_class == 'convicted' %}badge-convicted{% else %}badge-remand{% endif %}">
+                        {{ prisoner.get_prisoner_class_display|default:"N/A" }}
+                    </span>
+                </span>
+            </div>
+            <div class="field">
+                <span class="label">Station</span>
+                <span class="value">{{ prisoner.prison_station.name|default:"N/A" }}</span>
+            </div>
+            <div class="field">
+                <span class="label">Block / Cell</span>
+                <span class="value">{{ prisoner.block_number|default:"N/A" }} / {{ prisoner.cell_number|default:"N/A" }}</span>
+            </div>
+            <div class="field">
+                <span class="label">Date Admitted</span>
+                <span class="value">{{ prisoner.date_admitted|date:"d M Y"|default:"N/A" }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== TWO COLUMN LAYOUT FOR CONVICTED/REMAND + RISK ===== -->
+    <div class="two-col">
+
+        <!-- ===== SENTENCE / REMAND SECTION ===== -->
+        {% if prisoner.prisoner_class == 'convicted' and convicted_details %}
+        <div class="section">
+            <div class="section-title">
+                Sentence &amp; Release Information
+                <span class="section-badge">Convicted</span>
+            </div>
+            <div class="section-body">
+                <table class="info-table">
+                    <tr>
+                        <th>Offense</th>
+                        <td colspan="3">{{ convicted_details.offense|default:"N/A" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Court</th>
+                        <td>{{ convicted_details.court|default:"N/A" }}</td>
+                        <th>Sentence</th>
+                        <td>{{ convicted_details.sentence|default:"N/A" }} months</td>
+                    </tr>
+                    <tr>
+                        <th>Date of Committal</th>
+                        <td>{{ convicted_details.date_of_committal|date:"d M Y"|default:"N/A" }}</td>
+                        <th>W.E.F. Date</th>
+                        <td>{{ convicted_details.wef_date|date:"d M Y"|default:"N/A" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Original Release</th>
+                        <td>{{ convicted_details.date_of_release|date:"d M Y"|default:"N/A" }}</td>
+                        <th>Remission Release</th>
+                        <td>{{ convicted_details.date_of_release_on_remission|date:"d M Y"|default:"N/A" }}</td>
+                    </tr>
+                    {% if convicted_details.reduction_months %}
+                    <tr>
+                        <th>Reduction</th>
+                        <td>{{ convicted_details.reduction_months }} months</td>
+                        <th>Reason</th>
+                        <td>{{ convicted_details.reduction_notes|default:"N/A" }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <th>Confirmation</th>
+                        <td colspan="3">
+                            <span class="{% if convicted_details.confirmation_status %}status-confirmed{% else %}status-pending{% endif %}">
+                                {{ convicted_details.confirmation_status|yesno:"Confirmed,Pending" }}
+                            </span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        {% elif prisoner.prisoner_class == 'remand' and remand_details %}
+        <div class="section">
+            <div class="section-title">
+                Remand Information
+                <span class="section-badge">Remand</span>
+            </div>
+            <div class="section-body">
+                <table class="info-table">
+                    <tr>
+                        <th>Offense</th>
+                        <td colspan="3">{{ remand_details.offense|default:"N/A" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Court Case No.</th>
+                        <td>{{ remand_details.court_case_number|default:"N/A" }}</td>
+                        <th>Next Court Date</th>
+                        <td>{{ remand_details.next_court_date|date:"d M Y"|default:"N/A" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Remand Extensions</th>
+                        <td colspan="3">{{ remand_details.remand_extensions|default:"0" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ===== RISK ASSESSMENT ===== -->
+        {% if risk_assessment %}
+        <div class="section">
+            <div class="section-title">
+                Risk Assessment
+                <span class="section-badge">
+                    {% if risk_assessment.risk_level == 'high' %}High Risk
+                    {% elif risk_assessment.risk_level == 'medium' %}Medium Risk
+                    {% elif risk_assessment.risk_level == 'low' %}Low Risk
+                    {% else %}Need Support{% endif %}
+                </span>
+            </div>
+            <div class="section-body">
+                <table class="info-table">
+                    <tr>
+                        <th>Previous Conviction</th>
+                        <td>{{ risk_assessment.previous_conviction|yesno:"Yes,No" }}</td>
+                        <th>Convictions Count</th>
+                        <td>{{ risk_assessment.previous_convictions_count|default:"0" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Risk Level</th>
+                        <td colspan="3">
+                            <span class="risk-{{ risk_assessment.risk_level|default:'support' }}">
+                                {{ risk_assessment.get_risk_level_display|default:"Not Assessed" }}
+                            </span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ===== REHABILITATION ===== -->
+    {% if prisoner.prisoner_class == 'convicted' and rehabilitation %}
+    <div class="section">
+        <div class="section-title">
+            Rehabilitation Program
+            <span class="section-badge">{{ rehabilitation.get_program_level_display|default:"Not Enrolled" }}</span>
+        </div>
+        <div class="section-body">
+            <table class="info-table">
+                <tr>
+                    <th>Employed in Program</th>
+                    <td>{{ rehabilitation.employed_in_program|yesno:"Yes,No" }}</td>
+                    <th>Program Name</th>
+                    <td>{{ rehabilitation.program_name|default:"N/A" }}</td>
+                </tr>
+                <tr>
+                    <th>Program Level</th>
+                    <td colspan="3">{{ rehabilitation.get_program_level_display|default:"N/A" }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ===== PERSONAL PARTICULARS ===== -->
+    {% if particulars %}
+    <div class="section">
+        <div class="section-title">
+            Personal Particulars
+            <span class="section-badge">{{ particulars.get_nationality_display|default:"N/A" }}</span>
+        </div>
+        <div class="section-body">
+            <div class="grid-2">
+                <div class="field">
+                    <span class="label">Nationality</span>
+                    <span class="value">{{ particulars.get_nationality_display|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">District</span>
+                    <span class="value">{{ particulars.district|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Chief</span>
+                    <span class="value">{{ particulars.chief|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Village</span>
+                    <span class="value">{{ particulars.village|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Home Location</span>
+                    <span class="value">{{ particulars.home_location|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Religion</span>
+                    <span class="value">{{ particulars.get_religion_display|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Denomination</span>
+                    <span class="value">{{ particulars.denomination|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Marital Status</span>
+                    <span class="value">{{ particulars.married|yesno:"Married,Single" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Spouse Name</span>
+                    <span class="value">{{ particulars.spouse_name|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Spouse Location</span>
+                    <span class="value">{{ particulars.spouse_location|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Father's Name</span>
+                    <span class="value">{{ particulars.fathers_name|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Mother's Name</span>
+                    <span class="value">{{ particulars.mothers_name|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Next of Kin</span>
+                    <span class="value">{{ particulars.next_of_kin|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Next of Kin Location</span>
+                    <span class="value">{{ particulars.next_of_kin_location|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Mobile Number</span>
+                    <span class="value">{{ particulars.mobile_number|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">National ID</span>
+                    <span class="value">{{ particulars.national_id|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Passport No.</span>
+                    <span class="value">{{ particulars.passport_number|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Driving License</span>
+                    <span class="value">{{ particulars.driving_license|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Education</span>
+                    <span class="value">{{ particulars.get_education_level_display|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Literate</span>
+                    <span class="value">{{ particulars.literate|yesno:"Yes,No" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Profession</span>
+                    <span class="value">{{ particulars.profession|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Past Occupation</span>
+                    <span class="value">{{ particulars.past_occupation|default:"N/A" }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ===== PHYSICAL CHARACTERISTICS ===== -->
+    {% if physical %}
+    <div class="section">
+        <div class="section-title">
+            Physical Characteristics
+            <span class="section-badge">On Admission</span>
+        </div>
+        <div class="section-body">
+            <div class="grid-2">
+                <div class="field">
+                    <span class="label">Height</span>
+                    <span class="value">{{ physical.height|default:"N/A" }} cm</span>
+                </div>
+                <div class="field">
+                    <span class="label">Weight</span>
+                    <span class="value">{{ physical.weight|default:"N/A" }} kg</span>
+                </div>
+                <div class="field">
+                    <span class="label">Body Build</span>
+                    <span class="value">{{ physical.get_body_build_display|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Skin Color</span>
+                    <span class="value">{{ physical.get_skin_color_display|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Eyes Color</span>
+                    <span class="value">{{ physical.eyes_color|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Health Status</span>
+                    <span class="value">{{ physical.get_health_status_display|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Circumcised</span>
+                    <span class="value">{{ physical.circumcised|yesno:"Yes,No" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Head Abnormalities</span>
+                    <span class="value">{{ physical.head_abnormalities|default:"N/A" }}</span>
+                </div>
+                <div class="field" style="grid-column: 1 / -1;">
+                    <span class="label">Marks / Tattoos / Scars</span>
+                    <span class="value">{{ physical.marks_tattoos_scars|default:"None" }}</span>
+                </div>
+                {% if prisoner.sex == 'female' %}
+                <div class="field">
+                    <span class="label">Has Children</span>
+                    <span class="value">{{ physical.has_child|yesno:"Yes,No" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Children Count</span>
+                    <span class="value">{{ physical.children_count|default:"0" }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ===== MEDICAL RECORDS ===== -->
+    {% if medical_records %}
+    <div class="section">
+        <div class="section-title">
+            Medical Records
+            <span class="section-badge">{{ medical_records|length }} record{{ medical_records|length|pluralize }}</span>
+        </div>
+        <div class="section-body" style="padding: 0;">
+            <table class="list-table">
+                <thead>
+                    <tr>
+                        <th style="width: 12%;">Date</th>
+                        <th style="width: 15%;">Category</th>
+                        <th style="width: 25%;">Diagnosis</th>
+                        <th style="width: 30%;">Treatment</th>
+                        <th style="width: 18%;">Recorded By</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in medical_records|slice:":10" %}
+                    <tr>
+                        <td>{{ record.record_date|date:"d M Y"|default:"N/A" }}</td>
+                        <td>{{ record.get_category_display|default:"N/A" }}</td>
+                        <td>{{ record.diagnosis|default:"N/A" }}</td>
+                        <td>{{ record.treatment|truncatewords:10|default:"N/A" }}</td>
+                        <td>{{ record.recorded_by.get_full_name|default:"N/A" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: #a0aec0; padding: 16px;">
+                            No medical records found
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ===== TRANSFER HISTORY ===== -->
+    {% if transfers %}
+    <div class="section">
+        <div class="section-title">
+            Transfer History
+            <span class="section-badge">{{ transfers|length }} transfer{{ transfers|length|pluralize }}</span>
+        </div>
+        <div class="section-body" style="padding: 0;">
+            <table class="list-table">
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">Date</th>
+                        <th style="width: 25%;">From</th>
+                        <th style="width: 25%;">To</th>
+                        <th style="width: 35%;">Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transfer in transfers %}
+                    <tr>
+                        <td>{{ transfer.transfer_date|date:"d M Y"|default:"N/A" }}</td>
+                        <td>{{ transfer.from_prison.name|default:"N/A" }}</td>
+                        <td>{{ transfer.to_prison.name|default:"N/A" }}</td>
+                        <td>{{ transfer.reason|default:"N/A" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ===== SIGNATURE SECTION ===== -->
+    <div class="signature-section">
+        <div class="signature-box">
+            <div class="signature-line"></div>
+            <div class="signature-label">Admitting Officer's Signature</div>
+            <div style="font-size: 7pt; color: #718096; margin-top: 2px;">Date: {{ today|date:"d M Y" }}</div>
+        </div>
+        <div class="signature-box">
+            <div class="signature-line"></div>
+            <div class="signature-label">Prisoner's Thumbprint / Signature</div>
+            <div style="font-size: 7pt; color: #718096; margin-top: 2px;">Date: {{ today|date:"d M Y" }}</div>
+        </div>
+        <div class="signature-box">
+            <div class="signature-line"></div>
+            <div class="signature-label">Officer-in-Charge</div>
+            <div style="font-size: 7pt; color: #718096; margin-top: 2px;">Date: {{ today|date:"d M Y" }}</div>
+        </div>
+    </div>
+
+    <!-- ===== FOOTER ===== -->
+    <div class="report-footer">
+        <span class="generated-by">
+            Generated by {{ user.get_full_name|default:"System" }} &bull; {{ user.get_rank_display|default:"Staff" }}
+        </span>
+        &bull; Page 1 of 1 &bull;
+        <span>Confidential Document</span>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Confirm Delete Service History - Prison HRMS{% endblock %}
+
+{% block content %}
+<div class="container d-flex justify-content-center align-items-center min-vh-100">
+    <div class="card shadow-lg p-4" style="max-width: 500px; width: 100%; border-radius: 15px;">
+        <div class="card-body text-center">
+            <i class="fas fa-exclamation-triangle fa-5x text-danger mb-4"></i>
+            <h2 class="card-title mb-3" style="color: #dc3545; font-weight: bold;">Confirm Deletion</h2>
+            <p class="lead mb-4">Are you sure you want to delete this {{ history_type }} record for <strong>"{{ officer.full_name }}"</strong>?</p>
+
+            {% if history_type == 'Promotion' %}
+                <p><strong>Previous Rank:</strong> {{ instance.previous_rank|default:"N/A" }}</p>
+                <p><strong>New Rank:</strong> {{ instance.new_rank }}</p>
+                <p><strong>Promotion Date:</strong> {{ instance.promotion_date|date:"F d, Y" }}</p>
+            {% elif history_type == 'Transfer' %}
+                <p><strong>Previous Station:</strong> {{ instance.previous_station|default:"N/A" }}</p>
+                <p><strong>New Station:</strong> {{ instance.new_station }}</p>
+                <p><strong>Transfer Date:</strong> {{ instance.transfer_date|date:"F d, Y" }}</p>
+            {% endif %}
+
+            <p class="text-muted mt-4 mb-4">This action cannot be undone.</p>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-danger btn-lg rounded-pill custom-button">
+                        <i class="fas fa-trash-alt me-2"></i> Yes, Delete
+                    </button>
+                    <a href="{% url 'hrms:officer_detail' service_number=officer.service_number %}" class="btn btn-secondary btn-lg rounded-pill">
+                        <i class="fas fa-times-circle me-2"></i> Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

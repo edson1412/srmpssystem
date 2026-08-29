@@ -1,0 +1,71 @@
+{% extends "prison/base.html" %}
+
+{% block title %}Incident Reports{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-color: rgba(173, 216, 230, 0.6); /* Light blue with 60% opacity */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Incident Reports</h1>
+        <a href="{% url 'incident_report_add' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Report New Incident
+        </a>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Severity</th>
+                            <th>Date Occurred</th>
+                            <th>Location</th>
+                            <th>Reported By</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for incident in object_list %} {# object_list is common for ListView #}
+                        <tr>
+                            <td>{{ incident.title }}</td>
+                            <td><span class="badge bg-{% if incident.severity == 'critical' %}danger{% elif incident.severity == 'high' %}warning{% elif incident.severity == 'medium' %}info{% else %}success{% endif %}">{{ incident.get_severity_display }}</span></td>
+                            <td>{{ incident.date_occurred|date:"Y-m-d H:i" }}</td>
+                            <td>{{ incident.location }}</td>
+                            <td>{{ incident.reported_by.get_full_name|default:incident.reported_by.username }}</td>
+                            <td>
+                                <a href="{% url 'incident_report_detail' incident.id %}" class="btn btn-sm btn-outline-primary" title="View">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {# Assuming an edit URL for incident reports exists #}
+                                {# <a href="{% url 'incident_report_edit' incident.id %}" class="btn btn-sm btn-outline-secondary" title="Edit"> #}
+                                {#     <i class="bi bi-pencil"></i> #}
+                                {# </a> #}
+                                {# Assuming a delete URL for incident reports exists #}
+                                {# <a href="{% url 'incident_report_delete' incident.id %}" class="btn btn-sm btn-outline-danger delete-btn" title="Delete"> #}
+                                {#     <i class="bi bi-trash"></i> #}
+                                {# </a> #}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">No incident reports found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {# Pagination can be added here if needed, similar to prisoner_list.html #}
+        </div>
+    </div>
+</div>
+{% endblock %}

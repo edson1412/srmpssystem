@@ -1,0 +1,1010 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Training Management Console - Prison HRMS Recruit Training System">
+    <title>{% block title %}{% block training_title %}Training Console | Prison HRMS{% endblock %}{% endblock %}</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font Awesome 6.5 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    {% block extra_css %}{% endblock %}
+
+    <style>
+        :root {
+            --training-primary: #4f46e5;
+            --training-primary-dark: #4338ca;
+            --training-primary-light: #818cf8;
+            --training-accent: #10b981;
+            --training-accent-glow: rgba(16, 185, 129, 0.25);
+            --training-secondary: #64748b;
+            --training-success: #10b981;
+            --training-warning: #f59e0b;
+            --training-danger: #ef4444;
+            --training-info: #06b6d4;
+            --training-surface: #ffffff;
+            --training-border: #e2e8f0;
+            --training-text-primary: #0f172a;
+            --training-text-secondary: #475569;
+            --training-sidebar-width: 280px;
+            --training-header-height: 70px;
+            --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f1f5f9;
+            color: var(--training-text-primary);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* TRAINING HEADER */
+        .training-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--training-header-height);
+            background: var(--training-surface);
+            backdrop-filter: blur(0px);
+            border-bottom: 1px solid var(--training-border);
+            z-index: 1030;
+            display: flex;
+            align-items: center;
+            padding: 0 2rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .training-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+        }
+
+        .training-brand-icon {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, var(--training-primary), var(--training-accent));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+            box-shadow: 0 6px 12px -6px rgba(0, 0, 0, 0.2);
+        }
+
+        .training-brand-text {
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: var(--training-primary);
+            letter-spacing: -0.3px;
+        }
+
+        .training-brand-badge {
+            background: var(--training-accent);
+            color: white;
+            padding: 2px 10px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-left: 0.75rem;
+        }
+
+        .training-header-actions {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .training-header-btn {
+            background: transparent;
+            border: 1px solid var(--training-border);
+            border-radius: 10px;
+            padding: 0.45rem 1rem;
+            color: var(--training-secondary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 500;
+            font-size: 0.85rem;
+            transition: var(--transition-smooth);
+        }
+
+        .training-header-btn:hover {
+            background: #f8fafc;
+            border-color: var(--training-primary);
+            color: var(--training-primary);
+        }
+
+        /* TRAINING SIDEBAR */
+        .training-sidebar {
+            position: fixed;
+            top: var(--training-header-height);
+            left: 0;
+            width: var(--training-sidebar-width);
+            height: calc(100vh - var(--training-header-height));
+            background: var(--training-surface);
+            border-right: 1px solid var(--training-border);
+            overflow-y: auto;
+            z-index: 1020;
+            transition: var(--transition-smooth);
+            box-shadow: 2px 0 8px rgba(0, 0, 0, 0.02);
+        }
+
+        .training-sidebar.collapsed {
+            width: 80px;
+        }
+
+        .training-sidebar-toggle {
+            position: absolute;
+            top: 1rem;
+            right: -1rem;
+            width: 2rem;
+            height: 2rem;
+            background: var(--training-primary);
+            border: 2px solid white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            cursor: pointer;
+            z-index: 1030;
+            transition: var(--transition-smooth);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .training-sidebar-toggle:hover {
+            transform: scale(1.08);
+            background: var(--training-primary-dark);
+        }
+
+        .training-sidebar.collapsed .training-sidebar-toggle i {
+            transform: rotate(180deg);
+        }
+
+        .training-nav-section {
+            padding: 1.5rem 0;
+        }
+
+        .training-nav-title {
+            padding: 0 1.5rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #94a3b8;
+            margin-bottom: 0.75rem;
+        }
+
+        .training-sidebar.collapsed .training-nav-title {
+            display: none;
+        }
+
+        .training-nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            padding: 0.7rem 1.5rem;
+            color: var(--training-text-secondary);
+            text-decoration: none;
+            transition: var(--transition-smooth);
+            border-left: 3px solid transparent;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .training-sidebar.collapsed .training-nav-link {
+            justify-content: center;
+            padding: 0.7rem;
+        }
+
+        .training-sidebar.collapsed .training-nav-link span {
+            display: none;
+        }
+
+        .training-nav-link i {
+            width: 1.4rem;
+            font-size: 1.1rem;
+        }
+
+        .training-nav-link:hover {
+            background: #f1f5f9;
+            color: var(--training-primary);
+            border-left-color: var(--training-primary);
+        }
+
+        .training-nav-link.active {
+            background: linear-gradient(90deg, rgba(79, 70, 229, 0.08), transparent);
+            color: var(--training-primary);
+            border-left-color: var(--training-primary);
+            font-weight: 600;
+        }
+
+        /* Main content */
+        .training-main {
+            margin-left: var(--training-sidebar-width);
+            margin-top: var(--training-header-height);
+            padding: 1.8rem;
+            min-height: calc(100vh - var(--training-header-height));
+            transition: margin-left 0.25s ease;
+        }
+
+        .training-main.expanded {
+            margin-left: 80px;
+        }
+
+        /* TRAINING Cards */
+        .training-card {
+            background: var(--training-surface);
+            border-radius: 1.25rem;
+            border: 1px solid var(--training-border);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .training-card:hover {
+            box-shadow: 0 12px 24px -12px rgba(0, 0, 0, 0.12);
+        }
+
+        .training-stat {
+            background: linear-gradient(145deg, #ffffff, #f8fafc);
+            border-radius: 1rem;
+            padding: 1.25rem;
+            border: 1px solid var(--training-border);
+        }
+
+        /* Status Badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .status-badge.active {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-badge.inactive {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        .status-badge.completed {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-badge.graduated {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-badge.in_training {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-badge.enrolled {
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+
+        /* Course Type Badges */
+        .course-type-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+
+        .course-type-badge.core {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .course-type-badge.elective {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .course-type-badge.practical {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        /* Grade Badges */
+        .grade-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .grade-badge.A {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .grade-badge.B {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .grade-badge.C {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .grade-badge.D {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        .grade-badge.F {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* Progress Bar */
+        .progress-bar-custom {
+            height: 0.5rem;
+            background: #e5e7eb;
+            border-radius: 9999px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--training-primary), var(--training-accent));
+            border-radius: 9999px;
+            transition: width 0.3s ease;
+        }
+
+        /* Score Bar */
+        .score-bar {
+            width: 80px;
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 9999px;
+            overflow: hidden;
+        }
+
+        .score-fill {
+            height: 100%;
+            border-radius: 9999px;
+        }
+
+        .score-fill.excellent {
+            background: linear-gradient(90deg, #10b981, #059669);
+        }
+
+        .score-fill.good {
+            background: linear-gradient(90deg, #3b82f6, #2563eb);
+        }
+
+        .score-fill.average {
+            background: linear-gradient(90deg, #f59e0b, #d97706);
+        }
+
+        .score-fill.poor {
+            background: linear-gradient(90deg, #ef4444, #dc2626);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .training-sidebar {
+                transform: translateX(-100%);
+            }
+            .training-sidebar.open {
+                transform: translateX(0);
+            }
+            .training-main {
+                margin-left: 0 !important;
+            }
+            .training-header {
+                padding: 0 1rem;
+            }
+            .training-header-btn span {
+                display: none;
+            }
+            .training-mobile-toggle {
+                display: block !important;
+                background: transparent;
+                border: none;
+                font-size: 1.5rem;
+                margin-right: 1rem;
+                color: var(--training-primary);
+            }
+        }
+
+        .training-mobile-toggle {
+            display: none;
+        }
+
+        .training-toast-container {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 1100;
+        }
+
+        .training-user-menu {
+            position: relative;
+        }
+
+        .training-user-avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--training-primary), var(--training-accent));
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .training-user-dropdown {
+            position: absolute;
+            top: 110%;
+            right: 0;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.15);
+            border: 1px solid var(--training-border);
+            min-width: 200px;
+            opacity: 0;
+            visibility: hidden;
+            transition: 0.2s;
+            z-index: 1050;
+        }
+
+        .training-user-dropdown.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .training-user-dropdown a {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.7rem 1rem;
+            color: var(--training-text-primary);
+            text-decoration: none;
+            font-size: 0.85rem;
+        }
+
+        .training-user-dropdown a:hover {
+            background: #f1f5f9;
+        }
+
+        /* Breadcrumb */
+        .training-breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .training-breadcrumb a {
+            color: var(--training-text-secondary);
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: var(--transition-smooth);
+        }
+
+        .training-breadcrumb a:hover {
+            color: var(--training-primary);
+        }
+
+        .training-breadcrumb span {
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+
+        .training-breadcrumb i {
+            font-size: 0.7rem;
+            color: #94a3b8;
+        }
+
+        /* Page Header */
+        .training-page-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .training-page-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--training-text-primary);
+            margin: 0;
+        }
+
+        .training-page-subtitle {
+            color: var(--training-text-secondary);
+            margin-top: 0.25rem;
+            font-size: 0.9rem;
+        }
+
+        /* Loading Spinner */
+        .training-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+        }
+
+        .training-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--training-border);
+            border-top-color: var(--training-primary);
+            border-radius: 50%;
+            animation: training-spin 0.8s linear infinite;
+        }
+
+        @keyframes training-spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Fade In Animation */
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Empty State */
+        .training-empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #6b7280;
+        }
+
+        .training-empty-state i {
+            font-size: 3rem;
+            color: #d1d5db;
+            margin-bottom: 1rem;
+        }
+
+        /* Action Buttons */
+        .training-action-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: var(--transition-smooth);
+            border: 1px solid transparent;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .training-action-btn-primary {
+            background: var(--training-primary);
+            color: white;
+        }
+
+        .training-action-btn-primary:hover {
+            background: var(--training-primary-dark);
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .training-action-btn-success {
+            background: var(--training-success);
+            color: white;
+        }
+
+        .training-action-btn-success:hover {
+            background: #059669;
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .training-action-btn-outline {
+            background: transparent;
+            color: var(--training-primary);
+            border-color: var(--training-primary);
+        }
+
+        .training-action-btn-outline:hover {
+            background: var(--training-primary);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TRAINING HEADER -->
+    <header class="training-header">
+        <button class="training-mobile-toggle" id="trainingMobileToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+        <a href="{% url 'hrms:training_dashboard' %}" class="training-brand">
+            <div class="training-brand-icon">
+                <i class="fas fa-chalkboard-user"></i>
+            </div>
+            <div class="training-brand-text">Training Command</div>
+            <span class="training-brand-badge">Recruit Mgmt</span>
+        </a>
+
+        <div class="training-header-actions">
+            <a href="{% url 'hrms:dashboard' %}" class="training-header-btn">
+                <i class="fas fa-arrow-left"></i>
+                <span>Main HRMS</span>
+            </a>
+            <button class="training-header-btn" id="trainingThemeToggle">
+                <i class="fas fa-moon"></i>
+                <span>Theme</span>
+            </button>
+            <div class="training-user-menu">
+                <div class="training-user-avatar" id="trainingUserAvatar">
+                    {{ request.user.username|first|upper }}
+                </div>
+                <div class="training-user-dropdown" id="trainingUserDropdown">
+                    <a href="{% url 'user_profile' %}"><i class="fas fa-user-cog"></i> Profile</a>
+                    <a href="{% url 'logout' %}"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- TRAINING SIDEBAR -->
+    <aside class="training-sidebar" id="trainingSidebar">
+        <div class="training-sidebar-toggle" id="trainingSidebarToggle">
+            <i class="fas fa-chevron-left"></i>
+        </div>
+
+        <!-- DASHBOARD SECTION -->
+        <div class="training-nav-section">
+            <div class="training-nav-title">OVERVIEW</div>
+            <a href="{% url 'hrms:training_dashboard' %}" class="training-nav-link {% if request.resolver_match.url_name == 'training_dashboard' %}active{% endif %}">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
+        </div>
+
+        <!-- INTAKE MANAGEMENT -->
+        <div class="training-nav-section">
+            <div class="training-nav-title">INTAKE MANAGEMENT</div>
+            <a href="{% url 'hrms:intake_list' %}" class="training-nav-link {% if 'intake_list' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="fas fa-calendar-alt"></i>
+                <span>All Intakes</span>
+            </a>
+            <a href="{% url 'hrms:intake_create' %}" class="training-nav-link">
+                <i class="fas fa-plus-circle"></i>
+                <span>Create Intake</span>
+            </a>
+        </div>
+
+        <!-- RECRUIT MANAGEMENT -->
+        <div class="training-nav-section">
+            <div class="training-nav-title">RECRUITS</div>
+            <a href="{% url 'hrms:recruit_list' %}" class="training-nav-link {% if 'recruit_list' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="fas fa-users"></i>
+                <span>All Recruits</span>
+            </a>
+        </div>
+
+        <!-- COURSE MANAGEMENT -->
+        <div class="training-nav-section">
+            <div class="training-nav-title">COURSES</div>
+            <a href="{% url 'hrms:course_list' %}" class="training-nav-link {% if 'course_list' in request.resolver_match.url_name %}active{% endif %}">
+                <i class="fas fa-book"></i>
+                <span>Course Catalog</span>
+            </a>
+            <a href="{% url 'hrms:course_create' %}" class="training-nav-link">
+                <i class="fas fa-plus-circle"></i>
+                <span>Add Course</span>
+            </a>
+        </div>
+
+        <!-- ASSESSMENTS -->
+        <div class="training-nav-section">
+            <div class="training-nav-title">ASSESSMENTS</div>
+            <a href="{% url 'hrms:bulk_add_marks' %}" class="training-nav-link">
+                <i class="fas fa-chart-line"></i>
+                <span>Bulk Marks Entry</span>
+            </a>
+            <a href="{% url 'hrms:bulk_marks_import_csv' %}" class="training-nav-link">
+                <i class="fas fa-file-csv"></i>
+                <span>Import Marks (CSV)</span>
+            </a>
+            <a href="{% url 'hrms:bulk_marks_import_excel' %}" class="training-nav-link">
+                <i class="fas fa-file-excel"></i>
+                <span>Import Marks (Excel)</span>
+            </a>
+        </div>
+
+        <!-- REPORTS -->
+        <div class="training-nav-section">
+            <div class="training-nav-title">REPORTS & GRADUATION</div>
+            <a href="#" class="training-nav-link" id="trainingRankingsLink">
+                <i class="fas fa-trophy"></i>
+                <span>Class Rankings</span>
+            </a>
+            <a href="#" class="training-nav-link" id="trainingGraduationLink">
+                <i class="fas fa-graduation-cap"></i>
+                <span>Graduation Reports</span>
+            </a>
+        </div>
+
+        <!-- SYSTEM -->
+        <div class="training-nav-section">
+            <div class="training-nav-title">SYSTEM</div>
+            <a href="{% url 'hrms:marks_import_status' %}" class="training-nav-link">
+                <i class="fas fa-history"></i>
+                <span>Import History</span>
+            </a>
+            <a href="{% url 'hrms:download_csv_template' %}" class="training-nav-link">
+                <i class="fas fa-download"></i>
+                <span>Download Templates</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="training-main" id="trainingMain">
+        <!-- Breadcrumb Navigation -->
+        {% block breadcrumb %}
+        <div class="training-breadcrumb mb-3">
+            <a href="{% url 'hrms:training_dashboard' %}">
+                <i class="fas fa-home"></i> Training
+            </a>
+            {% if breadcrumb_items %}
+                {% for item in breadcrumb_items %}
+                    <i class="fas fa-chevron-right"></i>
+                    {% if item.url %}
+                        <a href="{{ item.url }}">{{ item.title }}</a>
+                    {% else %}
+                        <span>{{ item.title }}</span>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        </div>
+        {% endblock %}
+
+        <!-- Page Header -->
+        {% block page_header %}
+        <div class="training-page-header">
+            <h1 class="training-page-title">{% block page_title %}Training Management{% endblock %}</h1>
+            {% block page_subtitle %}
+            <p class="training-page-subtitle">Manage training intakes, recruits, courses, and assessments.</p>
+            {% endblock %}
+        </div>
+        {% endblock %}
+
+        <!-- Main Content Block -->
+        <div class="fade-in">
+            {% block training_content %}
+            <div class="training-card p-4 text-center text-muted">
+                <i class="fas fa-chalkboard-user fa-3x mb-3"></i>
+                <p>Training content goes here. Override {% verbatim %}{% block training_content %}{% endverbatim %} in child templates.</p>
+            </div>
+            {% endblock %}
+        </div>
+    </main>
+
+    <!-- Toast Container -->
+    <div class="training-toast-container" id="trainingToastContainer"></div>
+
+    <script>
+        (function() {
+            // Sidebar toggle
+            const sidebar = document.getElementById('trainingSidebar');
+            const main = document.getElementById('trainingMain');
+            const toggleBtn = document.getElementById('trainingSidebarToggle');
+            
+            function setSidebarState(collapsed) {
+                if (collapsed) {
+                    sidebar.classList.add('collapsed');
+                    main.classList.add('expanded');
+                    localStorage.setItem('training_sidebar_collapsed', 'true');
+                } else {
+                    sidebar.classList.remove('collapsed');
+                    main.classList.remove('expanded');
+                    localStorage.setItem('training_sidebar_collapsed', 'false');
+                }
+            }
+            
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const isCollapsed = sidebar.classList.contains('collapsed');
+                    setSidebarState(!isCollapsed);
+                });
+            }
+            
+            const savedState = localStorage.getItem('training_sidebar_collapsed');
+            if (savedState === 'true') {
+                setSidebarState(true);
+            } else if (savedState === 'false') {
+                setSidebarState(false);
+            }
+            
+            // Mobile toggle
+            const mobileToggle = document.getElementById('trainingMobileToggle');
+            if (mobileToggle) {
+                mobileToggle.addEventListener('click', () => {
+                    sidebar.classList.toggle('open');
+                });
+            }
+            
+            // User dropdown
+            const avatar = document.getElementById('trainingUserAvatar');
+            const dropdown = document.getElementById('trainingUserDropdown');
+            if (avatar && dropdown) {
+                avatar.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dropdown.classList.toggle('show');
+                });
+                document.addEventListener('click', () => dropdown.classList.remove('show'));
+            }
+            
+            // Theme toggle
+            const themeBtn = document.getElementById('trainingThemeToggle');
+            function applyTrainingTheme(theme) {
+                const root = document.documentElement;
+                if (theme === 'dark') {
+                    root.style.setProperty('--training-surface', '#0f172a');
+                    root.style.setProperty('--training-border', '#334155');
+                    root.style.setProperty('--training-text-primary', '#f1f5f9');
+                    root.style.setProperty('--training-text-secondary', '#cbd5e1');
+                    document.body.style.background = '#020617';
+                } else {
+                    root.style.setProperty('--training-surface', '#ffffff');
+                    root.style.setProperty('--training-border', '#e2e8f0');
+                    root.style.setProperty('--training-text-primary', '#0f172a');
+                    root.style.setProperty('--training-text-secondary', '#475569');
+                    document.body.style.background = '#f1f5f9';
+                }
+                localStorage.setItem('training_theme', theme);
+            }
+            const savedTheme = localStorage.getItem('training_theme');
+            if (savedTheme === 'dark') applyTrainingTheme('dark');
+            else if (savedTheme === 'light') applyTrainingTheme('light');
+            else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) applyTrainingTheme('dark');
+            
+            if (themeBtn) {
+                themeBtn.addEventListener('click', () => {
+                    const isDark = document.documentElement.style.getPropertyValue('--training-surface').trim() === '#0f172a' || localStorage.getItem('training_theme') === 'dark';
+                    applyTrainingTheme(isDark ? 'light' : 'dark');
+                });
+            }
+            
+            // Toast notification function
+            function showTrainingToast(message, type = 'info') {
+                const container = document.getElementById('trainingToastContainer');
+                if (!container) return;
+                const toastEl = document.createElement('div');
+                toastEl.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} shadow-sm rounded-4 mb-2`;
+                toastEl.style.background = 'white';
+                toastEl.style.borderLeft = `4px solid ${type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#4f46e5'}`;
+                toastEl.innerHTML = `<i class="fas fa-${type === 'error' ? 'exclamation-circle' : type === 'success' ? 'check-circle' : 'bell'} me-2"></i> ${message}`;
+                container.appendChild(toastEl);
+                setTimeout(() => toastEl.remove(), 4500);
+            }
+            
+            // Display Django messages as toasts
+            {% if messages %}
+                {% for message in messages %}
+                    showTrainingToast("{{ message|escapejs }}", "{{ message.tags }}");
+                {% endfor %}
+            {% endif %}
+            
+            // Placeholder links for reports
+            const rankingsLink = document.getElementById('trainingRankingsLink');
+            const graduationLink = document.getElementById('trainingGraduationLink');
+            
+            if (rankingsLink) {
+                rankingsLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showTrainingToast('Class Rankings feature - Select an intake to view rankings', 'info');
+                });
+            }
+            
+            if (graduationLink) {
+                graduationLink.addEventListener('click', (e) {
+                    e.preventDefault();
+                    showTrainingToast('Graduation Reports - Select an intake to generate graduation report', 'info');
+                });
+            }
+            
+            // Auto-hide alerts after 5 seconds
+            document.querySelectorAll('.alert').forEach(function(alert) {
+                setTimeout(function() {
+                    alert.style.transition = 'opacity 0.5s ease';
+                    alert.style.opacity = '0';
+                    setTimeout(function() {
+                        alert.remove();
+                    }, 500);
+                }, 5000);
+            });
+            
+            // Helper functions for child templates
+            window.showTrainingToast = showTrainingToast;
+            window.confirmAction = function(message, callback) {
+                if (confirm(message)) {
+                    if (callback && typeof callback === 'function') {
+                        callback();
+                    }
+                    return true;
+                }
+                return false;
+            };
+            window.formatDate = function(dateString) {
+                if (!dateString) return 'N/A';
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+            };
+            window.calculatePercentage = function(obtained, total) {
+                if (!total || total === 0) return 0;
+                return ((obtained / total) * 100).toFixed(1);
+            };
+            window.getGrade = function(percentage) {
+                if (percentage >= 80) return 'A';
+                if (percentage >= 70) return 'B';
+                if (percentage >= 60) return 'C';
+                if (percentage >= 50) return 'D';
+                return 'F';
+            };
+        })();
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

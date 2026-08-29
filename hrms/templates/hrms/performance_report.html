@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} - Prison HRMS{% endblock %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+    <div class="card shadow-lg p-4" style="border-radius: 15px;">
+        <div class="card-body">
+            <h2 class="card-title text-center mb-4" style="color: #0056b3; font-weight: bold;">{{ title }}</h2>
+            <hr class="mb-4">
+
+            {# Filter Form #}
+            <form method="get" class="mb-4 p-3 border rounded-3 bg-light">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label for="id_year" class="form-label">Year:</label>
+                        <select name="year" id="id_year" class="form-select rounded-pill">
+                            {% for year in available_years %}
+                                <option value="{{ year }}" {% if year|stringformat:"s" == selected_year %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="id_month" class="form-label">Month:</label>
+                        <select name="month" id="id_month" class="form-select rounded-pill">
+                            <option value="">All Months</option>
+                            {% for month in months %}
+                                <option value="{{ month.value }}" {% if month.value|stringformat:"s" == selected_month %}selected{% endif %}>{{ month.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="id_metric" class="form-label">Metric:</label>
+                        <select name="metric" id="id_metric" class="form-select rounded-pill">
+                            <option value="">All Metrics</option>
+                            {% for metric in all_metrics %}
+                                <option value="{{ metric.pk }}" {% if metric.pk|stringformat:"s" == selected_metric_id %}selected{% endif %}>{{ metric.get_name_display }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="id_region" class="form-label">Region:</label>
+                        <select name="region" id="id_region" class="form-select rounded-pill">
+                            <option value="">All Regions</option>
+                            {% for region in regions %}
+                                <option value="{{ region.pk }}" {% if region.pk|stringformat:"s" == selected_region_id %}selected{% endif %}>{{ region.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="id_station" class="form-label">Prison Station:</label>
+                        <select name="station" id="id_station" class="form-select rounded-pill">
+                            <option value="">All Stations</option>
+                            {% for station in stations %}
+                                <option value="{{ station.pk }}" {% if station.pk|stringformat:"s" == selected_station_id %}selected{% endif %}>{{ station.name }} ({{ station.region.name }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 text-end">
+                        <button type="submit" class="btn btn-primary rounded-pill me-2">
+                            <i class="fas fa-filter me-1"></i> Generate Report
+                        </button>
+                        <a href="{% url 'hrms:performance_report' %}" class="btn btn-outline-secondary rounded-pill">
+                            <i class="fas fa-redo me-1"></i> Reset Filters
+                        </a>
+                    </div>
+                </div>
+            </form>
+
+            {# Report Summary #}
+            <h4 class="text-primary mt-5 mb-3"><i class="fas fa-chart-line me-2"></i>Performance Summary</h4>
+            {% if total_records > 0 %}
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card text-white bg-dark mb-3 rounded-3 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-star me-2"></i>Overall Average Score</h5>
+                                <p class="card-text fs-4">{{ overall_average_score }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card text-white bg-info mb-3 rounded-3 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-calculator me-2"></i>Total Records Analyzed</h5>
+                                <p class="card-text fs-4">{{ total_records }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if average_scores_by_metric %}
+                    <h5 class="text-secondary mt-4 mb-3"><i class="fas fa-th-list me-2"></i>Average Score by Metric</h5>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-hover table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col">Metric</th>
+                                    <th scope="col">Average Score</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in average_scores_by_metric %}
+                                <tr>
+                                    <td>{{ item.metric__name }}</td>
+                                    <td>{{ item.avg_score|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+
+                <h5 class="text-secondary mt-4 mb-3"><i class="fas fa-users me-2"></i>Officer Performance Overview (Top/Bottom by Average Score)</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col">#</th>
+                                <th scope="col">Officer</th>
+                                <th scope="col">Service Number</th>
+                                <th scope="col">Average Score</th>
+                                <th scope="col">Records Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for officer_summary in officer_performance_summary %}
+                            <tr>
+                                <th scope="row">{{ forloop.counter }}</th>
+                                <td><a href="{% url 'hrms:officer_detail' service_number=officer_summary.officer__service_number %}" class="text-decoration-none text-primary fw-bold">
+                                    {{ officer_summary.officer__first_name }} {{ officer_summary.officer__surname }}
+                                </a></td>
+                                <td>{{ officer_summary.officer__service_number }}</td>
+                                <td>{{ officer_summary.avg_score|floatformat:2 }}</td>
+                                <td>{{ officer_summary.record_count }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+            {% else %}
+                <div class="alert alert-info text-center" role="alert">
+                    No performance data found for the selected filters.
+                </div>
+            {% endif %}
+
+            <div class="text-center mt-4">
+                <a href="{% url 'hrms:dashboard' %}" class="btn btn-outline-secondary rounded-pill">
+                    <i class="fas fa-arrow-circle-left me-2"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

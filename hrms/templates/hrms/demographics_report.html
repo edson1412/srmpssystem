@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} - Prison HRMS{% endblock %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+    <div class="card shadow-lg p-4" style="border-radius: 15px;">
+        <div class="card-body">
+            <h2 class="card-title text-center mb-4" style="color: #0056b3; font-weight: bold;">{{ title }}</h2>
+            <hr class="mb-4">
+
+            {# Filter Form #}
+            <form method="get" class="mb-4 p-3 border rounded-3 bg-light">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="id_region" class="form-label">Region:</label>
+                        <select name="region" id="id_region" class="form-select rounded-pill">
+                            <option value="">All Regions</option>
+                            {% for region in regions %}
+                                <option value="{{ region.pk }}" {% if region.pk|stringformat:"s" == selected_region_id %}selected{% endif %}>{{ region.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="id_station" class="form-label">Prison Station:</label>
+                        <select name="station" id="id_station" class="form-select rounded-pill">
+                            <option value="">All Stations</option>
+                            {% for station in stations %}
+                                <option value="{{ station.pk }}" {% if station.pk|stringformat:"s" == selected_station_id %}selected{% endif %}>{{ station.name }} ({{ station.region.name }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="id_status" class="form-label">Officer Status:</label>
+                        <select name="status" id="id_status" class="form-select rounded-pill">
+                            <option value="">All Statuses</option>
+                            {% for value, label in officer_status_choices %}
+                                <option value="{{ value }}" {% if value == selected_status %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 text-end">
+                        <button type="submit" class="btn btn-primary rounded-pill me-2">
+                            <i class="fas fa-filter me-1"></i> Generate Report
+                        </button>
+                        <a href="{% url 'hrms:demographics_report' %}" class="btn btn-outline-secondary rounded-pill">
+                            <i class="fas fa-redo me-1"></i> Reset Filters
+                        </a>
+                    </div>
+                </div>
+            </form>
+
+            {# Report Summary #}
+            <h4 class="text-primary mt-5 mb-3"><i class="fas fa-users-cog me-2"></i>Demographic Overview</h4>
+            {% if total_officers > 0 %}
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card text-white bg-dark mb-3 rounded-3 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-user-friends me-2"></i>Total Officers</h5>
+                                <p class="card-text fs-4">{{ total_officers }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        {% if gender_breakdown %}
+                            <h5 class="text-secondary mt-4 mb-3"><i class="fas fa-venus-mars me-2"></i>Breakdown by Gender</h5>
+                            <div class="table-responsive mb-4">
+                                <table class="table table-hover table-striped">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th scope="col">Gender</th>
+                                            <th scope="col">Number of Officers</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in gender_breakdown %}
+                                        <tr>
+                                            <td>{{ item.gender|default:"N/A" }}</td>
+                                            <td>{{ item.count }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        {% if marital_status_breakdown %}
+                            <h5 class="text-secondary mt-4 mb-3"><i class="fas fa-ring me-2"></i>Breakdown by Marital Status</h5>
+                            <div class="table-responsive mb-4">
+                                <table class="table table-hover table-striped">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th scope="col">Marital Status</th>
+                                            <th scope="col">Number of Officers</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in marital_status_breakdown %}
+                                        <tr>
+                                            <td>{{ item.marital_status|default:"N/A" }}</td>
+                                            <td>{{ item.count }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if rank_breakdown %}
+                    <h5 class="text-secondary mt-4 mb-3"><i class="fas fa-sitemap me-2"></i>Breakdown by Rank</h5>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-hover table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col">Rank</th>
+                                    <th scope="col">Number of Officers</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in rank_breakdown %}
+                                <tr>
+                                    <td>{{ item.rank|default:"N/A" }}</td>
+                                    <td>{{ item.count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+
+                {% if age_group_breakdown %}
+                    <h5 class="text-secondary mt-4 mb-3"><i class="fas fa-chart-pie me-2"></i>Breakdown by Age Group</h5>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-hover table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col">Age Group</th>
+                                    <th scope="col">Number of Officers</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in age_group_breakdown %}
+                                <tr>
+                                    <td>{{ item.age_group|default:"N/A" }}</td>
+                                    <td>{{ item.count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+
+            {% else %}
+                <div class="alert alert-info text-center" role="alert">
+                    No officer data found for the selected filters.
+                </div>
+            {% endif %}
+
+            <div class="text-center mt-4">
+                <a href="{% url 'hrms:dashboard' %}" class="btn btn-outline-secondary rounded-pill">
+                    <i class="fas fa-arrow-circle-left me-2"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

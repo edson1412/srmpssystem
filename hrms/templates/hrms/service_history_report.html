@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} - Prison HRMS{% endblock %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+    <div class="card shadow-lg p-4" style="border-radius: 15px;">
+        <div class="card-body">
+            <h2 class="card-title text-center mb-4" style="color: #0056b3; font-weight: bold;">{{ title }}</h2>
+            <hr class="mb-4">
+
+            {# Filter Form #}
+            <form method="get" class="mb-4 p-3 border rounded-3 bg-light">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label for="id_year" class="form-label">Year:</label>
+                        <select name="year" id="id_year" class="form-select rounded-pill">
+                            {% for year in available_years %}
+                                <option value="{{ year }}" {% if year|stringformat:"s" == selected_year %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="id_month" class="form-label">Month:</label>
+                        <select name="month" id="id_month" class="form-select rounded-pill">
+                            <option value="">All Months</option>
+                            {% for month in months %}
+                                <option value="{{ month.value }}" {% if month.value|stringformat:"s" == selected_month %}selected{% endif %}>{{ month.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="id_history_type" class="form-label">History Type:</label>
+                        <select name="history_type" id="id_history_type" class="form-select rounded-pill">
+                            <option value="">All Types</option>
+                            {% for type_choice in history_type_choices %}
+                                <option value="{{ type_choice.value }}" {% if type_choice.value == selected_history_type %}selected{% endif %}>{{ type_choice.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="id_rank" class="form-label">Rank (Promotions):</label>
+                        <select name="rank" id="id_rank" class="form-select rounded-pill">
+                            <option value="">All Ranks</option>
+                            {% for rank in all_ranks %}
+                                <option value="{{ rank.pk }}" {% if rank.pk|stringformat:"s" == selected_rank_id %}selected{% endif %}>{{ rank.get_name_display }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="id_region" class="form-label">Region:</label>
+                        <select name="region" id="id_region" class="form-select rounded-pill">
+                            <option value="">All Regions</option>
+                            {% for region in regions %}
+                                <option value="{{ region.pk }}" {% if region.pk|stringformat:"s" == selected_region_id %}selected{% endif %}>{{ region.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="id_station" class="form-label">Prison Station:</label>
+                        <select name="station" id="id_station" class="form-select rounded-pill">
+                            <option value="">All Stations</option>
+                            {% for station in stations %}
+                                <option value="{{ station.pk }}" {% if station.pk|stringformat:"s" == selected_station_id %}selected{% endif %}>{{ station.name }} ({{ station.region.name }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 text-end">
+                        <button type="submit" class="btn btn-primary rounded-pill me-2">
+                            <i class="fas fa-filter me-1"></i> Generate Report
+                        </button>
+                        <a href="{% url 'hrms:service_history_report' %}" class="btn btn-outline-secondary rounded-pill">
+                            <i class="fas fa-redo me-1"></i> Reset Filters
+                        </a>
+                    </div>
+                </div>
+            </form>
+
+            {# Report Summary #}
+            <h4 class="text-primary mt-5 mb-3"><i class="fas fa-history me-2"></i>Service History Overview</h4>
+            {% if total_records > 0 %}
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card text-white bg-dark mb-3 rounded-3 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-list-ol me-2"></i>Total Service History Records</h5>
+                                <p class="card-text fs-4">{{ total_records }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if promotions_summary and selected_history_type != 'transfer' %}
+                    <h5 class="text-secondary mt-4 mb-3"><i class="fas fa-arrow-up me-2"></i>Promotions by New Rank</h5>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-hover table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col">New Rank</th>
+                                    <th scope="col">Number of Promotions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in promotions_summary %}
+                                <tr>
+                                    <td>{{ item.detail|default:"N/A" }}</td>
+                                    <td>{{ item.count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+
+                {% if transfers_summary and selected_history_type != 'promotion' %}
+                    <h5 class="text-secondary mt-4 mb-3"><i class="fas fa-exchange-alt me-2"></i>Transfers by New Station</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col">New Station (Region)</th>
+                                    <th scope="col">Number of Transfers</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in transfers_summary %}
+                                <tr>
+                                    <td>{{ item.detail|default:"N/A" }}</td>
+                                    <td>{{ item.count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+
+            {% else %}
+                <div class="alert alert-info text-center" role="alert">
+                    No service history data found for the selected filters.
+                </div>
+            {% endif %}
+
+            <div class="text-center mt-4">
+                <a href="{% url 'hrms:dashboard' %}" class="btn btn-outline-secondary rounded-pill">
+                    <i class="fas fa-arrow-circle-left me-2"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

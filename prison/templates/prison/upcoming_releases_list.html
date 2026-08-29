@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Upcoming Releases Report</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            background-color: #f8f9fa; /* Light gray background */
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #007bff; /* Primary color line */
+        }
+        .header h1 {
+            margin-bottom: 5px;
+            color: #007bff; /* Primary color for main title */
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .header .subtitle {
+            font-size: 16px;
+            color: #555;
+            margin-top: 5px;
+        }
+        .report-period {
+            text-align: center;
+            margin-bottom: 25px;
+            font-weight: bold;
+            font-size: 16px;
+            color: #444;
+            padding: 10px;
+            background-color: #e9ecef; /* Slightly darker background for period */
+            border-radius: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* Subtle shadow for table */
+            border-radius: 8px;
+            overflow: hidden; /* Ensures border-radius applies to children */
+        }
+        table th, table td {
+            padding: 12px 15px;
+            border: 1px solid #dee2e6; /* Bootstrap-like border color */
+            text-align: left;
+        }
+        table thead th {
+            background-color: #007bff; /* Primary color for header */
+            color: #ffffff; /* White text for header */
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 14px;
+        }
+        table tbody tr:nth-child(even) {
+            background-color: #f2f2f2; /* Zebra striping */
+        }
+        table tbody tr:hover {
+            background-color: #e2f2ff; /* Light blue on hover */
+            cursor: pointer;
+        }
+        .footer {
+            margin-top: 40px;
+            font-size: 13px;
+            text-align: center;
+            color: #777;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Malawi Prison Service</h1>
+        <div class="subtitle">Upcoming Releases Report</div>
+    </div>
+    
+    <div class="report-period">
+        Report Period: {{ today|date:"Y-m-d" }} to {{ next_month|date:"Y-m-d" }}
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Prisoner No.</th>
+                <th>Name</th>
+                <th>Prison Station</th>
+                <th>Release Date</th>
+                <th>Original Sentence</th>
+                <th>Offense</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for release in releases %}
+            <tr>
+                <td>{{ release.prisoner.prisoner_number }}</td>
+                <td>{{ release.prisoner.full_name }}</td>
+                <td>{{ release.prisoner.prison_station.name }}</td>
+                <td>{{ release.date_of_release_on_remission|date:"Y-m-d" }}</td>
+                <td>{{ release.sentence }} months</td>
+                <td>{{ release.offense|truncatechars:50 }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="text-align: center;">No upcoming releases found for this period.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <div class="footer">
+        Generated on {{ today|date:"Y-m-d" }} by {{ user.get_full_name }} ({{ user.get_rank_display }})
+    </div>
+</body>
+</html>

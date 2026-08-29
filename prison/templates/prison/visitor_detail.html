@@ -1,0 +1,103 @@
+{% extends "prison/base.html" %}
+
+{% block title %}Visitor Details - {{ visitor.full_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-color: rgba(173, 216, 230, 0.6); /* Light blue with 60% opacity */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Visitor Details: {{ visitor.full_name }}</h1>
+        <div>
+            <a href="{% url 'visitor_edit' visitor.id %}" class="btn btn-outline-primary me-2">
+                <i class="bi bi-pencil-square"></i> Edit Visitor
+            </a>
+            {% if not visitor.is_approved %}
+            <a href="{% url 'visitor_approve' visitor.id %}" class="btn btn-outline-success me-2">
+                <i class="bi bi-check-circle"></i> Approve Visitor
+            </a>
+            {% endif %}
+            <a href="{% url 'visitor_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to List
+            </a>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Visitor Information</h5>
+        </div>
+        <div class="card-body">
+            <table class="table table-sm table-borderless">
+                <tr>
+                    <th>Full Name:</th>
+                    <td>{{ visitor.full_name }}</td>
+                </tr>
+                <tr>
+                    <th>ID Number:</th>
+                    <td>{{ visitor.id_number }}</td>
+                </tr>
+                <tr>
+                    <th>Relationship to Prisoner:</th>
+                    <td>{{ visitor.relationship }}</td>
+                </tr>
+                <tr>
+                    <th>Prisoner Visited:</th>
+                    <td><a href="{% url 'prisoner_detail' visitor.prisoner.id %}">{{ visitor.prisoner.full_name }} ({{ visitor.prisoner.prisoner_number }})</a></td>
+                </tr>
+                <tr>
+                    <th>Contact Number:</th>
+                    <td>{{ visitor.contact_number|default:"N/A" }}</td>
+                </tr>
+                <tr>
+                    <th>Address:</th>
+                    <td>{{ visitor.address|default:"N/A" }}</td>
+                </tr>
+                <tr>
+                    <th>Visit Date:</th>
+                    <td>{{ visitor.visit_date|date:"Y-m-d" }} {{ visitor.visit_date|time:"H:i" }}</td>
+                </tr>
+                <tr>
+                    <th>Purpose of Visit:</th>
+                    <td>{{ visitor.purpose_of_visit|default:"N/A" }}</td>
+                </tr>
+                <tr>
+                    <th>Approved:</th>
+                    <td>
+                        {% with visitor=is_approved %}
+                            {% if visitor %}
+                                <span class="badge bg-success">Yes</span>
+                            {% else %}
+                                 <span class="badge bg-warning">No</span>
+                            {% endif %}
+                        {% endwith %}
+                    </td>
+                </tr>
+                {% if visitor.approved_by %}
+                <tr>
+                    <th>Approved By:</th>
+                    <td>{{ visitor.approved_by.get_full_name|default:visitor.approved_by.username }}</td>
+                </tr>
+                {% endif %}
+                <tr>
+                    
+                </tr>
+                <tr>
+                    <th>Created At:</th>
+                    <td>{{ visitor.created_at|date:"Y-m-d H:i" }}</td>
+                </tr>
+                <tr>
+                    <th>Last Updated:</th>
+                    <td>{{ visitor.updated_at|date:"Y-m-d H:i" }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

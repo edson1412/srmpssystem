@@ -1,0 +1,362 @@
+{% extends 'training_base.html' %}
+{% load static %}
+
+{% block training_title %}Training Dashboard - Prison HRMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .training-dashboard-shell {
+        position: relative;
+        min-height: calc(100vh - 140px);
+        padding: 2rem 1.5rem 3rem;
+        background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 100%);
+    }
+
+    .training-dashboard-shell::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at 16% 10%, rgba(59, 130, 246, 0.12), transparent 25%),
+                    radial-gradient(circle at 84% 20%, rgba(34, 197, 94, 0.12), transparent 22%),
+                    radial-gradient(circle at 50% 90%, rgba(236, 72, 153, 0.08), transparent 18%);
+        pointer-events: none;
+        opacity: 0.9;
+    }
+
+    .dashboard-panel {
+        position: relative;
+        z-index: 1;
+        max-width: 1280px;
+        margin: 0 auto;
+    }
+
+    .hero-card {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr;
+        gap: 1.5rem;
+        background: linear-gradient(135deg, #4338ca, #2563eb);
+        color: #fff;
+        border-radius: 1.75rem;
+        padding: 2rem;
+        overflow: hidden;
+        box-shadow: 0 35px 80px rgba(15, 23, 42, 0.18);
+        margin-bottom: 2rem;
+    }
+
+    .hero-card::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 340px;
+        height: 340px;
+        background: radial-gradient(circle, rgba(255,255,255,0.18), transparent 58%);
+        filter: blur(16px);
+        pointer-events: none;
+    }
+
+    .hero-copy h1 {
+        font-size: clamp(2.25rem, 4vw, 3.5rem);
+        line-height: 1.05;
+        margin-bottom: 1rem;
+    }
+
+    .hero-copy p {
+        max-width: 620px;
+        font-size: 1.05rem;
+        opacity: 0.92;
+        margin-bottom: 1.75rem;
+    }
+
+    .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    .hero-actions .btn {
+        min-width: 170px;
+    }
+
+    .hero-cta {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .hero-cta .metric {
+        background: rgba(255,255,255,0.12);
+        border: 1px solid rgba(255,255,255,0.18);
+        border-radius: 1rem;
+        padding: 1.25rem 1.5rem;
+        text-align: center;
+        color: #f8fafc;
+    }
+
+    .hero-cta .metric h3 {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .hero-cta .metric p {
+        margin: 0;
+        opacity: 0.9;
+    }
+
+    .overview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1.25rem;
+        margin-bottom: 1.75rem;
+    }
+
+    .overview-card {
+        background: #fff;
+        border-radius: 1.25rem;
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+        padding: 1.5rem;
+        border: 1px solid rgba(226, 232, 240, 0.95);
+    }
+
+    .overview-card .label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        margin-bottom: 0.75rem;
+    }
+
+    .overview-card .value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #111827;
+    }
+
+    .overview-card .subtitle {
+        margin-top: 0.65rem;
+        color: #475569;
+        font-size: 0.95rem;
+    }
+
+    .panel-columns {
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: 1.15fr 0.85fr;
+    }
+
+    .panel-columns .section-card {
+        border-radius: 1.5rem;
+    }
+
+    .section-title {
+        font-size: 1.15rem;
+        font-weight: 700;
+        margin-bottom: 1.25rem;
+    }
+
+    .course-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1rem;
+    }
+
+    .course-card {
+        background: #ffffff;
+        border-radius: 1.25rem;
+        padding: 1.4rem;
+        border: 1px solid rgba(226, 232, 240, 1);
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .course-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 22px 48px rgba(15, 23, 42, 0.12);
+    }
+
+    .course-card h5 {
+        margin-bottom: 0.5rem;
+        font-size: 1.05rem;
+    }
+
+    .course-card .meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+    }
+
+    .course-card .course-code {
+        color: #475569;
+        font-size: 0.92rem;
+    }
+
+    .course-card .badge {
+        font-size: 0.78rem;
+        padding: 0.45rem 0.75rem;
+    }
+
+    .course-card p {
+        margin-bottom: 0;
+        color: #64748b;
+        font-size: 0.94rem;
+        line-height: 1.6;
+    }
+
+    .recent-list {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .recent-card {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.35rem 1.5rem;
+        background: #fff;
+        border-radius: 1.25rem;
+        border: 1px solid rgba(226, 232, 240, 1);
+        transition: background 0.2s ease;
+    }
+
+    .recent-card:hover {
+        background: #f8fafc;
+    }
+
+    .recent-card strong {
+        font-size: 1rem;
+    }
+
+    .recent-card .meta {
+        color: #475569;
+        font-size: 0.92rem;
+    }
+
+    @media (max-width: 992px) {
+        .hero-card {
+            grid-template-columns: 1fr;
+        }
+
+        .hero-cta {
+            grid-template-columns: 1fr;
+        }
+
+        .panel-columns {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block training_content %}
+<div class="training-dashboard-shell">
+    <div class="dashboard-panel">
+        <section class="hero-card">
+            <div class="hero-copy">
+                <span class="badge bg-white text-dark mb-3 d-inline-flex align-items-center gap-2">
+                    <i class="fas fa-graduation-cap"></i>
+                    Training Wing Overview
+                </span>
+                <h1>Empower training, track progress, and graduate with confidence.</h1>
+                <p>One place to review every intake, recruit status, course performance and graduation readiness for the training wing.</p>
+                <div class="hero-actions">
+                    <a href="{% url 'hrms:intake_create' %}" class="btn btn-light btn-lg text-primary">
+                        <i class="fas fa-plus me-2"></i>New Intake
+                    </a>
+                    <a href="{% url 'hrms:course_list' %}" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-book-open me-2"></i>View Courses
+                    </a>
+                </div>
+            </div>
+            <div class="hero-cta">
+                <div class="metric">
+                    <h3>{{ total_intakes }}</h3>
+                    <p>Intakes</p>
+                </div>
+                <div class="metric">
+                    <h3>{{ total_recruits }}</h3>
+                    <p>Recruits</p>
+                </div>
+                <div class="metric">
+                    <h3>{{ active_recruits }}</h3>
+                    <p>Active</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="overview-grid">
+            <article class="overview-card">
+                <div class="label">Active Intakes</div>
+                <div class="value">{{ active_intakes }}</div>
+                <p class="subtitle">Currently running intake batches.</p>
+            </article>
+            <article class="overview-card">
+                <div class="label">Graduated / Completed</div>
+                <div class="value">{{ completed_recruits }}</div>
+                <p class="subtitle">Total recruits that completed training.</p>
+            </article>
+            <article class="overview-card">
+                <div class="label">Failed Recruits</div>
+                <div class="value">{{ failed_recruits }}</div>
+                <p class="subtitle">Recruits who did not meet graduation requirements.</p>
+            </article>
+        </div>
+
+        <div class="panel-columns">
+            <section class="section-card">
+                <div class="section-title">Active Courses</div>
+                {% if courses %}
+                    <div class="course-grid">
+                        {% for course in courses %}
+                            <div class="course-card">
+                                <div class="meta">
+                                    <span class="course-code">{{ course.course_code }}</span>
+                                    {% if course.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    {% endif %}
+                                </div>
+                                <h5>{{ course.name }}</h5>
+                                <p>{{ course.description|truncatechars:110 }}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted">No training courses are available right now.</p>
+                {% endif %}
+            </section>
+
+            <section class="section-card">
+                <div class="section-title">Recent Activity</div>
+                <div class="recent-list">
+                    {% if recent_intakes %}
+                        {% for intake in recent_intakes %}
+                            <a href="{% url 'hrms:intake_detail' pk=intake.pk %}" class="recent-card text-decoration-none text-dark">
+                                <div>
+                                    <strong>{{ intake.get_display_name }}</strong>
+                                    <div class="meta">{{ intake.year }} · {{ intake.recruits.count }} recruits</div>
+                                </div>
+                                <span class="badge bg-primary">View</span>
+                            </a>
+                        {% endfor %}
+                    {% endif %}
+                    {% if recent_recruits %}
+                        {% for recruit in recent_recruits|slice:":4" %}
+                            <a href="{% url 'hrms:recruit_detail' pk=recruit.pk %}" class="recent-card text-decoration-none text-dark">
+                                <div>
+                                    <strong>{{ recruit.full_name }}</strong>
+                                    <div class="meta">{{ recruit.intake.get_display_name }} · {{ recruit.get_status_display }}</div>
+                                </div>
+                                <span class="badge bg-secondary">Recruit</span>
+                            </a>
+                        {% endfor %}
+                    {% endif %}
+                    {% if not recent_intakes and not recent_recruits %}
+                        <p class="text-muted mb-0">No recent training activity to show.</p>
+                    {% endif %}
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+{% endblock %}

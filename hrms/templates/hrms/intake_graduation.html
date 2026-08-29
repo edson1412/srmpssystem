@@ -1,0 +1,123 @@
+{% extends 'training_base.html' %}
+{% load static %}
+
+{% block training_title %}Graduate Intake - {{ intake.get_display_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .intake-graduation-shell {
+        min-height: calc(100vh - 150px);
+        padding: 1.5rem;
+    }
+
+    .graduation-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(226, 232, 240, 1);
+        margin-bottom: 1.75rem;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+    }
+</style>
+{% endblock %}
+
+{% block training_content %}
+<div class="intake-graduation-shell">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 fw-bold">Graduate Intake</h1>
+            <p class="text-muted mb-0">Assign service numbers and complete graduation for {{ intake.get_display_name }}.</p>
+        </div>
+        <a href="{% url 'hrms:intake_detail' pk=intake.pk %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Intake
+        </a>
+    </div>
+
+    <div class="graduation-card">
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="border rounded-3 p-3 bg-light">
+                    <div class="text-uppercase text-muted small mb-2">Intake</div>
+                    <div class="fs-4 fw-bold">{{ intake.get_display_name }}</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded-3 p-3 bg-light">
+                    <div class="text-uppercase text-muted small mb-2">Graduates</div>
+                    <div class="fs-4 fw-bold">{{ total_graduates }}</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded-3 p-3 bg-light">
+                    <div class="text-uppercase text-muted small mb-2">Title</div>
+                    <div class="fs-4 fw-bold">{{ title }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="graduation-card">
+        <h2 class="h5 mb-3">Graduates Preview</h2>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-secondary">
+                    <tr>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th>Contact</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for graduate in graduates %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'hrms:recruit_detail' pk=graduate.pk %}" class="text-decoration-none">
+                                    {{ graduate.full_name }}
+                                </a>
+                            </td>
+                            <td>{{ graduate.get_status_display }}</td>
+                            <td>{{ graduate.contact_number }}</td>
+                            <td class="text-end"><span class="badge bg-info text-dark">Pending</span></td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-muted">No recruits available for graduation.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="graduation-card">
+        <h2 class="h5 mb-3">Graduation Details</h2>
+        <form method="post" id="graduation-form">
+            {% csrf_token %}
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label" for="{{ form.graduation_date.id_for_label }}">Graduation Date</label>
+                    {{ form.graduation_date }}
+                    {% for error in form.graduation_date.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="{{ form.ceremony_location.id_for_label }}">Ceremony Location</label>
+                    {{ form.ceremony_location }}
+                    {% for error in form.ceremony_location.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+            <button type="submit" class="btn btn-success btn-lg" {% if not total_graduates %}disabled{% endif %}>
+                <i class="fas fa-graduation-cap me-2"></i>Graduate Intake
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

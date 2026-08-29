@@ -1,0 +1,100 @@
+{% extends 'hrms/layouts/page.html' %}
+{% load static %}
+
+{% block title %}Disciplinary Cases - Prison HRMS{% endblock %}
+
+{% block page_title %}Disciplinary Cases{% endblock %}
+
+{% block page_description %}
+<p class="page-subtitle">
+    {% if officer_filter %}
+        Cases involving <strong>{{ officer_filter.full_name }}</strong>.
+    {% else %}
+        Organization-wide disciplinary records and resolution tracking.
+    {% endif %}
+</p>
+{% endblock %}
+
+{% block page_actions %}
+<a href="{% if officer_filter %}{% url 'hrms:officer_detail' service_number=officer_filter.service_number %}{% else %}{% url 'hrms:dashboard' %}{% endif %}" class="btn btn-outline-secondary btn-pill">
+    <i class="fas fa-arrow-left me-2"></i> Back
+</a>
+{% endblock %}
+
+{% block page_filters %}
+<form method="get" class="filter-bar w-100">
+    <div class="flex-grow-1">
+        <label for="case-search" class="visually-hidden">Search</label>
+        <input id="case-search" type="text" name="search" class="form-control" placeholder="Search by officer or offense..." value="{{ search_query|default:'' }}">
+    </div>
+    <div class="flex-grow-1">
+        <label for="action-filter" class="visually-hidden">Action Taken</label>
+        <select id="action-filter" name="action_taken" class="form-select">
+            <option value="">All Actions</option>
+            {% for value, label in disciplinary_cases.first.ACTION_TAKEN_CHOICES %}
+                <option value="{{ value }}" {% if value == action_taken_filter %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary btn-pill">
+        <i class="fas fa-filter me-2"></i> Filter
+    </button>
+</form>
+{% endblock %}
+
+{% block page_body %}
+<div class="surface-card table-modern">
+    {% if disciplinary_cases %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th scope="col">Officer</th>
+                        <th scope="col">Service No.</th>
+                        <th scope="col">Case Date</th>
+                        <th scope="col">Offense</th>
+                        <th scope="col">Description</th>
+                        <th scope="col">Action Taken</th>
+                        <th scope="col">Action Date</th>
+                        <th scope="col">Recorded By</th>
+                        <th scope="col" class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for case in disciplinary_cases %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'hrms:officer_detail' service_number=case.officer.service_number %}" class="link-underline fw-semibold">
+                                {{ case.officer.full_name }}
+                            </a>
+                        </td>
+                        <td>{{ case.officer.service_number }}</td>
+                        <td>{{ case.case_date|date:"M d, Y" }}</td>
+                        <td>{{ case.offense }}</td>
+                        <td>{{ case.description|truncatechars:50 }}</td>
+                        <td>{{ case.get_action_taken_display|default:"N/A" }}</td>
+                        <td>{{ case.action_date|date:"M d, Y"|default:"N/A" }}</td>
+                        <td>{{ case.recorded_by.get_full_name|default:"N/A" }}</td>
+                        <td>
+                            <div class="action-stack justify-content-end">
+                                <a href="{% url 'hrms:disciplinary_case_update' pk=case.pk %}" class="btn btn-outline-warning btn-sm btn-pill" title="Edit Case">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'hrms:disciplinary_case_delete' pk=case.pk %}" class="btn btn-outline-danger btn-sm btn-pill" title="Delete Case">
+                                    <i class="fas fa-trash-alt"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <i class="fas fa-gavel"></i>
+            <p>No disciplinary cases found{% if officer_filter %} for {{ officer_filter.full_name }}{% endif %}.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

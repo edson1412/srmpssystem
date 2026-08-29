@@ -1,0 +1,358 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Malawi Prison Service Management System{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- MPS Dashboard Styles -->
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div id="wrapper">
+        <!-- Sidebar Overlay for mobile -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <!-- ===== SIDEBAR ===== -->
+        <nav id="sidebar-wrapper">
+            <div class="sidebar-brand">
+                <img src="{% static 'images/logo.png' %}" alt="MPS Logo">
+                <div class="sidebar-brand-text">
+                    Malawi Prison Service
+                    <small>Management System</small>
+                </div>
+            </div>
+
+            <div class="sidebar-user">
+                <div class="user-name">{{ request.user.get_full_name|default:request.user.username }}</div>
+                <div class="user-role">{{ request.user.get_role_display|default:"Staff" }}</div>
+                {% if request.user.prison_station %}
+                <div class="user-station"><i class="bi bi-building me-1"></i>{{ request.user.prison_station.name }}</div>
+                {% endif %}
+            </div>
+
+            <div class="sidebar-nav">
+                <!-- Dashboard -->
+                <a href="{% url 'dashboard' %}" class="nav-link {% if request.path == '/' %}active{% endif %}">
+                    <i class="bi bi-speedometer2"></i> Dashboard
+                </a>
+
+                <!-- HRMS/Officers Module -->
+                {% if request.user.can_access_hrms %}
+                <div class="nav-section-title">Officers Management</div>
+                <a href="{% url 'hrms:dashboard' %}" class="nav-link hrms-link {% if '/hr/' in request.path %}active{% endif %}">
+                    <i class="bi bi-people"></i> HRMS Dashboard
+                </a>
+                
+                {% if request.user.is_national_level or request.user.is_regional_level or request.user.is_station_hr %}
+                <a href="{% url 'hrms:officer_list' %}" class="nav-link hrms-link {% if 'officer' in request.path %}active{% endif %}">
+                    <i class="bi bi-person-vcard"></i> Officers Directory
+                </a>
+                {% endif %}
+                
+                {% if request.user.can_access_training %}
+                <a href="{% url 'hrms:training_dashboard' %}" class="nav-link hrms-link {% if 'training' in request.path %}active{% endif %}">
+                    <i class="bi bi-mortarboard"></i> Training Wing
+                </a>
+                {% endif %}
+                
+                {% if request.user.is_ict_personnel %}
+                <a href="{% url 'hrms:ict_dashboard' %}" class="nav-link hrms-link {% if 'ict' in request.path %}active{% endif %}">
+                    <i class="bi bi-gear"></i> ICT Management
+                </a>
+                {% endif %}
+                {% endif %}
+
+                <!-- Prison/Inmates Module -->
+                {% if request.user.can_access_prison %}
+                <div class="nav-section-title">Inmates Management</div>
+                
+                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_officer_in_charge or request.user.is_station_officer %}
+                <a href="{% url 'release_hub' %}" class="nav-link prison-link {% if 'release_hub' in request.path %}active{% endif %}">
+                    <i class="bi bi-box-arrow-right"></i> Release Hub
+                </a>
+                {% endif %}
+
+                <div class="nav-item">
+                    <a class="nav-link prison-link {% if 'prisoner' in request.path and 'fingerprint' not in request.path %}active{% endif %}" data-bs-toggle="collapse" href="#prisonersMenu" role="button" aria-expanded="{% if 'prisoner' in request.path and 'fingerprint' not in request.path %}true{% else %}false{% endif %}">
+                        <i class="bi bi-people"></i> Prisoners
+                        <span class="nav-arrow"><i class="bi bi-chevron-down"></i></span>
+                    </a>
+                    <div class="submenu collapse {% if 'prisoner' in request.path and 'fingerprint' not in request.path %}show{% endif %}" id="prisonersMenu">
+                        <a href="{% url 'prisoner_list' %}" class="nav-link {% if 'prisoner_list' in request.path %}active{% endif %}">
+                            <i class="bi bi-list-ul"></i> All Prisoners
+                        </a>
+                        {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception %}
+                        <a href="{% url 'add_prisoner' %}" class="nav-link {% if 'add_prisoner' in request.path %}active{% endif %}">
+                            <i class="bi bi-plus-circle"></i> Add Prisoner
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'extended_prisoner_search' %}" class="nav-link {% if 'extended' in request.path %}active{% endif %}">
+                            <i class="bi bi-search"></i> Advanced Search
+                        </a>
+                    </div>
+                </div>
+
+                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_visitor_attendant %}
+                <div class="nav-item">
+                    <a class="nav-link prison-link {% if 'visitor' in request.path %}active{% endif %}" data-bs-toggle="collapse" href="#visitorsMenu" role="button" aria-expanded="{% if 'visitor' in request.path %}true{% else %}false{% endif %}">
+                        <i class="bi bi-person-lines-fill"></i> Visitors
+                        <span class="nav-arrow"><i class="bi bi-chevron-down"></i></span>
+                    </a>
+                    <div class="submenu collapse {% if 'visitor' in request.path %}show{% endif %}" id="visitorsMenu">
+                        <a href="{% url 'visitor_list' %}" class="nav-link {% if 'visitor_list' in request.path %}active{% endif %}">
+                            <i class="bi bi-list-ul"></i> All Visitors
+                        </a>
+                        {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_visitor_attendant %}
+                        <a href="{% url 'visitor_add' %}" class="nav-link {% if 'visitor_add' in request.path %}active{% endif %}">
+                            <i class="bi bi-plus-circle"></i> Add Visitor
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_medical_officer %}
+                <div class="nav-item">
+                    <a class="nav-link prison-link {% if 'medical' in request.path %}active{% endif %}" data-bs-toggle="collapse" href="#medicalMenu" role="button" aria-expanded="{% if 'medical' in request.path %}true{% else %}false{% endif %}">
+                        <i class="bi bi-heart-pulse"></i> Medical
+                        <span class="nav-arrow"><i class="bi bi-chevron-down"></i></span>
+                    </a>
+                    <div class="submenu collapse {% if 'medical' in request.path %}show{% endif %}" id="medicalMenu">
+                        <a href="{% url 'medical_record_list' %}" class="nav-link {% if 'medical_record_list' in request.path %}active{% endif %}">
+                            <i class="bi bi-list-ul"></i> All Records
+                        </a>
+                        {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_medical_officer %}
+                        <a href="{% url 'medical_record_add' %}" class="nav-link {% if 'medical_record_add' in request.path %}active{% endif %}">
+                            <i class="bi bi-plus-circle"></i> Add Record
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_station_officer %}
+                <div class="nav-item">
+                    <a class="nav-link prison-link {% if 'ration' in request.path %}active{% endif %}" data-bs-toggle="collapse" href="#rationMenu" role="button" aria-expanded="{% if 'ration' in request.path %}true{% else %}false{% endif %}">
+                        <i class="bi bi-journal-check"></i> Rations
+                        <span class="nav-arrow"><i class="bi bi-chevron-down"></i></span>
+                    </a>
+                    <div class="submenu collapse {% if 'ration' in request.path %}show{% endif %}" id="rationMenu">
+                        <a href="{% url 'ration_item_list' %}" class="nav-link {% if 'ration_item_list' in request.path %}active{% endif %}">
+                            <i class="bi bi-list-ul"></i> Manage Items
+                        </a>
+                        <a href="{% url 'record_consumption' %}" class="nav-link {% if 'record_consumption' in request.path %}active{% endif %}">
+                            <i class="bi bi-arrow-down-circle"></i> Record Consumption
+                        </a>
+                        <a href="{% url 'record_procurement' %}" class="nav-link {% if 'record_procurement' in request.path %}active{% endif %}">
+                            <i class="bi bi-arrow-up-circle"></i> Record Procurement
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Biometrics -->
+                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_station_officer %}
+                <div class="nav-item">
+                    <a class="nav-link prison-link {% if 'fingerprint' in request.path %}active{% endif %}" data-bs-toggle="collapse" href="#fingerprintMenu" role="button" aria-expanded="{% if 'fingerprint' in request.path %}true{% else %}false{% endif %}">
+                        <i class="bi bi-fingerprint"></i> Biometrics
+                        <span class="nav-badge"><i class="bi bi-dot"></i> Live</span>
+                        <span class="nav-arrow"><i class="bi bi-chevron-down"></i></span>
+                    </a>
+                    <div class="submenu collapse {% if 'fingerprint' in request.path %}show{% endif %}" id="fingerprintMenu">
+                        <a href="{% url 'fingerprint_dashboard' %}" class="nav-link {% if 'fingerprint_dashboard' in request.path %}active{% endif %}">
+                            <i class="bi bi-speedometer2"></i> Dashboard
+                        </a>
+                        <a href="{% url 'fingerprint_identify' %}" class="nav-link {% if 'fingerprint_identify' in request.path %}active{% endif %}">
+                            <i class="bi bi-search"></i> Identify Prisoner
+                        </a>
+                        <a href="{% url 'fingerprint_match_history' %}" class="nav-link {% if 'fingerprint_match_history' in request.path %}active{% endif %}">
+                            <i class="bi bi-clock-history"></i> Match History
+                        </a>
+                        {% if request.user.is_super_admin %}
+                        <a href="{% url 'fingerprint_device_list' %}" class="nav-link {% if 'fingerprint_device_list' in request.path %}active{% endif %}">
+                            <i class="bi bi-usb-plug"></i> Devices
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                {% endif %}
+
+                <!-- Reports -->
+                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_station_officer %}
+                <div class="nav-section-title">Reports</div>
+                <a href="{% url 'lockup_summary' %}" class="nav-link {% if 'lockup_summary' in request.path %}active{% endif %}">
+                    <i class="bi bi-lock-fill"></i> Lockup Summary
+                </a>
+                <a href="{% url 'upcoming_releases_report' %}" class="nav-link {% if 'upcoming_releases_report' in request.path %}active{% endif %}">
+                    <i class="bi bi-calendar-check"></i> Upcoming Releases
+                </a>
+                {% if request.user.is_super_admin or request.user.is_prison_admin %}
+                <a href="{% url 'activity_log_list' %}" class="nav-link {% if 'activity_log_list' in request.path %}active{% endif %}">
+                    <i class="bi bi-clock-history"></i> Activity Log
+                </a>
+                {% endif %}
+                {% endif %}
+
+                <!-- Administration -->
+                {% if request.user.is_super_admin %}
+                <div class="nav-section-title">Administration</div>
+                <a href="{% url 'manage_prison_stations' %}" class="nav-link {% if 'manage_prison_stations' in request.path %}active{% endif %}">
+                    <i class="bi bi-building"></i> Prison Stations
+                </a>
+                <a href="{% url 'user_list' %}" class="nav-link {% if 'users' in request.path %}active{% endif %}">
+                    <i class="bi bi-person-gear"></i> User Management
+                </a>
+                {% endif %}
+            </div>
+
+            <!-- Sidebar Footer -->
+            <div class="sidebar-footer">
+                <a href="{% url 'change_password' %}" class="nav-link">
+                    <i class="bi bi-key"></i> Change Password
+                </a>
+                <a href="{% url 'logout' %}" class="nav-link">
+                    <i class="bi bi-box-arrow-right"></i> Logout
+                </a>
+            </div>
+        </nav>
+
+        <!-- ===== PAGE CONTENT ===== -->
+        <div id="page-content-wrapper">
+            <!-- Top Header -->
+            <header class="top-header">
+                <div class="header-left">
+                    <button class="sidebar-toggle-btn" id="sidebarToggle" aria-label="Toggle sidebar">
+                        <i class="bi bi-list"></i>
+                    </button>
+                    <div class="header-title">
+                        {% block page_title %}Dashboard{% endblock %}
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <!-- Notifications -->
+                    <div class="dropdown">
+                        <button class="header-btn notification-btn" id="notificationBtn" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications">
+                            <i class="bi bi-bell"></i>
+                            <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end notification-dropdown" aria-labelledby="notificationBtn">
+                            <div class="notification-header">
+                                <h6>Notifications</h6>
+                                <button class="btn btn-sm btn-link mark-all-read-btn" id="markAllReadBtn">Mark all as read</button>
+                            </div>
+                            <div class="notification-list" id="notificationList">
+                                <div class="notification-loading">
+                                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                                    <span>Loading notifications...</span>
+                                </div>
+                            </div>
+                            <div class="notification-footer">
+                                <a href="#" class="btn btn-sm btn-outline-primary view-all-btn">View All</a>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- User Dropdown -->
+                    <div class="dropdown">
+                        <a href="#" class="user-dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                            <div class="user-avatar">{{ request.user.get_short_name|default:request.user.username|slice:":1"|upper }}</div>
+                            <div class="user-info-text d-none d-sm-block">
+                                <div class="name">{{ request.user.get_short_name|default:request.user.username }}</div>
+                                <div class="role">{{ request.user.get_role_display|default:"Staff" }}</div>
+                            </div>
+                            <i class="bi bi-chevron-down text-muted ms-1" style="font-size: 0.7rem;"></i>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 mt-2" style="min-width: 200px; border-radius: 10px; padding: 6px;">
+                            <li><span class="dropdown-item-text text-muted small">{{ request.user.get_full_name|default:request.user.username }}</span></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{% url 'user_profile' %}"><i class="bi bi-person me-2"></i>Profile</a></li>
+                            <li><a class="dropdown-item" href="{% url 'change_password' %}"><i class="bi bi-key me-2"></i>Change Password</a></li>
+                            <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Messages -->
+            {% if messages %}
+            <div class="container-fluid px-4 pt-3" style="max-width: 1400px;">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    <i class="bi bi-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}x-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Main Content -->
+            <div class="main-content">
+                {% block content %}{% endblock %}
+            </div>
+
+            <!-- Footer -->
+            <footer class="app-footer">
+                <div class="container">
+                    <p class="mb-0">© {% now "Y" %} Malawi Prison Service Management System. All rights reserved.</p>
+                    <p class="mb-0 small">Designed for efficient prison and officer management</p>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JavaScript -->
+    <script src="{% static 'js/scripts.js' %}"></script>
+    
+    <script>
+        // Sidebar Toggle
+        document.getElementById('sidebarToggle').addEventListener('click', function() {
+            document.body.classList.toggle('sidebar-collapsed');
+            document.getElementById('sidebarOverlay').classList.toggle('show');
+        });
+
+        // Mobile sidebar close
+        document.getElementById('sidebarOverlay').addEventListener('click', function() {
+            document.body.classList.remove('sidebar-collapsed');
+            this.classList.remove('show');
+        });
+
+        // Mobile menu toggle for header button
+        {% if request.user.is_authenticated %}
+        // Load notifications
+        function loadNotifications() {
+            fetch('/notifications/count/')
+                .then(response => response.json())
+                .then(data => {
+                    const badge = document.getElementById('notificationBadge');
+                    if (data.count > 0) {
+                        badge.style.display = 'flex';
+                        badge.textContent = data.count;
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                })
+                .catch(error => console.error('Error loading notifications:', error));
+        }
+
+        // Load notifications on page load
+        loadNotifications();
+        
+        // Refresh notifications every 30 seconds
+        setInterval(loadNotifications, 30000);
+        {% endif %}
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

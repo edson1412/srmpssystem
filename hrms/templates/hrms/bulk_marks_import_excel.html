@@ -1,0 +1,88 @@
+{% extends 'training_base.html' %}
+{% load static %}
+
+{% block training_title %}Import Marks via Excel - Prison HRMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .import-excel-shell {
+        min-height: calc(100vh - 150px);
+        padding: 1.5rem;
+    }
+
+    .import-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(226, 232, 240, 1);
+        margin-bottom: 1.75rem;
+    }
+</style>
+{% endblock %}
+
+{% block training_content %}
+<div class="import-excel-shell">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 fw-bold">Import Marks via Excel</h1>
+            <p class="text-muted mb-0">Upload an Excel file for bulk recruit marks for {{ intake.get_display_name }}.</p>
+        </div>
+        <a href="{% url 'hrms:intake_detail' pk=intake.pk %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Intake
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="import-card">
+        <form method="post" enctype="multipart/form-data" action="?intake_pk={{ intake.pk }}">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label for="excel_file" class="form-label">Excel File (.xlsx or .xls)</label>
+                <input type="file" name="excel_file" id="excel_file" accept=".xlsx,.xls" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-file-excel me-2"></i>Upload Excel
+            </button>
+        </form>
+    </div>
+
+    <div class="import-card">
+        <h2 class="h5 mb-3">Excel Import Instructions</h2>
+        <ul>
+            <li>Include columns: <strong>recruit_training_id</strong>, <strong>course_code</strong>, <strong>obtained_marks</strong>, <strong>exam_date</strong>.</li>
+            <li>Supported date formats: <strong>YYYY-MM-DD</strong>, <strong>DD/MM/YYYY</strong>, <strong>MM/DD/YYYY</strong>.</li>
+            <li>Marks must be numeric and within the course total mark range.</li>
+        </ul>
+    </div>
+
+    <div class="import-card">
+        <h2 class="h5 mb-3">Intake Summary</h2>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="border rounded-3 p-3 bg-light">
+                    <div class="text-uppercase text-muted small mb-2">Recruits</div>
+                    <div class="fs-4 fw-bold">{{ total_recruits }}</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded-3 p-3 bg-light">
+                    <div class="text-uppercase text-muted small mb-2">Active Courses</div>
+                    <div class="fs-4 fw-bold">{{ total_modules }}</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded-3 p-3 bg-light">
+                    <div class="text-uppercase text-muted small mb-2">Expected Rows</div>
+                    <div class="fs-4 fw-bold">{{ expected_rows }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

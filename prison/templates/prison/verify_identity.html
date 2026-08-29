@@ -1,0 +1,410 @@
+{% extends "prison/base.html" %}
+{% load static %}
+
+{% block page_title %}Verify Identity - {{ prisoner.full_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .verify-container {
+        background: #ffffff;
+        border-radius: 14px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        padding: 32px;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .prisoner-badge {
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 8px 16px;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 20px;
+    }
+
+    .scanner-status {
+        padding: 40px 20px;
+        border: 3px dashed #e2e8f0;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        min-height: 250px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .scanner-status.scanning {
+        border-color: #1a73e8;
+        background: rgba(26, 115, 232, 0.05);
+    }
+
+    .scanner-status.success {
+        border-color: #16a34a;
+        background: rgba(22, 163, 74, 0.05);
+    }
+
+    .scanner-status.error {
+        border-color: #dc2626;
+        background: rgba(220, 38, 38, 0.05);
+    }
+
+    .scanner-status .icon {
+        font-size: 4rem;
+        color: #94a3b8;
+        transition: all 0.3s ease;
+    }
+
+    .scanner-status.scanning .icon {
+        color: #1a73e8;
+        animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    .scanner-status.success .icon {
+        color: #16a34a;
+    }
+
+    .scanner-status.error .icon {
+        color: #dc2626;
+    }
+
+    .spinner-icon {
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.1); opacity: 0.7; }
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .btn-verify {
+        padding: 12px 40px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #1a73e8;
+        border: none;
+        color: #fff;
+        transition: all 0.2s ease;
+        font-size: 1rem;
+        min-width: 200px;
+    }
+
+    .btn-verify:hover {
+        background: #1557b0;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(26, 115, 232, 0.3);
+    }
+
+    .btn-verify:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .btn-cancel {
+        padding: 10px 28px;
+        font-weight: 600;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        background: #fff;
+        transition: all 0.2s ease;
+    }
+
+    .btn-cancel:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+
+    .quality-meter {
+        width: 100%;
+        max-width: 300px;
+        margin: 16px auto;
+        height: 8px;
+        background: #e2e8f0;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .quality-meter .fill {
+        height: 100%;
+        background: linear-gradient(90deg, #dc2626, #f59e0b, #16a34a);
+        transition: width 0.5s ease;
+        width: 0%;
+        border-radius: 4px;
+    }
+
+    .info-box {
+        background: #f8fafc;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-top: 16px;
+        font-size: 0.8rem;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-align: left;
+    }
+
+    .info-box i {
+        color: #1a73e8;
+        font-size: 1.2rem;
+    }
+
+    .result-banner {
+        padding: 16px 20px;
+        border-radius: 10px;
+        margin-top: 16px;
+        display: none;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .result-banner.show {
+        display: flex;
+    }
+
+    .result-banner.success {
+        background: #dcfce7;
+        border: 1px solid #86efac;
+        color: #166534;
+    }
+
+    .result-banner.error {
+        background: #fee2e2;
+        border: 1px solid #fca5a5;
+        color: #991b1b;
+    }
+
+    .result-banner i {
+        font-size: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .verify-container {
+            padding: 16px;
+        }
+        .scanner-status {
+            min-height: 180px;
+            padding: 16px;
+        }
+        .scanner-status .icon {
+            font-size: 3rem;
+        }
+        .btn-verify {
+            min-width: 150px;
+            padding: 10px 24px;
+            font-size: 0.875rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h1 class="h3 fw-bold mb-1">Verify Identity</h1>
+            <div class="prisoner-badge">
+                <span class="number">{{ prisoner.prisoner_number }}</span>
+                <span class="name">{{ prisoner.full_name }}</span>
+                <span class="badge {% if prisoner.is_identity_verified %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                    {% if prisoner.is_identity_verified %}Verified{% else %}Unverified{% endif %}
+                </span>
+            </div>
+        </div>
+        <a href="{% url 'prisoner_detail' prisoner.id %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Profile
+        </a>
+    </div>
+
+    <div class="verify-container">
+        <form method="post" id="verifyForm">
+            {% csrf_token %}
+            
+            <div class="scanner-status" id="scannerStatus">
+                <i class="bi bi-fingerprint icon" id="scannerIcon"></i>
+                <h4 class="mt-3" id="statusTitle">Ready to Verify</h4>
+                <p class="text-muted" id="statusMessage">Place your finger on the scanner to verify identity</p>
+                
+                <div class="quality-meter" id="qualityMeter" style="display: none;">
+                    <div class="fill" id="qualityFill" style="width: 0%;"></div>
+                </div>
+                <span class="quality-label" id="qualityLabel" style="display: none;">Quality: 0%</span>
+            </div>
+
+            <!-- Result Banner -->
+            <div class="result-banner" id="resultBanner">
+                <i class="bi" id="resultIcon"></i>
+                <div>
+                    <strong id="resultTitle"></strong>
+                    <p class="mb-0" id="resultMessage"></p>
+                </div>
+            </div>
+
+            <!-- Hidden Inputs -->
+            <input type="hidden" name="fingerprint_data" id="fingerprint_data" value="">
+            <input type="hidden" name="quality_score" id="quality_score" value="">
+
+            <!-- Buttons -->
+            <div class="d-flex flex-wrap gap-3 justify-content-center mt-4">
+                <button type="button" class="btn-verify" id="verifyBtn">
+                    <i class="bi bi-scan me-2"></i> Scan & Verify
+                </button>
+                <a href="{% url 'prisoner_detail' prisoner.id %}" class="btn-cancel">
+                    <i class="bi bi-x-lg me-1"></i> Cancel
+                </a>
+            </div>
+
+            <!-- Info Box -->
+            <div class="info-box">
+                <i class="bi bi-info-circle"></i>
+                <div>
+                    <strong>Verification:</strong> This process checks the scanned fingerprint against the prisoner's registered fingerprint.
+                    {% if prisoner.is_identity_verified %}
+                        <br>⚠️ This prisoner is already verified. Re-verification will update the verification status.
+                    {% endif %}
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const verifyBtn = document.getElementById('verifyBtn');
+    const statusEl = document.getElementById('scannerStatus');
+    const statusTitle = document.getElementById('statusTitle');
+    const statusMessage = document.getElementById('statusMessage');
+    const scannerIcon = document.getElementById('scannerIcon');
+    const qualityMeter = document.getElementById('qualityMeter');
+    const qualityFill = document.getElementById('qualityFill');
+    const qualityLabel = document.getElementById('qualityLabel');
+    const fingerprintDataInput = document.getElementById('fingerprint_data');
+    const qualityScoreInput = document.getElementById('quality_score');
+    const resultBanner = document.getElementById('resultBanner');
+    const resultIcon = document.getElementById('resultIcon');
+    const resultTitle = document.getElementById('resultTitle');
+    const resultMessage = document.getElementById('resultMessage');
+
+    // Simulate fingerprint capture
+    function simulateCapture() {
+        return new Promise((resolve) => {
+            statusEl.className = 'scanner-status scanning';
+            scannerIcon.className = 'bi bi-fingerprint icon spinner-icon';
+            statusTitle.textContent = 'Scanning...';
+            statusMessage.textContent = 'Please hold your finger on the scanner';
+            verifyBtn.disabled = true;
+            qualityMeter.style.display = 'block';
+            qualityLabel.style.display = 'block';
+            resultBanner.classList.remove('show');
+
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 15 + 5;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                    
+                    const quality = Math.floor(Math.random() * 30) + 65;
+                    const template = btoa('fingerprint_data_' + Date.now() + '_' + Math.random().toString(36).substring(2));
+                    
+                    resolve({
+                        template: template,
+                        quality: quality
+                    });
+                }
+                qualityFill.style.width = Math.min(progress, 100) + '%';
+                qualityLabel.textContent = 'Quality: ' + Math.min(Math.floor(progress), 100) + '%';
+            }, 150);
+        });
+    }
+
+    // Handle verification
+    verifyBtn.addEventListener('click', async function() {
+        try {
+            let fingerprintData, quality;
+            
+            if (window.FingerprintScanner) {
+                const scanner = new window.FingerprintScanner();
+                const result = await new Promise((resolve, reject) => {
+                    scanner.capture({
+                        onSuccess: (r) => resolve(r),
+                        onError: (e) => reject(e)
+                    });
+                });
+                fingerprintData = result.template;
+                quality = result.quality || 80;
+            } else {
+                const result = await simulateCapture();
+                fingerprintData = result.template;
+                quality = result.quality;
+            }
+
+            // Set form data
+            fingerprintDataInput.value = fingerprintData;
+            qualityScoreInput.value = quality;
+
+            // Submit the form
+            document.getElementById('verifyForm').submit();
+
+        } catch (error) {
+            statusEl.className = 'scanner-status error';
+            scannerIcon.className = 'bi bi-x-circle-fill icon';
+            statusTitle.textContent = 'Verification Failed';
+            statusMessage.textContent = error.message || 'Failed to capture fingerprint';
+            verifyBtn.disabled = false;
+            qualityMeter.style.display = 'none';
+            qualityLabel.style.display = 'none';
+
+            resultBanner.className = 'result-banner error show';
+            resultIcon.className = 'bi bi-x-circle';
+            resultTitle.textContent = 'Error';
+            resultMessage.textContent = error.message || 'Please try again';
+        }
+    });
+
+    // Reset state on page load
+    function resetState() {
+        statusEl.className = 'scanner-status';
+        scannerIcon.className = 'bi bi-fingerprint icon';
+        statusTitle.textContent = 'Ready to Verify';
+        statusMessage.textContent = 'Place your finger on the scanner to verify identity';
+        verifyBtn.disabled = false;
+        qualityMeter.style.display = 'none';
+        qualityLabel.style.display = 'none';
+        qualityFill.style.width = '0%';
+    }
+
+    // If there was a previous verification attempt, show the result
+    {% if messages %}
+        {% for message in messages %}
+            {% if 'verified' in message.message|lower %}
+                resultBanner.className = 'result-banner success show';
+                resultIcon.className = 'bi bi-check-circle';
+                resultTitle.textContent = 'Verification Successful';
+                resultMessage.textContent = '{{ message }}';
+            {% elif 'failed' in message.message|lower %}
+                resultBanner.className = 'result-banner error show';
+                resultIcon.className = 'bi bi-x-circle';
+                resultTitle.textContent = 'Verification Failed';
+                resultMessage.textContent = '{{ message }}';
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+});
+</script>
+{% endblock %}

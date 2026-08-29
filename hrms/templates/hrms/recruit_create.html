@@ -1,0 +1,644 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Add Recruit - Prison HRMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .recruit-create-shell {
+        position: relative;
+        min-height: calc(100vh - 200px);
+        padding: 1rem;
+    }
+
+    .recruit-create-shell::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at top left, rgba(74,108,247,0.1), transparent 50%),
+                    radial-gradient(circle at 80% 20%, rgba(34,197,94,0.1), transparent 45%);
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    .recruit-create-content {
+        position: relative;
+        z-index: 1;
+    }
+
+    .page-header {
+        background: linear-gradient(135deg, #111827, #1f2937);
+        color: #fff;
+        border-radius: 1.5rem;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 25px 60px rgba(15, 23, 42, 0.45);
+    }
+
+    .form-section {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        border: 1px solid rgba(0,0,0,0.06);
+        margin-bottom: 2rem;
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .section-title i {
+        color: var(--primary-color);
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-control, .form-select {
+        border: 2px solid #e5e7eb;
+        border-radius: 0.5rem;
+        padding: 0.75rem 1rem;
+        transition: all 0.2s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .btn-primary {
+        background: var(--primary-color);
+        border: none;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        border-radius: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-dark);
+        transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+        background: #6b7280;
+        border: none;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        border-radius: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+        background: #4b5563;
+        transform: translateY(-1px);
+    }
+
+    .required-field {
+        color: #ef4444;
+    }
+
+    .help-text {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+
+    .alert {
+        border-radius: 0.75rem;
+        border: none;
+        padding: 1rem 1.5rem;
+    }
+
+    .alert-info {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .alert-warning {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .progress-indicator {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+        position: relative;
+    }
+
+    .progress-indicator::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: #e5e7eb;
+        z-index: 0;
+    }
+
+    .progress-step {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #e5e7eb;
+        color: #6b7280;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        position: relative;
+        z-index: 1;
+    }
+
+    .progress-step.active {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .progress-step.completed {
+        background: #10b981;
+        color: white;
+    }
+
+    .intake-info {
+        background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        border: 2px solid #0ea5e9;
+        margin-bottom: 2rem;
+    }
+
+    .intake-details {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+    }
+
+    .intake-name {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #0c4a6e;
+        margin-bottom: 0.5rem;
+    }
+
+    .intake-meta {
+        color: #0369a1;
+        font-size: 0.875rem;
+    }
+
+    .course-preview {
+        background: #f9fafb;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        border: 1px solid #e5e7eb;
+        margin-top: 0.5rem;
+    }
+
+    .course-name {
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 0.25rem;
+    }
+
+    .course-details {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+
+    .avatar-preview {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        font-weight: 600;
+        margin: 0 auto 1rem;
+        border: 3px solid #e5e7eb;
+    }
+
+    .validation-feedback {
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+
+    .validation-feedback.valid {
+        color: #059669;
+    }
+
+    .validation-feedback.invalid {
+        color: #dc2626;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="recruit-create-shell">
+    <div class="recruit-create-content">
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="display-6 fw-bold mb-3">
+                        <i class="fas fa-user-plus me-3"></i>Add New Recruit
+                    </h1>
+                    <p class="lead mb-0 opacity-90">
+                        Register a new recruit for the {{ intake.get_display_name }} training program.
+                    </p>
+                </div>
+                <div>
+                    <a href="{% url 'hrms:intake_detail' intake.pk %}" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Intake
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Indicator -->
+        <div class="progress-indicator">
+            <div class="progress-step active">1</div>
+            <div class="progress-step">2</div>
+            <div class="progress-step">3</div>
+        </div>
+
+        <!-- Intake Information -->
+        <div class="intake-info">
+            <div class="intake-details">
+                <div>
+                    <div class="intake-name">{{ intake.get_display_name }}</div>
+                    <div class="intake-meta">
+                        <i class="fas fa-calendar me-2"></i>{{ intake.start_date|date:"M d, Y" }} - {{ intake.pass_out_date|date:"M d, Y" }}
+                        <span class="mx-2">•</span>
+                        <i class="fas fa-users me-2"></i>{{ intake.recruits.count }} recruits enrolled
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Section -->
+        <div class="form-section">
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger mb-4">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    {% for error in form.non_field_errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <form method="post" enctype="multipart/form-data" id="recruit-form">
+                {% csrf_token %}
+
+                <!-- Personal Information -->
+                <div class="mb-4">
+                    <h3 class="section-title">
+                        <i class="fas fa-user"></i>
+                        Personal Information
+                    </h3>
+                    
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="{{ form.first_name.id_for_label }}" class="form-label">
+                                First Name <span class="required-field">*</span>
+                            </label>
+                            {{ form.first_name }}
+                            {% if form.first_name.errors %}
+                                <div class="validation-feedback invalid">
+                                    {% for error in form.first_name.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label for="{{ form.middle_name.id_for_label }}" class="form-label">
+                                Middle Name
+                            </label>
+                            {{ form.middle_name }}
+                            {% if form.middle_name.errors %}
+                                <div class="validation-feedback invalid">
+                                    {% for error in form.middle_name.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label for="{{ form.surname.id_for_label }}" class="form-label">
+                                Surname <span class="required-field">*</span>
+                            </label>
+                            {{ form.surname }}
+                            {% if form.surname.errors %}
+                                <div class="validation-feedback invalid">
+                                    {% for error in form.surname.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label for="{{ form.date_of_birth.id_for_label }}" class="form-label">
+                                Date of Birth <span class="required-field">*</span>
+                            </label>
+                            {{ form.date_of_birth }}
+                            {% if form.date_of_birth.errors %}
+                                <div class="validation-feedback invalid">
+                                    {% for error in form.date_of_birth.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="help-text">Must be between 18-60 years old</div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label for="{{ form.gender.id_for_label }}" class="form-label">
+                                Gender <span class="required-field">*</span>
+                            </label>
+                            {{ form.gender }}
+                            {% if form.gender.errors %}
+                                <div class="validation-feedback invalid">
+                                    {% for error in form.gender.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label for="{{ form.recruit_type.id_for_label }}" class="form-label">
+                                Recruit Type <span class="required-field">*</span>
+                            </label>
+                            {{ form.recruit_type }}
+                            {% if form.recruit_type.errors %}
+                                <div class="validation-feedback invalid">
+                                    {% for error in form.recruit_type.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Course Assignment -->
+                <div class="mb-4">
+                    <h3 class="section-title">
+                        <i class="fas fa-graduation-cap"></i>
+                        Course Assignment
+                    </h3>
+                    
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="{{ form.course.id_for_label }}" class="form-label">
+                                Training Course <span class="required-field">*</span>
+                            </label>
+                            {{ form.course }}
+                            {% if form.course.errors %}
+                                <div class="validation-feedback invalid">
+                                    {% for error in form.course.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                            <div id="course-preview" class="course-preview" style="display: none;">
+                                <div class="course-name"></div>
+                                <div class="course-details"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="{{ form.status.id_for_label }}" class="form-label">
+                                Initial Status <span class="required-field">*</span>
+                            </label>
+                            {{ form.status }}
+                            {% if form.status.errors %}
+                                <div class="validation-feedback invalid">
+                                    {% for error in form.status.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="help-text">New recruits typically start as "Enrolled"</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact Information -->
+                <div class="mb-4">
+                    <h3 class="section-title">
+                        <i class="fas fa-address-card"></i>
+                        Contact Information
+                    </h3>
+                    
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="{{ form.contact_number.id_for_label }}" class="form-label">
+                                Contact Number
+                            </label>
+                            {{ form.contact_number }}
+                            {% if form.contact_number.errors %}
+                                <div class="validation-feedback invalid">
+                                    {% for error in form.contact_number.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="help-text">Format: +265...</div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="{{ form.email.id_for_label }}" class="form-label">
+                                Email Address
+                            </label>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                                <div class="validation-feedback invalid">
+                                    {% for error in form.email.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="help-text">Optional: for official communications</div>
+                        </div>
+                        
+                        <div class="col-12">
+                            <label for="{{ form.home_district.id_for_label }}" class="form-label">
+                                Home District
+                            </label>
+                            {{ form.home_district }}
+                            {% if form.home_district.errors %}
+                                <div class="validation-feedback invalid">
+                                    {% for error in form.home_district.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="help-text">District of origin for placement planning</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Name Preview -->
+                <div class="mb-4">
+                    <h3 class="section-title">
+                        <i class="fas fa-eye"></i>
+                        Preview
+                    </h3>
+                    
+                    <div class="text-center">
+                        <div id="avatar-preview" class="avatar-preview">
+                            <span id="avatar-text">?</span>
+                        </div>
+                        <div class="fs-4 fw-bold" id="name-preview">Name will appear here</div>
+                        <div class="text-muted" id="training-id-preview">Training ID will be auto-generated</div>
+                    </div>
+                </div>
+
+                <!-- Information Alert -->
+                <div class="alert alert-info mb-4">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Important Information:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>Training ID will be automatically generated upon saving</li>
+                        <li>Service number will be assigned upon graduation</li>
+                        <li>All fields marked with <span class="required-field">*</span> are required</li>
+                        <li>Recruit must be between 18-60 years old</li>
+                    </ul>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex justify-content-between">
+                    <a href="{% url 'hrms:intake_detail' intake.pk %}" class="btn btn-secondary btn-lg">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-save me-2"></i>Create Recruit
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Form elements
+    const firstNameInput = document.getElementById('{{ form.first_name.id_for_label }}');
+    const middleNameInput = document.getElementById('{{ form.middle_name.id_for_label }}');
+    const surnameInput = document.getElementById('{{ form.surname.id_for_label }}');
+    const courseSelect = document.getElementById('{{ form.course.id_for_label }}');
+    const dateOfBirthInput = document.getElementById('{{ form.date_of_birth.id_for_label }}');
+    
+    // Preview elements
+    const avatarText = document.getElementById('avatar-text');
+    const namePreview = document.getElementById('name-preview');
+    const coursePreview = document.getElementById('course-preview');
+    const courseName = coursePreview.querySelector('.course-name');
+    const courseDetails = coursePreview.querySelector('.course-details');
+    
+    // Course data (would come from backend in real implementation)
+    const courses = {
+        {% for course in available_courses %}
+            '{{ course.pk }}': {
+                name: '{{ course.name }}',
+                type: '{{ course.get_course_type_display }}',
+                duration: '{{ course.duration_weeks }} weeks',
+                modules: '{{ course.modules.count }}'
+            },
+        {% endfor %}
+    };
+    
+    // Update name preview
+    function updateNamePreview() {
+        const firstName = firstNameInput.value.trim();
+        const middleName = middleNameInput.value.trim();
+        const surname = surnameInput.value.trim();
+        
+        if (firstName || surname) {
+            const fullName = [firstName, middleName, surname].filter(Boolean).join(' ');
+            namePreview.textContent = fullName;
+            
+            // Update avatar
+            const initials = [firstName, surname]
+                .filter(Boolean)
+                .map(name => name.charAt(0).toUpperCase())
+                .join('');
+            avatarText.textContent = initials || '?';
+        } else {
+            namePreview.textContent = 'Name will appear here';
+            avatarText.textContent = '?';
+        }
+    }
+    
+    // Update course preview
+    function updateCoursePreview() {
+        const selectedCourse = courses[courseSelect.value];
+        if (selectedCourse) {
+            courseName.textContent = selectedCourse.name;
+            courseDetails.innerHTML = `
+                <i class="fas fa-tag me-1"></i>${selectedCourse.type} • 
+                <i class="fas fa-clock me-1"></i>${selectedCourse.duration} • 
+                <i class="fas fa-cubes me-1"></i>${selectedCourse.modules} modules
+            `;
+            coursePreview.style.display = 'block';
+        } else {
+            coursePreview.style.display = 'none';
+        }
+    }
+    
+    // Validate date of birth
+    function validateDateOfBirth() {
+        const birthDate = new Date(dateOfBirthInput.value);
+        const today = new Date();
+        const age = today.getFullYear() - birthDate.getFullYear();
+        
+        if (birthDate) {
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            const dayDiff = today.getDate() - birthDate.getDate();
+            const actualAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age;
+            
+            if (actualAge < 18 || actualAge > 60) {
+                dateOfBirthInput.setCustomValidity(`Age must be between 18-60 years. Current age: ${actualAge}`);
+            } else {
+                dateOfBirthInput.setCustomValidity('');
+            }
+        }
+    }
+    
+    // Event listeners
+    firstNameInput.addEventListener('input', updateNamePreview);
+    middleNameInput.addEventListener('input', updateNamePreview);
+    surnameInput.addEventListener('input', updateNamePreview);
+    courseSelect.addEventListener('change', updateCoursePreview);
+    dateOfBirthInput.addEventListener('change', validateDateOfBirth);
+    
+    // Form validation before submit
+    const form = document.getElementById('recruit-form');
+    form.addEventListener('submit', function(e) {
+        // Validate all fields
+        if (!form.checkValidity()) {
+            e.preventDefault();
+            return false;
+        }
+        
+        // Additional validation
+        if (!firstNameInput.value.trim() || !surnameInput.value.trim()) {
+            e.preventDefault();
+            alert('First name and surname are required');
+            return false;
+        }
+        
+        validateDateOfBirth();
+        if (!dateOfBirthInput.checkValidity()) {
+            e.preventDefault();
+            return false;
+        }
+        
+        return true;
+    });
+    
+    // Initialize previews
+    updateNamePreview();
+    updateCoursePreview();
+});
+</script>
+{% endblock %}

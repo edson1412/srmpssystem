@@ -1,0 +1,173 @@
+<!-- delete_prisoner_confirm.html -->
+{% extends "prison/base.html" %}
+
+{% block page_title %}Delete Prisoner - {{ prisoner.prisoner_number }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .confirm-card {
+        max-width: 540px;
+        margin: 0 auto;
+        background: #ffffff;
+        border-radius: 14px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+    }
+
+    .confirm-card .card-header {
+        background: #fee2e2;
+        border-bottom: 1px solid #fecaca;
+        padding: 20px 28px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .confirm-card .card-header i {
+        font-size: 1.5rem;
+        color: #dc2626;
+    }
+
+    .confirm-card .card-header h4 {
+        margin: 0;
+        font-weight: 700;
+        color: #991b1b;
+        font-size: 1.1rem;
+    }
+
+    .confirm-card .card-body {
+        padding: 28px;
+    }
+
+    .prisoner-summary {
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .prisoner-summary .label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        color: #94a3b8;
+        font-weight: 600;
+    }
+
+    .prisoner-summary .value {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #0f172a;
+    }
+
+    .warning-text {
+        color: #dc2626;
+        font-weight: 500;
+        margin-bottom: 20px;
+    }
+
+    .btn-danger-confirm {
+        padding: 10px 32px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #dc2626;
+        border: none;
+        transition: all 0.2s ease;
+    }
+
+    .btn-danger-confirm:hover {
+        background: #b91c1c;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+    }
+
+    .btn-cancel {
+        padding: 10px 28px;
+        font-weight: 600;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        background: #fff;
+        transition: all 0.2s ease;
+    }
+
+    .btn-cancel:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+
+    .warning-icon {
+        font-size: 3rem;
+        color: #dc2626;
+        display: block;
+        text-align: center;
+        margin-bottom: 16px;
+    }
+
+    @media (max-width: 768px) {
+        .confirm-card .card-body {
+            padding: 20px;
+        }
+        .confirm-card .card-header {
+            padding: 16px 20px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="confirm-card">
+        <div class="card-header">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <h4>Confirm Deletion</h4>
+        </div>
+        <div class="card-body">
+            <div class="warning-icon">
+                <i class="bi bi-person-x-fill"></i>
+            </div>
+
+            <div class="prisoner-summary">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="label">Prisoner Number</div>
+                        <div class="value">{{ prisoner.prisoner_number }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="label">Full Name</div>
+                        <div class="value">{{ prisoner.full_name }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="label">Class</div>
+                        <div class="value">{{ prisoner.get_prisoner_class_display }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="label">Station</div>
+                        <div class="value">{{ prisoner.prison_station.name }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <p class="warning-text">
+                <i class="bi bi-exclamation-circle-fill me-2"></i>
+                This action <strong>cannot be undone</strong>. All related records including
+                transfers, medical records, and items will also be deleted.
+            </p>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="d-flex gap-3 flex-wrap justify-content-end">
+                    <a href="{% url 'prisoner_detail' prisoner.id %}" class="btn-cancel">
+                        <i class="bi bi-x-lg me-1"></i> Cancel
+                    </a>
+                    <button type="submit" class="btn btn-danger-confirm">
+                        <i class="bi bi-trash3 me-2"></i> Confirm Delete
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

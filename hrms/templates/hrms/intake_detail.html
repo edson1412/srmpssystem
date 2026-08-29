@@ -1,0 +1,671 @@
+{% extends 'training_base.html' %}
+{% load static %}
+{% load training_filters %}
+
+{% block training_title %}{{ intake.get_display_name }} - Training Intake Details{% endblock %}
+
+{% block extra_css %}
+<style>
+    .intake-detail-shell {
+        position: relative;
+        min-height: calc(100vh - 200px);
+        padding: 1rem;
+    }
+
+    .intake-detail-shell::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at top left, rgba(74,108,247,0.1), transparent 50%),
+                    radial-gradient(circle at 80% 20%, rgba(34,197,94,0.1), transparent 45%);
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    .intake-detail-content {
+        position: relative;
+        z-index: 1;
+    }
+
+    .intake-header {
+        background: linear-gradient(135deg, #111827, #1f2937);
+        color: #fff;
+        border-radius: 1.5rem;
+        padding: 2.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 25px 60px rgba(15, 23, 42, 0.45);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .intake-header::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        border-radius: 50%;
+        transform: translate(50%, -50%);
+    }
+
+    .intake-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        position: relative;
+    }
+
+    .intake-subtitle {
+        font-size: 1.25rem;
+        opacity: 0.9;
+        margin-bottom: 2rem;
+    }
+
+    .intake-meta-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .meta-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 0.75rem;
+        background: rgba(255,255,255,0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    .meta-content {
+        flex: 1;
+    }
+
+    .meta-label {
+        font-size: 0.875rem;
+        opacity: 0.8;
+        margin-bottom: 0.25rem;
+    }
+
+    .meta-value {
+        font-size: 1.125rem;
+        font-weight: 600;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: rgba(255,255,255,0.1);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        text-align: center;
+        backdrop-filter: blur(10px);
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        opacity: 0.9;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .content-section {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        border: 1px solid rgba(0,0,0,0.06);
+        margin-bottom: 2rem;
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .section-title i {
+        color: var(--primary-color);
+    }
+
+    .recruit-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .recruit-table th {
+        background: #f9fafb;
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: #374151;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .recruit-table td {
+        padding: 1rem;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .recruit-table tbody tr:hover {
+        background: #f9fafb;
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .status-badge.enrolled {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .status-badge.in_training {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-badge.completed {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-badge.failed {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .status-badge.withdrawn {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+
+    .status-badge.graduated {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .grade-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .grade-badge.A {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .grade-badge.B {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .grade-badge.C {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .grade-badge.D {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+
+    .grade-badge.F {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-action {
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+    }
+
+    .btn-action:hover {
+        transform: translateY(-1px);
+    }
+
+    .btn-primary {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-dark);
+        color: white;
+    }
+
+    .btn-success {
+        background: #10b981;
+        color: white;
+    }
+
+    .btn-success:hover {
+        background: #059669;
+        color: white;
+    }
+
+    .btn-info {
+        background: #06b6d4;
+        color: white;
+    }
+
+    .btn-info:hover {
+        background: #0891b2;
+        color: white;
+    }
+
+    .btn-warning {
+        background: #f59e0b;
+        color: white;
+    }
+
+    .btn-warning:hover {
+        background: #d97706;
+        color: white;
+    }
+
+    .progress-bar {
+        height: 0.5rem;
+        background: #e5e7eb;
+        border-radius: 9999px;
+        overflow: hidden;
+        margin: 1rem 0;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary-color), var(--primary-dark));
+        transition: width 0.3s ease;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #6b7280;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        color: #d1d5db;
+        margin-bottom: 1rem;
+    }
+
+    .performance-chart {
+        height: 300px;
+        background: #f9fafb;
+        border-radius: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6b7280;
+    }
+</style>
+{% endblock %}
+
+{% block training_content %}
+<div class="intake-detail-shell">
+    <div class="intake-detail-content">
+        <!-- Header Section -->
+        <div class="intake-header">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <h1 class="intake-title">{{ intake.get_display_name }}</h1>
+                        {% if intake.is_active %}
+                            <span class="status-badge" style="background: #dcfce7; color: #166534;">Active</span>
+                        {% else %}
+                            <span class="status-badge" style="background: #f3f4f6; color: #6b7280;">Inactive</span>
+                        {% endif %}
+                    </div>
+                    <p class="intake-subtitle">{{ intake.description|default:"Correctional Officers Training Program" }}</p>
+                    
+                    <div class="intake-meta-grid">
+                        <div class="meta-item">
+                            <div class="meta-icon">
+                                <i class="fas fa-calendar"></i>
+                            </div>
+                            <div class="meta-content">
+                                <div class="meta-label">Start Date</div>
+                                <div class="meta-value">{{ intake.start_date|date:"M d, Y" }}</div>
+                            </div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-icon">
+                                <i class="fas fa-flag-checkered"></i>
+                            </div>
+                            <div class="meta-content">
+                                <div class="meta-label">Pass Out Date</div>
+                                <div class="meta-value">{{ intake.pass_out_date|date:"M d, Y" }}</div>
+                            </div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-icon">
+                                <i class="fas fa-hourglass-half"></i>
+                            </div>
+                            <div class="meta-content">
+                                <div class="meta-label">Duration</div>
+                                <div class="meta-value">{{ intake.start_date|timesince:intake.pass_out_date }}</div>
+                            </div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="meta-content">
+                                <div class="meta-label">Total Recruits</div>
+                                <div class="meta-value">{{ intake.recruits.count }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <a href="{% url 'hrms:intake_list' %}" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Intakes
+                    </a>
+                </div>
+            </div>
+
+            <!-- Statistics -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">{{ total_recruits }}</div>
+                    <div class="stat-label">Total Recruits</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ in_training_count }}</div>
+                    <div class="stat-label">In Training</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ graduated_count }}</div>
+                    <div class="stat-label">Graduated</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ dismissed_count }}</div>
+                    <div class="stat-label">Dismissed</div>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            {% if total_recruits > 0 %}
+                {% with completed_count=graduated_count %}
+                    {% with progress=completed_count|percent_of:total_recruits %}
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: {{ progress|floatformat:0 }}%"></div>
+                        </div>
+                        <div class="text-center opacity-90">{{ progress|floatformat:0 }}% graduated</div>
+                    {% endwith %}
+                {% endwith %}
+            {% endif %}
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="content-section">
+            <div class="section-title">
+                <span><i class="fas fa-bolt me-2"></i>Quick Actions</span>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <a href="{% url 'hrms:recruit_create' intake.pk %}" class="btn btn-success w-100">
+                        <i class="fas fa-user-plus me-2"></i>Add Recruit
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <div class="dropdown">
+                        <button class="btn btn-primary w-100 dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-chart-line me-2"></i>Bulk Marks
+                        </button>
+                        <ul class="dropdown-menu w-100">
+                            <li><a class="dropdown-item" href="{% url 'hrms:bulk_add_marks' %}?intake_pk={{ intake.pk }}">
+                                <i class="fas fa-keyboard me-2"></i>Manual Entry
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'hrms:bulk_marks_import_csv' %}?intake_pk={{ intake.pk }}">
+                                <i class="fas fa-file-csv me-2"></i>CSV Import
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'hrms:bulk_marks_import_excel' %}?intake_pk={{ intake.pk }}">
+                                <i class="fas fa-file-excel me-2"></i>Excel Import
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{% url 'hrms:download_csv_template' %}?intake_pk={{ intake.pk }}">
+                                <i class="fas fa-download me-2"></i>Download Template
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'hrms:class_ranking' intake.pk %}" class="btn btn-info w-100">
+                        <i class="fas fa-trophy me-2"></i>View Rankings
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    {% if intake.is_active %}
+                        <a href="{% url 'hrms:intake_graduation' intake.pk %}" class="btn btn-warning w-100">
+                            <i class="fas fa-graduation-cap me-2"></i>Graduation
+                        </a>
+                    {% else %}
+                        <a href="{% url 'hrms:export_graduation_list' intake.pk %}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-download me-2"></i>Export List
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recruits List -->
+        <div class="content-section">
+            <div class="section-title">
+                <span><i class="fas fa-users me-2"></i>Recruits ({{ intake.recruits.count }})</span>
+                <div class="action-buttons">
+                    <input type="text" class="form-control form-control-sm" placeholder="Search recruits..." style="width: 200px;">
+                    <select class="form-select form-select-sm" style="width: 150px;">
+                        <option value="">All Status</option>
+                        <option value="enrolled">Enrolled</option>
+                        <option value="in_training">In Training</option>
+                        <option value="completed">Completed</option>
+                        <option value="failed">Failed</option>
+                        <option value="graduated">Graduated</option>
+                    </select>
+                </div>
+            </div>
+
+            {% if intake.recruits.exists %}
+                <div class="table-responsive">
+                    <table class="recruit-table">
+                        <thead>
+                            <tr>
+                                <th>Training ID</th>
+                                <th>Name</th>
+                                <th>Service Number</th>
+                                <th>Status</th>
+                                <th>Overall Score</th>
+                                <th>Grade</th>
+                                <th>Rank</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for recruit in intake.recruits.all %}
+                            <tr>
+                                <td>
+                                    <strong>{{ recruit.training_id|default:"N/A" }}</strong>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px; font-size: 0.875rem; font-weight: 600;">
+                                            {{ recruit.first_name.0 }}{{ recruit.surname.0 }}
+                                        </div>
+                                        <div>
+                                            <div class="fw-semibold">{{ recruit.full_name }}</div>
+                                            <small class="text-muted">{{ recruit.course.name }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if recruit.service_number %}
+                                        <span class="badge bg-success">{{ recruit.service_number }}</span>
+                                    {% else %}
+                                        <span class="text-muted">Not Assigned</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="status-badge {{ recruit.status }}">{{ recruit.get_status_display }}</span>
+                                </td>
+                                <td>
+                                    {% if recruit.overall_score %}
+                                        <div class="fw-semibold">{{ recruit.overall_score|floatformat:1 }}%</div>
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if recruit.final_grade %}
+                                        <span class="grade-badge {{ recruit.final_grade }}">{{ recruit.final_grade }}</span>
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if recruit.rank_in_class %}
+                                        #{{ recruit.rank_in_class }}/{{ recruit.total_recruits_in_class }}
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        <a href="{% url 'hrms:recruit_detail' recruit.pk %}" class="btn-action btn-primary btn-sm">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{% url 'hrms:add_mark' recruit.pk %}" class="btn-action btn-success btn-sm">
+                                            <i class="fas fa-plus"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-user-graduate"></i>
+                    <h4>No Recruits Added</h4>
+                    <p class="text-muted">Start by adding recruits to this intake.</p>
+                    <a href="{% url 'hrms:recruit_create' intake.pk %}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Add First Recruit
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Performance Overview -->
+        {% if intake.recruits|has_scores %}
+            <div class="content-section">
+                <div class="section-title">
+                    <span><i class="fas fa-chart-bar me-2"></i>Performance Overview</span>
+                </div>
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="text-center">
+                            <h5 class="mb-3">Grade Distribution</h5>
+                            <div class="performance-chart">
+                                <i class="fas fa-chart-pie fa-3x"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-center">
+                            <h5 class="mb-3">Score Statistics</h5>
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <div class="text-success fw-bold">{{ intake.recruits|count_excellent }}</div>
+                                    <small class="text-muted">Excellent (80%+)</small>
+                                </div>
+                                <div class="col-4">
+                                    <div class="text-info fw-bold">{{ intake.recruits|count_good }}</div>
+                                    <small class="text-muted">Good (60-79%)</small>
+                                </div>
+                                <div class="col-4">
+                                    <div class="text-warning fw-bold">{{ intake.recruits|count_needs_improvement }}</div>
+                                    <small class="text-muted">Needs Improvement</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Search functionality
+    const searchInput = document.querySelector('input[placeholder="Search recruits..."]');
+    const statusSelect = document.querySelector('select');
+    
+    function filterRecruits() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const statusFilter = statusSelect.value;
+        const rows = document.querySelectorAll('.recruit-table tbody tr');
+        
+        rows.forEach(row => {
+            const name = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+            const status = row.querySelector('.status-badge').textContent.toLowerCase();
+            
+            const matchesSearch = name.includes(searchTerm);
+            const matchesStatus = !statusFilter || status.includes(statusFilter.toLowerCase());
+            
+            row.style.display = matchesSearch && matchesStatus ? '' : 'none';
+        });
+    }
+    
+    searchInput.addEventListener('input', filterRecruits);
+    statusSelect.addEventListener('change', filterRecruits);
+});
+</script>
+{% endblock %}

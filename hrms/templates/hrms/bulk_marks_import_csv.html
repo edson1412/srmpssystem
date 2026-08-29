@@ -1,0 +1,96 @@
+{% extends 'training_base.html' %}
+{% load static %}
+
+{% block training_title %}Import Marks via CSV - Prison HRMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .import-csv-shell {
+        min-height: calc(100vh - 150px);
+        padding: 1.5rem;
+    }
+
+    .import-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(226, 232, 240, 1);
+        margin-bottom: 1.75rem;
+    }
+</style>
+{% endblock %}
+
+{% block training_content %}
+<div class="import-csv-shell">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 fw-bold">Import Marks via CSV</h1>
+            <p class="text-muted mb-0">Upload mark data for {{ intake.get_display_name }}.</p>
+        </div>
+        <a href="{% url 'hrms:intake_detail' pk=intake.pk %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Intake
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="import-card">
+        <form method="post" enctype="multipart/form-data" action="?intake_pk={{ intake.pk }}">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label for="csv_file" class="form-label">CSV File</label>
+                <input type="file" name="csv_file" id="csv_file" accept=".csv" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-file-csv me-2"></i>Upload CSV
+            </button>
+            <a href="{% url 'hrms:download_csv_template' %}?intake_pk={{ intake.pk }}" class="btn btn-outline-primary ms-2">
+                <i class="fas fa-download me-2"></i>Download Template
+            </a>
+        </form>
+    </div>
+
+    <div class="import-card">
+        <h2 class="h5 mb-3">Import Instructions</h2>
+        <p class="text-muted">The CSV must include the following columns:</p>
+        <ul>
+            <li><strong>recruit_training_id</strong></li>
+            <li><strong>course_code</strong></li>
+            <li><strong>obtained_marks</strong></li>
+            <li><strong>exam_date</strong> (YYYY-MM-DD)</li>
+        </ul>
+        <p class="mb-0">After a failed import, download failure details using the failure download link on the intake page.</p>
+    </div>
+
+    {% if sample_data %}
+        <div class="import-card">
+            <h2 class="h5 mb-3">Sample Template Preview</h2>
+            <div class="table-responsive">
+                <table class="table table-sm table-striped mb-0">
+                    <thead>
+                        <tr>
+                            {% for field in sample_data.0.keys %}
+                                <th>{{ field }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in sample_data %}
+                            <tr>
+                                {% for value in row.values %}
+                                    <td>{{ value }}</td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

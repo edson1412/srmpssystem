@@ -1,0 +1,803 @@
+{% extends 'training_base.html' %}
+{% load static %}
+
+{% block training_title %}{{ recruit.full_name }} - Recruit Profile{% endblock %}
+
+{% block extra_css %}
+<style>
+    .recruit-detail-shell {
+        position: relative;
+        min-height: calc(100vh - 200px);
+        padding: 1rem;
+    }
+
+    .recruit-detail-shell::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at top left, rgba(74,108,247,0.1), transparent 50%),
+                    radial-gradient(circle at 80% 20%, rgba(34,197,94,0.1), transparent 45%);
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    .recruit-detail-content {
+        position: relative;
+        z-index: 1;
+    }
+
+    .recruit-header {
+        background: linear-gradient(135deg, #111827, #1f2937);
+        color: #fff;
+        border-radius: 1.5rem;
+        padding: 2.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 25px 60px rgba(15, 23, 42, 0.45);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .recruit-header::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        border-radius: 50%;
+        transform: translate(50%, -50%);
+    }
+
+    .recruit-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        position: relative;
+    }
+
+    .recruit-subtitle {
+        font-size: 1.25rem;
+        opacity: 0.9;
+        margin-bottom: 2rem;
+    }
+
+    .recruit-meta-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .meta-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 0.75rem;
+        background: rgba(255,255,255,0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    .meta-content {
+        flex: 1;
+    }
+
+    .meta-label {
+        font-size: 0.875rem;
+        opacity: 0.8;
+        margin-bottom: 0.25rem;
+    }
+
+    .meta-value {
+        font-size: 1.125rem;
+        font-weight: 600;
+    }
+
+    .content-section {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        border: 1px solid rgba(0,0,0,0.06);
+        margin-bottom: 2rem;
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .section-title i {
+        color: var(--primary-color);
+        margin-right: 0.75rem;
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .status-badge.enrolled {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .status-badge.in_training {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-badge.completed {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-badge.failed {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .status-badge.graduated {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .grade-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .grade-badge.A {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .grade-badge.B {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .grade-badge.C {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .grade-badge.D {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+
+    .grade-badge.F {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .marks-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .marks-table th {
+        background: #f9fafb;
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: #374151;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    .marks-table td {
+        padding: 1rem;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .marks-table tbody tr:hover {
+        background: #f9fafb;
+    }
+
+    .score-bar {
+        width: 100px;
+        height: 8px;
+        background: #e5e7eb;
+        border-radius: 9999px;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .score-fill {
+        height: 100%;
+        border-radius: 9999px;
+        transition: width 0.3s ease;
+    }
+
+    .score-fill.excellent {
+        background: linear-gradient(90deg, #10b981, #059669);
+    }
+
+    .score-fill.good {
+        background: linear-gradient(90deg, #3b82f6, #2563eb);
+    }
+
+    .score-fill.average {
+        background: linear-gradient(90deg, #f59e0b, #d97706);
+    }
+
+    .score-fill.poor {
+        background: linear-gradient(90deg, #ef4444, #dc2626);
+    }
+
+    .progress-chart {
+        height: 300px;
+        background: #f9fafb;
+        border-radius: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6b7280;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        text-align: center;
+        padding: 1.5rem;
+        background: linear-gradient(135deg, #f9fafb, #f3f4f6);
+        border-radius: 1rem;
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+        border-color: var(--primary-color);
+        transform: translateY(-2px);
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-action {
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+    }
+
+    .btn-action:hover {
+        transform: translateY(-1px);
+    }
+
+    .btn-primary {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-dark);
+        color: white;
+    }
+
+    .btn-success {
+        background: #10b981;
+        color: white;
+    }
+
+    .btn-success:hover {
+        background: #059669;
+        color: white;
+    }
+
+    .btn-info {
+        background: #06b6d4;
+        color: white;
+    }
+
+    .btn-info:hover {
+        background: #0891b2;
+        color: white;
+    }
+
+    .btn-warning {
+        background: #f59e0b;
+        color: white;
+    }
+
+    .btn-warning:hover {
+        background: #d97706;
+        color: white;
+    }
+
+    .recruit-avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: var(--primary-color);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        font-weight: 600;
+        margin: 0 auto 2rem;
+        border: 4px solid rgba(255,255,255,0.2);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #6b7280;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        color: #d1d5db;
+        margin-bottom: 1rem;
+    }
+
+    .performance-summary {
+        background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+        border-radius: 1rem;
+        padding: 2rem;
+        border: 2px solid #0ea5e9;
+        margin-bottom: 2rem;
+    }
+
+    .performance-score {
+        font-size: 3rem;
+        font-weight: 700;
+        color: #0c4a6e;
+        margin-bottom: 0.5rem;
+    }
+
+    .performance-grade {
+        font-size: 1.5rem;
+        color: #0369a1;
+        margin-bottom: 1rem;
+    }
+
+    .performance-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .performance-item {
+        text-align: center;
+    }
+
+    .performance-value {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #0c4a6e;
+    }
+
+    .performance-label {
+        font-size: 0.875rem;
+        color: #0369a1;
+    }
+</style>
+{% endblock %}
+
+{% block training_content %}
+<div class="recruit-detail-shell">
+    <div class="recruit-detail-content">
+        <!-- Header Section -->
+        <div class="recruit-header">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="text-center">
+                    <div class="recruit-avatar">
+                        {{ recruit.first_name.0 }}{{ recruit.surname.0 }}
+                    </div>
+                    <div class="d-flex justify-content-center align-items-center gap-3 mb-3">
+                        <h1 class="recruit-title">{{ recruit.full_name }}</h1>
+                        <span class="status-badge {{ recruit.status }}">{{ recruit.get_status_display }}</span>
+                    </div>
+                    <p class="recruit-subtitle">{{ recruit.training_id|default:"No Training ID" }} • {{ recruit.intake.get_display_name }}</p>
+                    
+                    <div class="recruit-meta-grid">
+                        <div class="meta-item">
+                            <div class="meta-icon">
+                                <i class="fas fa-calendar-alt"></i>
+                            </div>
+                            <div class="meta-content">
+                                <div class="meta-label">Intake</div>
+                                <div class="meta-value">{{ recruit.intake.get_display_name }}</div>
+                            </div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-icon">
+                                <i class="fas fa-id-badge"></i>
+                            </div>
+                            <div class="meta-content">
+                                <div class="meta-label">Service Number</div>
+                                <div class="meta-value">{{ recruit.service_number|default:"Not Assigned" }}</div>
+                            </div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-icon">
+                                <i class="fas fa-user-tag"></i>
+                            </div>
+                            <div class="meta-content">
+                                <div class="meta-label">Recruit Type</div>
+                                <div class="meta-value">{{ recruit.get_recruit_type_display }}</div>
+                            </div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-icon">
+                                <i class="fas fa-home"></i>
+                            </div>
+                            <div class="meta-content">
+                                <div class="meta-label">Home District</div>
+                                <div class="meta-value">{{ recruit.home_district|default:"N/A" }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <a href="{% url 'hrms:recruit_list' %}" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Recruits
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Summary -->
+        {% if recruit.overall_score %}
+            <div class="performance-summary">
+                <div class="text-center">
+                    <div class="performance-score">{{ recruit.overall_score|floatformat:1 }}%</div>
+                    <div class="performance-grade">Grade: {{ recruit.final_grade|default:"Not Assigned" }}</div>
+                    <div class="performance-details">
+                        <div class="performance-item">
+                            <div class="performance-value">{{ recruit.rank_in_class|default:"N/A" }}</div>
+                            <div class="performance-label">Class Rank</div>
+                        </div>
+                        <div class="performance-item">
+                            <div class="performance-value">{{ recruit.total_recruits_in_class|default:"N/A" }}</div>
+                            <div class="performance-label">Class Size</div>
+                        </div>
+                        <div class="performance-item">
+                            <div class="performance-value">{{ recruit.marks.count }}</div>
+                            <div class="performance-label">Courses Completed</div>
+                        </div>
+                        <div class="performance-item">
+                            <div class="performance-value">{{ recruit.marks.count }}</div>
+                            <div class="performance-label">Total Courses</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Quick Actions -->
+        <div class="content-section">
+            <h3 class="section-title">
+                <span><i class="fas fa-bolt"></i>Quick Actions</span>
+            </h3>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    {% if recruit.status == 'in_training' %}
+                        <a href="{% url 'hrms:add_mark' recruit.pk %}" class="btn btn-success w-100">
+                            <i class="fas fa-plus me-2"></i>Add Mark
+                        </a>
+                    {% else %}
+                        <button class="btn btn-secondary w-100" disabled>
+                            <i class="fas fa-plus me-2"></i>Add Mark
+                        </button>
+                    {% endif %}
+                </div>
+                <div class="col-md-3">
+                    <a href="{% url 'hrms:recruit_update' pk=recruit.pk %}" class="btn btn-primary w-100">
+                        <i class="fas fa-edit me-2"></i>Edit Recruit
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="#" class="btn btn-info w-100">
+                        <i class="fas fa-chart-line me-2"></i>View Progress
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    {% if recruit.status == 'completed' and not recruit.service_number %}
+                        <a href="#" class="btn btn-warning w-100">
+                            <i class="fas fa-id-badge me-2"></i>Assign Number
+                        </a>
+                    {% else %}
+                        <button class="btn btn-secondary w-100" disabled>
+                            <i class="fas fa-id-badge me-2"></i>Assign Number
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Course Marks -->
+        <div class="content-section">
+            <h3 class="section-title">
+                <span><i class="fas fa-chart-bar"></i>All Courses Progress ({{ recruit.marks.count }}/{{ all_courses.count }} completed)</span>
+                {% if recruit.status == 'in_training' %}
+                    <div class="action-buttons">
+                        <a href="{% url 'hrms:add_mark' recruit.pk %}" class="btn-action btn-success">
+                            <i class="fas fa-plus me-1"></i>Add Mark
+                        </a>
+                    </div>
+                {% endif %}
+            </h3>
+
+            <div class="table-responsive">
+                <table class="marks-table">
+                    <thead>
+                        <tr>
+                            <th>Course Code</th>
+                            <th>Course Name</th>
+                            <th>Category</th>
+                            <th>Status</th>
+                            <th>Marks Obtained</th>
+                            <th>Total Marks</th>
+                            <th>Percentage</th>
+                            <th>Grade</th>
+                            <th>Exam Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for course in all_courses %}
+                            {% with found_mark=0 %}
+                            {% for recruit_mark in recruit.marks.all %}
+                                {% if recruit_mark.course == course %}
+                                    {% with found_mark=1 %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">{{ course.code }}</div>
+                                    </td>
+                                    <td>
+                                        <div>
+                                            <div class="fw-semibold">{{ course.name }}</div>
+                                            <small class="text-muted">{{ course.description|truncatewords:10|default:"Course description" }}</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="course-type-badge {{ course.category }}">
+                                            {{ course.get_category_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge active">Completed</span>
+                                    </td>
+                                    <td>
+                                        <div class="fw-semibold">{{ recruit_mark.obtained_marks|floatformat:1 }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="text-muted">{{ course.total_marks }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="fw-semibold">{{ recruit_mark.percentage|floatformat:1 }}%</div>
+                                            <div class="score-bar">
+                                                {% with percentage=recruit_mark.percentage %}
+                                                    {% if percentage >= 80 %}
+                                                        <div class="score-fill excellent" style="width: '{{ percentage }}%'"></div>
+                                                    {% elif percentage >= 60 %}
+                                                        <div class="score-fill good" style="width: '{{ percentage }}%'"></div>
+                                                    {% elif percentage >= 50 %}
+                                                        <div class="score-fill average" style="width: '{{ percentage }}%'"></div>
+                                                    {% else %}
+                                                        <div class="score-fill poor" style="width: '{{ percentage }}%'"></div>
+                                                    {% endif %}
+                                                {% endwith %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="grade-badge {{ recruit_mark.grade }}">{{ recruit_mark.grade }}</span>
+                                    </td>
+                                    <td>
+                                        <div>{{ recruit_mark.exam_date|date:"M d, Y" }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            {% if recruit.status == 'in_training' %}
+                                                <a href="{% url 'hrms:edit_mark' recruit_mark.pk %}" class="btn-action btn-primary btn-sm">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            {% else %}
+                                                <a href="{% url 'hrms:edit_mark' recruit_mark.pk %}" class="btn-action btn-primary btn-sm">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                    {% endwith %}
+                                {% endif %}
+                            {% endfor %}
+                            {% if found_mark == 0 %}
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">{{ course.code }}</div>
+                                </td>
+                                <td>
+                                    <div>
+                                        <div class="fw-semibold">{{ course.name }}</div>
+                                        <small class="text-muted">{{ course.description|truncatewords:10|default:"Course description" }}</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="course-type-badge {{ course.category }}">
+                                        {{ course.get_category_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="status-badge inactive">Pending</span>
+                                </td>
+                                <td>
+                                    <div class="text-muted">-</div>
+                                </td>
+                                <td>
+                                    <div class="text-muted">{{ course.total_marks }}</div>
+                                </td>
+                                <td>
+                                    <div class="text-muted">-</div>
+                                </td>
+                                <td>
+                                    <div class="text-muted">-</div>
+                                </td>
+                                <td>
+                                    <div class="text-muted">-</div>
+                                </td>
+                                <td>
+                                    <div class="action-buttons">
+                                        {% if recruit.status == 'in_training' %}
+                                            <a href="{% url 'hrms:add_mark' recruit.pk %}?course={{ course.pk }}" class="btn-action btn-success btn-sm">
+                                                <i class="fas fa-plus"></i>
+                                            </a>
+                                        {% else %}
+                                            <button class="btn-action btn-secondary btn-sm" disabled>
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endwith %}
+                        {% endfor %}
+            </tbody>
+        </table>
+            </div>
+        </div>
+        </div>
+
+        <!-- Personal Information -->
+        <div class="content-section">
+            <h3 class="section-title">
+                <span><i class="fas fa-user"></i>Personal Information</span>
+            </h3>
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Full Name</label>
+                        <div class="form-control">{{ recruit.full_name }}</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Date of Birth</label>
+                        <div class="form-control">{{ recruit.date_of_birth|date:"F d, Y" }} ({{ recruit.age }} years)</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Gender</label>
+                        <div class="form-control">{{ recruit.get_gender_display }}</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Contact Number</label>
+                        <div class="form-control">{{ recruit.contact_number|default:"Not provided" }}</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Email Address</label>
+                        <div class="form-control">{{ recruit.email|default:"Not provided" }}</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Home District</label>
+                        <div class="form-control">{{ recruit.home_district|default:"Not provided" }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Next of Kin Information -->
+        <div class="content-section">
+            <h3 class="section-title">
+                <span><i class="fas fa-users"></i>Next of Kin Information</span>
+            </h3>
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Next of Kin Name</label>
+                        <div class="form-control">{{ recruit.next_of_kin|default:"Not provided" }}</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Relationship</label>
+                        <div class="form-control">{{ recruit.next_of_kin_relationship|default:"Not provided" }}</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Contact Number</label>
+                        <div class="form-control">{{ recruit.next_of_kin_contact|default:"Not provided" }}</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Address</label>
+                        <div class="form-control">{{ recruit.next_of_kin_address|default:"Not provided" }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Training Progress Chart -->
+        {% if recruit.marks.exists %}
+            <div class="content-section">
+                <h3 class="section-title">
+                    <span><i class="fas fa-chart-line"></i>Training Progress</span>
+                </h3>
+                <div class="progress-chart">
+                    <i class="fas fa-chart-line fa-3x"></i>
+                    <div class="mt-3">Performance chart would be displayed here</div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add any interactive functionality here
+    console.log('Recruit detail page loaded for:', '{{ recruit.full_name }}');
+});
+</script>
+{% endblock %}

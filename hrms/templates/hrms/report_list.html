@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} - Prison HRMS{% endblock %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+    <div class="card shadow-lg p-4" style="border-radius: 15px;">
+        <div class="card-body">
+            <h2 class="card-title text-center mb-4" style="color: #0056b3; font-weight: bold;">{{ title }}</h2>
+            <hr class="mb-4">
+
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                {# Demographics Report Card #}
+                <div class="col">
+                    <div class="card h-100 shadow-sm rounded-3 border-primary">
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title text-primary"><i class="fas fa-chart-pie me-2"></i>Demographics Report</h5>
+                            <p class="card-text text-muted">Analyze officer demographics by gender, marital status, rank, and age groups.</p>
+                            <div class="mt-auto text-end">
+                                <a href="{% url 'hrms:demographics_report' %}" class="btn btn-primary btn-sm rounded-pill">
+                                    View Report <i class="fas fa-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# Leave Report Card #}
+                <div class="col">
+                    <div class="card h-100 shadow-sm rounded-3 border-success">
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title text-success"><i class="fas fa-plane-departure me-2"></i>Leave Report</h5>
+                            <p class="card-text text-muted">Overview of leave requests, filtered by year, month, type, and status.</p>
+                            <div class="mt-auto text-end">
+                                <a href="{% url 'hrms:leave_report' %}" class="btn btn-success btn-sm rounded-pill">
+                                    View Report <i class="fas fa-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# Attendance Report Card #}
+                <div class="col">
+                    <div class="card h-100 shadow-sm rounded-3 border-info">
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title text-info"><i class="fas fa-user-check me-2"></i>Attendance Report</h5>
+                            <p class="card-text text-muted">Summary of attendance records, filterable by date, region, and station.</p>
+                            <div class="mt-auto text-end">
+                                <a href="{% url 'hrms:attendance_report' %}" class="btn btn-info btn-sm rounded-pill">
+                                    View Report <i class="fas fa-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# Performance Report Card #}
+                <div class="col">
+                    <div class="card h-100 shadow-sm rounded-3 border-warning">
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title text-warning"><i class="fas fa-chart-line me-2"></i>Performance Report</h5>
+                            <p class="card-text text-muted">Track officer performance with average scores and metric breakdowns.</p>
+                            <div class="mt-auto text-end">
+                                <a href="{% url 'hrms:performance_report' %}" class="btn btn-warning btn-sm rounded-pill">
+                                    View Report <i class="fas fa-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# Disciplinary Cases Report Card #}
+                <div class="col">
+                    <div class="card h-100 shadow-sm rounded-3 border-danger">
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title text-danger"><i class="fas fa-gavel me-2"></i>Disciplinary Cases Report</h5>
+                            <p class="card-text text-muted">Summarize disciplinary actions by offense and action taken.</p>
+                            <div class="mt-auto text-end">
+                                <a href="{% url 'hrms:disciplinary_report' %}" class="btn btn-danger btn-sm rounded-pill">
+                                    View Report <i class="fas fa-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# Service History Report Card #}
+                <div class="col">
+                    <div class="card h-100 shadow-sm rounded-3 border-secondary">
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title text-secondary"><i class="fas fa-history me-2"></i>Service History Report</h5>
+                            <p class="card-text text-muted">Analyze promotions and transfers over time and by location.</p>
+                            <div class="mt-auto text-end">
+                                <a href="{% url 'hrms:service_history_report' %}" class="btn btn-secondary btn-sm rounded-pill">
+                                    View Report <i class="fas fa-arrow-right ms-1"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="text-center mt-5">
+                <a href="{% url 'hrms:dashboard' %}" class="btn btn-outline-secondary rounded-pill">
+                    <i class="fas fa-arrow-circle-left me-2"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

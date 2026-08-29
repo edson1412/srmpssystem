@@ -1,0 +1,23 @@
+LEAVE ENDING REMINDER
+
+Dear {{ officer.full_name }},
+
+This is a friendly reminder that your {{ leave_type }} leave is ending soon.
+
+Leave Details:
+- Leave Type: {{ leave_type }}
+- End Date: {{ end_date }}
+- Days Remaining: {{ days_remaining }}
+- Expected Return Date: {{ return_date }}
+
+Please prepare to resume your duties on {{ return_date }}.
+Ensure that you have completed any personal matters and are ready to
+report back to work on time.
+
+If you need to request an extension of your leave, please contact your
+supervisor and the HR department as soon as possible.
+
+We look forward to your return and continued service to the Prison Service.
+
+Best regards,
+Prison Service Admin

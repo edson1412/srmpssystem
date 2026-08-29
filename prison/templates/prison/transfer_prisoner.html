@@ -1,0 +1,45 @@
+{% extends "prison/base.html" %}
+
+{% block title %}Transfer Prisoner - {{ prisoner.prisoner_number }}{% endblock %}
+
+{% block content %}
+<style>
+    body {
+        background-color: rgba(173, 216, 230, 0.6); /* Light blue with 60% opacity */
+    }
+</style>
+
+<div class="container-fluid">
+    <h1 class="mb-4">Transfer Prisoner: {{ prisoner.prisoner_number }}</h1>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="alert alert-warning mb-4">
+                <strong>Current Station:</strong> {{ prisoner.prison_station.name }}
+            </div>
+            
+            <form method="post">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6">
+                        {{ form.to_prison.label_tag }}
+                        {{ form.to_prison }}
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        {{ form.reason.label_tag }}
+                        {{ form.reason }}
+                        <small class="form-text text-muted">Provide a reason for this transfer</small>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">Confirm Transfer</button>
+                    <a href="{% url 'prisoner_detail' prisoner.id %}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

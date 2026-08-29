@@ -1,0 +1,143 @@
+{% extends 'training_base.html' %}
+{% load static %}
+
+{% block training_title %}Add Recruit Mark - Prison HRMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .mark-form-shell {
+        min-height: calc(100vh - 150px);
+        padding: 1.5rem;
+    }
+
+    .mark-form-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(226, 232, 240, 1);
+    }
+</style>
+{% endblock %}
+
+{% block training_content %}
+<div class="mark-form-shell">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 fw-bold">Add Marks for {{ recruit.full_name }}</h1>
+            <p class="text-muted mb-0">Record course performance for this recruit.</p>
+        </div>
+        <a href="{% url 'hrms:recruit_detail' pk=recruit.pk %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Recruit
+        </a>
+    </div>
+
+    <div class="mark-form-card">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label" for="course">Course</label>
+                    <select name="course" id="course" class="form-select" required>
+                        <option value="">Select a course</option>
+                        {% for category, courses in courses_by_category.items %}
+                            <optgroup label="{{ category }}">
+                                {% for course in courses %}
+                                    <option value="{{ course.pk }}" data-total="{{ course.total_marks }}" data-passing="{{ course.passing_mark }}">{{ course.course_code }} - {{ course.name }}</option>
+                                {% endfor %}
+                            </optgroup>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="obtained_marks">Obtained Marks</label>
+                    <input type="number" step="0.01" min="0" name="obtained_marks" id="obtained_marks" class="form-control" required>
+                    <div class="form-text" id="marks-feedback">Select a course to see its total marks.</div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="exam_date">Exam Date</label>
+                    <input type="date" name="exam_date" id="exam_date" class="form-control" value="{{ today }}" required>
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="form-label" for="remarks">Remarks</label>
+                <textarea name="remarks" id="remarks" rows="3" class="form-control"></textarea>
+            </div>
+            <button type="submit" class="btn btn-success btn-lg">
+                <i class="fas fa-check me-2"></i>Save Mark
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const courseSelect = document.getElementById('course');
+    const marksInput = document.getElementById('obtained_marks');
+    const feedback = document.getElementById('marks-feedback');
+
+    function selectedOption() {
+        return courseSelect.options[courseSelect.selectedIndex];
+    }
+
+    function courseLimits() {
+        const option = selectedOption();
+        if (!option || !option.value) {
+            return null;
+        }
+        return {
+            total: parseFloat(option.dataset.total),
+            passing: parseFloat(option.dataset.passing),
+        };
+    }
+
+    function update() {
+        const limits = courseLimits();
+
+        if (!limits) {
+            marksInput.removeAttribute('max');
+            marksInput.setCustomValidity('');
+            feedback.textContent = 'Select a course to see its total marks.';
+            feedback.className = 'form-text';
+            return;
+        }
+
+        marksInput.max = limits.total;
+
+        const value = parseFloat(marksInput.value);
+        if (isNaN(value)) {
+            marksInput.setCustomValidity('');
+            feedback.textContent = 'Total marks: ' + limits.total + ' • Pass mark: ' + limits.passing;
+            feedback.className = 'form-text';
+            return;
+        }
+
+        if (value < 0 || value > limits.total) {
+            marksInput.setCustomValidity('Marks must be between 0 and ' + limits.total);
+            feedback.textContent = 'Marks must be between 0 and ' + limits.total;
+            feedback.className = 'form-text text-danger';
+            return;
+        }
+
+        marksInput.setCustomValidity('');
+        const percentage = ((value / limits.total) * 100).toFixed(1);
+        const passed = value >= limits.passing;
+        feedback.textContent = percentage + '% — ' + (passed ? 'Pass' : 'Fail') +
+            ' (pass mark ' + limits.passing + ')';
+        feedback.className = 'form-text ' + (passed ? 'text-success' : 'text-danger');
+    }
+
+    courseSelect.addEventListener('change', update);
+    marksInput.addEventListener('input', update);
+    update();
+});
+</script>
+{% endblock %}

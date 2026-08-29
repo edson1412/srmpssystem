@@ -1,0 +1,1175 @@
+<!-- dashboard.html -->
+{% extends "prison/base.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ===== ENHANCED DASHBOARD STYLES ===== */
+    :root {
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        --warning-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        --info-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        --danger-gradient: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+    }
+
+    /* Main Dashboard Container */
+    .dashboard-content {
+        max-width: 100%;
+        margin: 0 auto;
+        padding: 0;
+    }
+
+    /* Enhanced Stat Cards */
+    .stat-card {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 24px 28px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(226, 232, 240, 0.6);
+        transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: var(--primary-gradient);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .stat-card:hover {
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        transform: translateY(-4px);
+        border-color: transparent;
+    }
+
+    .stat-card:hover::before {
+        opacity: 1;
+    }
+
+    .stat-card .stat-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+        position: relative;
+        z-index: 1;
+    }
+
+    .stat-card .stat-icon.blue { 
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    .stat-card .stat-icon.green { 
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: #fff;
+        box-shadow: 0 4px 15px rgba(17, 153, 142, 0.4);
+    }
+    .stat-card .stat-icon.orange { 
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: #fff;
+        box-shadow: 0 4px 15px rgba(240, 147, 251, 0.4);
+    }
+    .stat-card .stat-icon.purple { 
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: #fff;
+        box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+    }
+    .stat-card .stat-icon.red { 
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        color: #fff;
+        box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+    }
+    .stat-card .stat-icon.teal { 
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        color: #fff;
+        box-shadow: 0 4px 15px rgba(67, 233, 123, 0.4);
+    }
+    .stat-card .stat-icon.pink { 
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        color: #fff;
+        box-shadow: 0 4px 15px rgba(250, 112, 154, 0.4);
+    }
+
+    .stat-card .stat-label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #64748b;
+        margin-bottom: 6px;
+    }
+
+    .stat-card .stat-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.1;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .stat-card .stat-change {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 4px 12px;
+        border-radius: 20px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .stat-card .stat-change.up { 
+        background: rgba(17, 153, 142, 0.1); 
+        color: #11998e;
+    }
+    .stat-card .stat-change.down { 
+        background: rgba(255, 107, 107, 0.1); 
+        color: #ff6b6b;
+    }
+
+    /* Enhanced Section Headers */
+    .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #f1f5f9;
+    }
+
+    .section-header h3 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .section-header h3 i {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-size: 1.4rem;
+    }
+
+    .section-header .btn-link {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #667eea;
+        text-decoration: none;
+        padding: 8px 16px;
+        border-radius: 8px;
+        background: rgba(102, 126, 234, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .section-header .btn-link:hover {
+        background: rgba(102, 126, 234, 0.2);
+        transform: translateY(-1px);
+    }
+
+    /* Enhanced Dashboard Cards */
+    .dashboard-card {
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(226, 232, 240, 0.6);
+        transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .dashboard-card:hover {
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        transform: translateY(-2px);
+    }
+
+    .dashboard-card .card-header {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-bottom: 1px solid #e2e8f0;
+        padding: 18px 24px;
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .dashboard-card .card-header i {
+        color: #667eea;
+        margin-right: 8px;
+    }
+
+    .dashboard-card .card-body {
+        padding: 24px;
+    }
+
+    /* Enhanced Chart Containers */
+    .chart-container {
+        position: relative;
+        height: 280px;
+        width: 100%;
+        margin-top: 12px;
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 16px;
+    }
+
+    .chart-container-sm {
+        height: 220px;
+    }
+
+    /* Enhanced Tables */
+    .table-dashboard {
+        font-size: 0.85rem;
+        margin-bottom: 0;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .table-dashboard thead th {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        color: #475569;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #e2e8f0;
+        padding: 14px 16px;
+    }
+
+    .table-dashboard tbody td {
+        padding: 14px 16px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        color: #334155;
+        transition: background 0.2s ease;
+    }
+
+    .table-dashboard tbody tr:hover {
+        background: rgba(102, 126, 234, 0.05);
+    }
+
+    .table-dashboard .prisoner-link {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+        transition: color 0.2s ease;
+    }
+
+    .table-dashboard .prisoner-link:hover {
+        color: #764ba2;
+    }
+
+    /* Enhanced Lockup Summary Table */
+    .lockup-table {
+        font-size: 0.85rem;
+    }
+
+    .lockup-table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .lockup-table .label {
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    .lockup-table .value {
+        font-weight: 700;
+        color: #0f172a;
+        text-align: right;
+        font-size: 1rem;
+    }
+
+    .lockup-table .total-row td {
+        font-weight: 800;
+        border-top: 2px solid #667eea;
+        padding-top: 16px;
+        color: #667eea;
+        background: rgba(102, 126, 234, 0.05);
+    }
+
+    /* Enhanced Recidivism Progress */
+    .recidivism-progress {
+        height: 16px;
+        border-radius: 20px;
+        background: #f1f5f9;
+        overflow: hidden;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .recidivism-progress .progress-bar {
+        border-radius: 20px;
+        background: linear-gradient(90deg, #11998e 0%, #38ef7d 50%, #f5576c 100%);
+        transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 2px 10px rgba(17, 153, 142, 0.3);
+    }
+
+    /* Enhanced Medical Category Badges */
+    .med-badge {
+        font-size: 0.7rem;
+        font-weight: 600;
+        padding: 4px 12px;
+        border-radius: 20px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    /* Enhanced Activity Log */
+    .activity-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+        padding: 16px 0;
+        border-bottom: 1px solid #f1f5f9;
+        transition: all 0.2s ease;
+    }
+
+    .activity-item:hover {
+        background: rgba(102, 126, 234, 0.03);
+        padding-left: 8px;
+        padding-right: 8px;
+        border-radius: 8px;
+    }
+
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+
+    .activity-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .activity-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .activity-content .action {
+        font-weight: 600;
+        color: #0f172a;
+        font-size: 0.85rem;
+    }
+
+    .activity-content .details {
+        color: #64748b;
+        font-size: 0.8rem;
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .activity-content .time {
+        color: #94a3b8;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    /* Enhanced Ration Alerts */
+    .ration-alert {
+        padding: 14px 18px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 10px;
+        border-left: 4px solid;
+        transition: all 0.2s ease;
+    }
+
+    .ration-alert:hover {
+        transform: translateX(4px);
+    }
+
+    .ration-alert.danger { 
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        color: #991b1b;
+        border-left-color: #dc2626;
+    }
+    .ration-alert.warning { 
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        color: #92400e;
+        border-left-color: #f59e0b;
+    }
+    .ration-alert.info { 
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        color: #1e40af;
+        border-left-color: #3b82f6;
+    }
+
+    .ration-alert i {
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+
+    /* Enhanced Animations */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .stat-card, .dashboard-card {
+        animation: fadeInUp 0.6s ease forwards;
+    }
+
+    .stat-card:nth-child(1) { animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { animation-delay: 0.2s; }
+    .stat-card:nth-child(3) { animation-delay: 0.3s; }
+    .stat-card:nth-child(4) { animation-delay: 0.4s; }
+
+    /* Responsive Design */
+    @media (max-width: 992px) {
+        .stat-card .stat-value {
+            font-size: 1.6rem;
+        }
+        .stat-card {
+            padding: 20px 24px;
+        }
+        .section-header h3 {
+            font-size: 1.1rem;
+        }
+        .chart-container {
+            height: 240px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .stat-card .stat-value {
+            font-size: 1.4rem;
+        }
+        .stat-card {
+            padding: 18px 20px;
+        }
+        .section-header h3 {
+            font-size: 1rem;
+        }
+        .section-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .dashboard-card .card-header {
+            padding: 14px 18px;
+            font-size: 0.85rem;
+        }
+        .dashboard-card .card-body {
+            padding: 18px;
+        }
+    }
+
+    /* Glassmorphism Effect */
+    .glass-effect {
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+
+    /* Smooth Scroll */
+    html {
+        scroll-behavior: smooth;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-content">
+    <!-- ===== WELCOME BANNER ===== -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="dashboard-card glass-effect">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h2 class="fw-bold mb-1" style="color: #0f172a;">
+                                Welcome back, {{ user.get_full_name|default:user.username }}!
+                            </h2>
+                            <p class="text-muted mb-0">
+                                <i class="bi bi-calendar3 me-2"></i>{{ today_date|date:"l, F d, Y" }}
+                                <span class="mx-2">|</span>
+                                <i class="bi bi-building me-2"></i>{{ user.prison_station.name|default:"System" }}
+                            </p>
+                        </div>
+                        <div class="text-end d-none d-md-block">
+                            <div class="text-muted small">Current Time</div>
+                            <div class="fw-bold" style="color: #667eea;" id="currentTime"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== STATS ROW ===== -->
+    {% if show_prisoner_stats %}
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="stat-card">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="stat-label">Total Prisoners</div>
+                        <div class="stat-value">{{ total_prisoners|default:0 }}</div>
+                        <div class="stat-change up">
+                            <i class="bi bi-arrow-up"></i> Active
+                        </div>
+                    </div>
+                    <div class="stat-icon blue"><i class="bi bi-people-fill"></i></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="stat-card">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="stat-label">Convicted</div>
+                        <div class="stat-value">{{ convicted_count|default:0 }}</div>
+                        <div class="stat-change">
+                            <i class="bi bi-percent"></i> {{ convicted_count|percentage:total_prisoners }}%
+                        </div>
+                    </div>
+                    <div class="stat-icon green"><i class="bi bi-gavel"></i></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="stat-card">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="stat-label">Remand</div>
+                        <div class="stat-value">{{ remand_count|default:0 }}</div>
+                        <div class="stat-change">
+                            <i class="bi bi-percent"></i> {{ remand_count|percentage:total_prisoners }}%
+                        </div>
+                    </div>
+                    <div class="stat-icon orange"><i class="bi bi-clock-history"></i></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="stat-card">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="stat-label">Children with Mothers</div>
+                        <div class="stat-value">{{ children_count|default:0 }}</div>
+                        <div class="stat-change">
+                            <i class="bi bi-heart"></i> Care
+                        </div>
+                    </div>
+                    <div class="stat-icon purple"><i class="bi bi-hearts"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== RECIDIVISM & CHART ROW ===== -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-4">
+            <div class="dashboard-card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h6 class="fw-bold mb-0" style="color: #0f172a;">
+                            <i class="bi bi-exclamation-triangle-fill me-2" style="color: #f5576c;"></i>Recidivism Rate
+                        </h6>
+                        <span class="badge" style="background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%); color: white;">
+                            {{ recidivism_rate|floatformat:1 }}%
+                        </span>
+                    </div>
+                    {% if recidivism_rate is not None and total_prisoners > 0 %}
+                    <div class="recidivism-progress">
+                        <div class="progress-bar" role="progressbar" style="width: {{ recidivism_rate }}%;" aria-valuenow="{{ recidivism_rate }}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <div class="d-flex justify-content-between mt-3">
+                        <span class="text-muted small fw-bold">0%</span>
+                        <span class="text-muted small fw-bold">100%</span>
+                    </div>
+                    <div class="mt-3 p-3 rounded" style="background: rgba(245, 87, 108, 0.1);">
+                        <p class="mb-0 small" style="color: #f5576c;">
+                            <i class="bi bi-info-circle-fill me-1"></i>
+                            <strong>{{ recidivism_rate|floatformat:1 }}%</strong> of prisoners have previous convictions
+                        </p>
+                    </div>
+                    {% else %}
+                    <div class="recidivism-progress">
+                        <div class="progress-bar" style="width: 0%;"></div>
+                    </div>
+                    <div class="mt-3 p-3 rounded" style="background: rgba(148, 163, 184, 0.1);">
+                        <p class="mb-0 small text-muted">
+                            <i class="bi bi-info-circle me-1"></i>
+                            No recidivism data available
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-8">
+            <div class="dashboard-card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h6 class="fw-bold mb-0" style="color: #0f172a;">
+                            <i class="bi bi-graph-up me-2" style="color: #667eea;"></i>Population Trend
+                        </h6>
+                        <span class="badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                            <i class="bi bi-calendar3 me-1"></i>Last 6 Months
+                        </span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="populationChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== LOCKUP SUMMARY & UPCOMING RELEASES ===== -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-5">
+            <div class="dashboard-card h-100">
+                <div class="card-header">
+                    <span>
+                        <i class="bi bi-lock-fill me-2" style="color: #667eea;"></i>Lockup Summary
+                    </span>
+                    <span class="badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                        {{ today_date|date:"M d, Y" }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    {% if lockup_summary %}
+                    <table class="table lockup-table w-100">
+                        <tbody>
+                            <tr><td class="label">Male Convicted</td><td class="value">{{ lockup_summary.male_convicted|default:0 }}</td></tr>
+                            <tr><td class="label">Female Convicted</td><td class="value">{{ lockup_summary.female_convicted|default:0 }}</td></tr>
+                            <tr><td class="label">Male Remand</td><td class="value">{{ lockup_summary.male_remand|default:0 }}</td></tr>
+                            <tr><td class="label">Female Remand</td><td class="value">{{ lockup_summary.female_remand|default:0 }}</td></tr>
+                            <tr><td class="label">Male Murder Convicted</td><td class="value">{{ lockup_summary.male_murder_convicted|default:0 }}</td></tr>
+                            <tr><td class="label">Female Murder Convicted</td><td class="value">{{ lockup_summary.female_murder_convicted|default:0 }}</td></tr>
+                            <tr><td class="label">Male Foreigner Remand</td><td class="value">{{ lockup_summary.male_foreigner_remand|default:0 }}</td></tr>
+                            <tr><td class="label">Female Foreigner Remand</td><td class="value">{{ lockup_summary.female_foreigner_remand|default:0 }}</td></tr>
+                            <tr><td class="label">Children with Mothers</td><td class="value">{{ lockup_summary.children|default:0 }}</td></tr>
+                            <tr class="total-row"><td class="label"><strong>Grand Total</strong></td><td class="value"><strong>{{ lockup_summary.grand_total|default:0 }}</strong></td></tr>
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-inbox" style="font-size: 2rem; color: #cbd5e1;"></i>
+                        <p class="text-muted mt-2 mb-0">No lockup data available</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-7">
+            <div class="dashboard-card h-100">
+                <div class="card-header">
+                    <span>
+                        <i class="bi bi-calendar-check me-2" style="color: #11998e;"></i>Upcoming Releases
+                    </span>
+                    <span class="badge" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white;">
+                        Next 30 Days
+                    </span>
+                </div>
+                <div class="card-body">
+                    {% if upcoming_releases %}
+                    <div class="table-responsive">
+                        <table class="table table-dashboard">
+                            <thead>
+                                <tr>
+                                    <th>Prisoner</th>
+                                    <th>Release Date</th>
+                                    <th>Offense</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for release in upcoming_releases %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'prisoner_detail' release.prisoner.id %}" class="prisoner-link">
+                                            <div class="fw-bold">{{ release.prisoner.prisoner_number }}</div>
+                                            <div class="text-muted small">{{ release.prisoner.full_name|truncatechars:20 }}</div>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span class="badge" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white;">
+                                            {{ release.date_of_release_on_remission|date:"M d, Y" }}
+                                        </span>
+                                    </td>
+                                    <td class="text-muted small">{{ release.offense|truncatechars:25 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-3 text-end">
+                        <a href="{% url 'upcoming_releases_report' %}" class="btn btn-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                            <i class="bi bi-arrow-right me-1"></i>View All Releases
+                        </a>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-check-circle" style="font-size: 2rem; color: #11998e;"></i>
+                        <p class="text-muted mt-2 mb-0">No upcoming releases in the next 30 days</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ===== RATION MANAGEMENT ===== -->
+    {% include 'prison/ration_dashboard.html' %}
+
+    <!-- ===== MEDICAL STATISTICS ===== -->
+    {% if show_medical_stats %}
+    <div class="mt-4">
+        <div class="section-header">
+            <h3>
+                <i class="bi bi-heart-pulse-fill"></i> Medical Statistics
+            </h3>
+            <a href="{% url 'medical_record_list' %}" class="btn-link">
+                View All <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-xl-3 col-lg-6 col-md-6">
+                <div class="stat-card">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="stat-label">Total Medical Records</div>
+                            <div class="stat-value">{{ medical_stats.total_records_count|default:0 }}</div>
+                            <div class="stat-change">
+                                <i class="bi bi-file-medical"></i> Records
+                            </div>
+                        </div>
+                        <div class="stat-icon blue"><i class="bi bi-file-medical-fill"></i></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-lg-6 col-md-6">
+                <div class="stat-card">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="stat-label">Prisoners with Conditions</div>
+                            <div class="stat-value">{{ medical_stats.prisoners_with_medical|default:0 }}</div>
+                            <div class="stat-change">
+                                <i class="bi bi-person-heart"></i> Active
+                            </div>
+                        </div>
+                        <div class="stat-icon green"><i class="bi bi-heart-pulse-fill"></i></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-lg-6 col-md-6">
+                <div class="stat-card">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="stat-label">Urgent Cases</div>
+                            <div class="stat-value">{{ medical_stats.urgent_cases|default:0 }}</div>
+                            <div class="stat-change down">
+                                <i class="bi bi-exclamation-triangle-fill"></i> Critical
+                            </div>
+                        </div>
+                        <div class="stat-icon red"><i class="bi bi-exclamation-octagon-fill"></i></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-lg-6 col-md-6">
+                <div class="stat-card">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="stat-label">Medical Categories</div>
+                            <div class="stat-value">{{ medical_stats.count_by_category|length }}</div>
+                            <div class="stat-change">
+                                <i class="bi bi-grid"></i> Types
+                            </div>
+                        </div>
+                        <div class="stat-icon purple"><i class="bi bi-pie-chart-fill"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="dashboard-card h-100">
+                    <div class="card-header">
+                        <span>
+                            <i class="bi bi-pie-chart-fill me-2" style="color: #667eea;"></i>Medical Cases by Category
+                        </span>
+                        <span class="badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                            Distribution
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container chart-container-sm">
+                            <canvas id="medicalCategoriesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="dashboard-card h-100">
+                    <div class="card-header">
+                        <span>
+                            <i class="bi bi-clock-history me-2" style="color: #11998e;"></i>Recent Medical Records
+                        </span>
+                        <span class="badge" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white;">
+                            Last 5
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        {% if medical_stats.recent_records %}
+                        <div class="table-responsive">
+                            <table class="table table-dashboard">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Prisoner</th>
+                                        <th>Diagnosis</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for record in medical_stats.recent_records %}
+                                    <tr>
+                                        <td>
+                                            <span class="badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                                                {{ record.record_date|date:"M d" }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'prisoner_detail' record.prisoner.id %}" class="prisoner-link">
+                                                <div class="fw-bold">{{ record.prisoner.prisoner_number }}</div>
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <div>{{ record.diagnosis|truncatechars:25 }}</div>
+                                            <span class="med-badge" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+                                                {{ record.get_category_display }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-inbox" style="font-size: 2rem; color: #cbd5e1;"></i>
+                            <p class="text-muted mt-2 mb-0">No recent medical records</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ===== RECENT ACTIVITY (Superuser only) ===== -->
+    {% if user.is_super_admin %}
+    <div class="mt-4">
+        <div class="section-header">
+            <h3>
+                <i class="bi bi-clock-history-fill"></i> Recent System Activity
+            </h3>
+            <a href="{% url 'activity_log_list' %}" class="btn-link">
+                View All <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+
+        <div class="dashboard-card">
+            <div class="card-body">
+                {% if recent_activities %}
+                <div class="row g-0">
+                    {% for activity in recent_activities|slice:":8" %}
+                    <div class="col-md-6 col-lg-4">
+                        <div class="activity-item">
+                            <div class="activity-icon">
+                                <i class="bi bi-{% if activity.action == 'create' %}plus-circle-fill{% elif activity.action == 'update' %}pencil-square{% elif activity.action == 'delete' %}trash3-fill{% elif activity.action == 'transfer' %}arrow-left-right{% else %}record-circle-fill{% endif %}"></i>
+                            </div>
+                            <div class="activity-content">
+                                <span class="action">{{ activity.user.username|default:"System" }}</span>
+                                <span class="details">{{ activity.details|truncatechars:35 }}</span>
+                                <span class="time">{{ activity.timestamp|timesince }} ago</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-inbox" style="font-size: 2rem; color: #cbd5e1;"></i>
+                    <p class="text-muted mt-2 mb-0">No recent activities</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // ===== CURRENT TIME UPDATE =====
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true 
+            });
+            const timeElement = document.getElementById('currentTime');
+            if (timeElement) {
+                timeElement.textContent = timeString;
+            }
+        }
+        
+        // Update time immediately and then every second
+        updateTime();
+        setInterval(updateTime, 1000);
+
+        // ===== ENHANCED POPULATION CHART =====
+        {% if show_prisoner_stats and months and prisoner_counts %}
+        (function() {
+            var ctx = document.getElementById('populationChart');
+            if (!ctx) return;
+            
+            // Safe data preparation
+            var rawLabels = "{% for month in months %}{{ month }}|{% endfor %}".split('|').filter(function(x) { return x; });
+            var rawData = "{% for count in prisoner_counts %}{{ count }}|{% endfor %}".split('|').filter(function(x) { return x; }).map(Number);
+            
+            new Chart(ctx.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: rawLabels,
+                    datasets: [{
+                        label: 'Total Prisoners',
+                        data: rawData,
+                        backgroundColor: 'rgba(102, 126, 234, 0.15)',
+                        borderColor: '#667eea',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#667eea',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointHoverRadius: 7,
+                        pointHoverBackgroundColor: '#764ba2',
+                        pointHoverBorderColor: '#fff',
+                        pointHoverBorderWidth: 3,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                            titleColor: '#fff',
+                            bodyColor: '#e2e8f0',
+                            cornerRadius: 12,
+                            padding: 16,
+                            displayColors: false,
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 13 },
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Total Prisoners: ' + context.raw;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { 
+                                color: 'rgba(0,0,0,0.05)',
+                                drawBorder: false
+                            },
+                            ticks: { 
+                                precision: 0, 
+                                font: { size: 11, weight: '500' },
+                                color: '#64748b'
+                            }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { 
+                                font: { size: 11, weight: '500' },
+                                color: '#64748b'
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            });
+        })();
+        {% endif %}
+
+        // ===== ENHANCED MEDICAL CATEGORIES CHART =====
+        {% if show_medical_stats and medical_stats.count_by_category %}
+        (function() {
+            var medCtx = document.getElementById('medicalCategoriesChart');
+            if (!medCtx) return;
+            
+            // Safe data preparation
+            var categoriesData = {{ medical_stats.count_by_category|safe }};
+            var labels = categoriesData.map(function(item) {
+                var categoryMap = {
+                    'routine': 'Routine',
+                    'emergency': 'Emergency',
+                    'chronic': 'Chronic',
+                    'mental': 'Mental Health',
+                    'dental': 'Dental',
+                    'other': 'Other'
+                };
+                return categoryMap[item.category] || item.category;
+            });
+            var data = categoriesData.map(function(item) { return item.count; });
+            var colors = [
+                'rgba(102, 126, 234, 0.8)',
+                'rgba(239, 68, 68, 0.8)',
+                'rgba(245, 158, 11, 0.8)',
+                'rgba(139, 92, 246, 0.8)',
+                'rgba(13, 148, 136, 0.8)',
+                'rgba(148, 163, 184, 0.8)'
+            ];
+            var borderColors = [
+                '#667eea',
+                '#ef4444',
+                '#f59e0b',
+                '#8b5cf6',
+                '#0d9488',
+                '#94a3b8'
+            ];
+
+            new Chart(medCtx.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors.slice(0, data.length),
+                        borderColor: borderColors.slice(0, data.length),
+                        borderWidth: 3,
+                        hoverOffset: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 14,
+                                boxHeight: 14,
+                                font: { size: 12, weight: '500' },
+                                padding: 16,
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                color: '#475569'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                            titleColor: '#fff',
+                            bodyColor: '#e2e8f0',
+                            cornerRadius: 12,
+                            padding: 16,
+                            titleFont: { size: 14, weight: 'bold' },
+                            bodyFont: { size: 13 },
+                            callbacks: {
+                                label: function(context) {
+                                    var label = context.label || '';
+                                    var value = context.raw || 0;
+                                    var total = context.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+                                    var percentage = Math.round((value / total) * 100);
+                                    return label + ': ' + value + ' (' + percentage + '%)';
+                                }
+                            }
+                        }
+                    },
+                    cutout: '70%',
+                    animation: {
+                        animateScale: true,
+                        animateRotate: true
+                    }
+                }
+            });
+        })();
+        {% endif %}
+    });
+</script>
+{% endblock %}

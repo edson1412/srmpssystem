@@ -1,0 +1,744 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Bulk Add Marks - {{ intake.get_display_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .bulk-marks-shell {
+        position: relative;
+        min-height: calc(100vh - 200px);
+        padding: 1rem;
+    }
+
+    .bulk-marks-shell::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at top left, rgba(74,108,247,0.1), transparent 50%),
+                    radial-gradient(circle at 80% 20%, rgba(34,197,94,0.1), transparent 45%);
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    .bulk-marks-content {
+        position: relative;
+        z-index: 1;
+    }
+
+    .page-header {
+        background: linear-gradient(135deg, #111827, #1f2937);
+        color: #fff;
+        border-radius: 1.5rem;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 25px 60px rgba(15, 23, 42, 0.45);
+    }
+
+    .content-section {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        border: 1px solid rgba(0,0,0,0.06);
+        margin-bottom: 2rem;
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .section-title i {
+        color: var(--primary-color);
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-control, .form-select {
+        border: 2px solid #e5e7eb;
+        border-radius: 0.5rem;
+        padding: 0.75rem 1rem;
+        transition: all 0.2s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .btn-primary {
+        background: var(--primary-color);
+        border: none;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        border-radius: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-dark);
+        transform: translateY(-1px);
+    }
+
+    .btn-success {
+        background: #10b981;
+        border: none;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        border-radius: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .btn-success:hover {
+        background: #059669;
+        transform: translateY(-1px);
+    }
+
+    .btn-info {
+        background: #06b6d4;
+        border: none;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        border-radius: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .btn-info:hover {
+        background: #0891b2;
+        transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+        background: #6b7280;
+        border: none;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        border-radius: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+        background: #4b5563;
+        transform: translateY(-1px);
+    }
+
+    .required-field {
+        color: #ef4444;
+    }
+
+    .help-text {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+
+    .alert {
+        border-radius: 0.75rem;
+        border: none;
+        padding: 1rem 1.5rem;
+    }
+
+    .alert-info {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .alert-warning {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .alert-success {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .marks-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 2rem;
+    }
+
+    .marks-table th {
+        background: #f9fafb;
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: #374151;
+        border-bottom: 2px solid #e5e7eb;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .marks-table td {
+        padding: 1rem;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .marks-table tbody tr:hover {
+        background: #f9fafb;
+    }
+
+    .recruit-name {
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 0.25rem;
+    }
+
+    .recruit-details {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+
+    .marks-input {
+        width: 100px;
+        text-align: center;
+        border: 2px solid #e5e7eb;
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .marks-input:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        outline: none;
+    }
+
+    .marks-input.valid {
+        border-color: #10b981;
+        background: #f0fdf4;
+    }
+
+    .marks-input.invalid {
+        border-color: #ef4444;
+        background: #fef2f2;
+    }
+
+    .percentage-display {
+        font-size: 0.875rem;
+        font-weight: 600;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+    }
+
+    .percentage-display.excellent {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .percentage-display.good {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .percentage-display.average {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .percentage-display.poor {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .module-info {
+        background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        border: 2px solid #0ea5e9;
+        margin-bottom: 2rem;
+    }
+
+    .module-header {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .module-code {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #0c4a6e;
+    }
+
+    .module-name {
+        font-size: 1rem;
+        color: #0369a1;
+        margin-bottom: 0.5rem;
+    }
+
+    .module-details {
+        display: flex;
+        gap: 2rem;
+        font-size: 0.875rem;
+        color: #0369a1;
+    }
+
+    .progress-indicator {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+        position: relative;
+    }
+
+    .progress-indicator::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: #e5e7eb;
+        z-index: 0;
+    }
+
+    .progress-step {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #e5e7eb;
+        color: #6b7280;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        position: relative;
+        z-index: 1;
+    }
+
+    .progress-step.active {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .progress-step.completed {
+        background: #10b981;
+        color: white;
+    }
+
+    .table-container {
+        max-height: 600px;
+        overflow-y: auto;
+        border: 2px solid #e5e7eb;
+        border-radius: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .validation-feedback {
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+    }
+
+    .validation-feedback.valid {
+        color: #059669;
+    }
+
+    .validation-feedback.invalid {
+        color: #dc2626;
+    }
+
+    .bulk-actions {
+        display: flex;
+        justify-content: between;
+        align-items: center;
+        padding: 1rem;
+        background: #f9fafb;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .stats-summary {
+        display: flex;
+        gap: 2rem;
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .stat-value {
+        font-weight: 600;
+        color: #1f2937;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bulk-marks-shell">
+    <div class="bulk-marks-content">
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="display-6 fw-bold mb-3">
+                        <i class="fas fa-chart-line me-3"></i>Bulk Add Marks
+                    </h1>
+                    <p class="lead mb-0 opacity-90">
+                        Enter marks for {{ recruits.count }} recruits in {{ intake.get_display_name }}
+                    </p>
+                </div>
+                <div>
+                    <a href="{% url 'hrms:intake_detail' intake.pk %}" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Intake
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Indicator -->
+        <div class="progress-indicator">
+            <div class="progress-step active">1</div>
+            <div class="progress-step">2</div>
+            <div class="progress-step">3</div>
+        </div>
+
+        <!-- Module Selection Form -->
+        <div class="content-section">
+            <h3 class="section-title">
+                <i class="fas fa-cog"></i>
+                Module Selection
+            </h3>
+            
+            <form method="get" id="module-form">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label for="module" class="form-label">
+                            Select Module <span class="required-field">*</span>
+                        </label>
+                        <select name="module" id="module" class="form-select" required>
+                            <option value="">Choose a module...</option>
+                            {% for module in available_modules %}
+                                <option value="{{ module.pk }}" {% if module.pk == selected_module.pk %}selected{% endif %}>
+                                    {{ module.module_code }} - {{ module.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="exam_date" class="form-label">
+                            Exam Date <span class="required-field">*</span>
+                        </label>
+                        <input type="date" name="exam_date" id="exam_date" class="form-control" 
+                               value="{{ exam_date|default:today|date:'Y-m-d' }}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">&nbsp;</label>
+                        <div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search me-2"></i>Load Recruits
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        {% if selected_module %}
+            <!-- Module Information -->
+            <div class="module-info">
+                <div class="module-header">
+                    <div>
+                        <div class="module-code">{{ selected_module.module_code }}</div>
+                        <div class="module-name">{{ selected_module.name }}</div>
+                        <div class="module-details">
+                            <span><i class="fas fa-trophy me-1"></i>Total Marks: {{ selected_module.total_marks }}</span>
+                            <span><i class="fas fa-percentage me-1"></i>Passing Mark: {{ selected_module.passing_mark }}%</span>
+                            <span><i class="fas fa-users me-1"></i>{{ recruits.count }} Recruits</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Marks Entry Form -->
+            <div class="content-section">
+                <h3 class="section-title">
+                    <i class="fas fa-edit"></i>
+                    Enter Marks
+                    <div class="bulk-actions">
+                        <div class="stats-summary">
+                            <div class="stat-item">
+                                <span>Total:</span>
+                                <span class="stat-value">{{ recruits.count }}</span>
+                            </div>
+                            <div class="stat-item">
+                                <span>Completed:</span>
+                                <span class="stat-value" id="completed-count">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span>Remaining:</span>
+                                <span class="stat-value" id="remaining-count">{{ recruits.count }}</span>
+                            </div>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-info btn-sm" onclick="fillAverageMarks()">
+                                <i class="fas fa-magic me-1"></i>Fill Average
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="clearAllMarks()">
+                                <i class="fas fa-eraser me-1"></i>Clear All
+                            </button>
+                        </div>
+                    </div>
+                </h3>
+
+                <form method="post" id="marks-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="module" value="{{ selected_module.pk }}">
+                    <input type="hidden" name="exam_date" value="{{ exam_date|date:'Y-m-d' }}">
+                    
+                    <div class="table-container">
+                        <table class="marks-table">
+                            <thead>
+                                <tr>
+                                    <th style="position: sticky; left: 0; background: #f9fafb;">Recruit</th>
+                                    <th>Training ID</th>
+                                    <th>Marks Obtained</th>
+                                    <th>Total Marks</th>
+                                    <th>Percentage</th>
+                                    <th>Grade</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for recruit in recruits %}
+                                    <tr>
+                                        <td style="position: sticky; left: 0; background: white;">
+                                            <div class="recruit-name">{{ recruit.full_name }}</div>
+                                            <div class="recruit-details">{{ recruit.home_district|default:"N/A" }}</div>
+                                        </td>
+                                        <td>
+                                            <code>{{ recruit.training_id|default:"N/A" }}</code>
+                                        </td>
+                                        <td>
+                                            <input type="number" 
+                                                   name="marks_{{ recruit.pk }}" 
+                                                   class="marks-input"
+                                                   min="0" 
+                                                   max="{{ selected_module.total_marks }}"
+                                                   step="0.1"
+                                                   data-total="{{ selected_module.total_marks }}"
+                                                   data-passing="{{ selected_module.passing_mark }}"
+                                                   data-recruit="{{ recruit.pk }}"
+                                                   placeholder="0.0">
+                                            <div class="validation-feedback"></div>
+                                        </td>
+                                        <td>
+                                            <div class="fw-semibold">{{ selected_module.total_marks }}</div>
+                                        </td>
+                                        <td>
+                                            <div class="percentage-display" id="percentage_{{ recruit.pk }}">-</div>
+                                        </td>
+                                        <td>
+                                            <div class="grade-badge" id="grade_{{ recruit.pk }}">-</div>
+                                        </td>
+                                        <td>
+                                            <div id="status_{{ recruit.pk }}">-</div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Information Alert -->
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Tips:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>Enter marks between 0 and {{ selected_module.total_marks }}</li>
+                            <li>Use Tab key to move between fields quickly</li>
+                            <li>Grades are calculated automatically: A (80%+), B (70-79%), C (60-69%), D (50-59%), F (Below 50%)</li>
+                            <li>Click "Fill Average" to populate all fields with average marks ({{ selected_module.total_marks|mul:0.7|floatformat:1 }})</li>
+                        </ul>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'hrms:intake_detail' intake.pk %}" class="btn btn-secondary btn-lg">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                        <div>
+                            <button type="button" class="btn btn-info btn-lg me-2" onclick="validateAndPreview()">
+                                <i class="fas fa-eye me-2"></i>Validate & Preview
+                            </button>
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-save me-2"></i>Save All Marks
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('marks-form')) {
+        const marksInputs = document.querySelectorAll('.marks-input');
+        const totalMarks = {{ selected_module.total_marks }};
+        const passingMark = {{ selected_module.passing_mark }};
+
+        // Function to calculate percentage and grade
+        function calculatePercentageAndGrade(input) {
+            const marks = parseFloat(input.value) || 0;
+            const recruitPk = input.dataset.recruit;
+            
+            // Validation
+            const validationFeedback = input.nextElementSibling;
+            if (marks < 0 || marks > totalMarks) {
+                input.classList.add('invalid');
+                input.classList.remove('valid');
+                validationFeedback.textContent = `Must be between 0 and ${totalMarks}`;
+                validationFeedback.classList.add('invalid');
+                validationFeedback.classList.remove('valid');
+            } else {
+                input.classList.remove('invalid');
+                input.classList.add('valid');
+                validationFeedback.textContent = '';
+                validationFeedback.classList.remove('invalid');
+                validationFeedback.classList.add('valid');
+            }
+
+            // Calculate percentage
+            const percentage = totalMarks > 0 ? (marks / totalMarks) * 100 : 0;
+            const percentageDisplay = document.getElementById(`percentage_${recruitPk}`);
+            const gradeDisplay = document.getElementById(`grade_${recruitPk}`);
+            const statusDisplay = document.getElementById(`status_${recruitPk}`);
+
+            if (marks > 0) {
+                percentageDisplay.textContent = `${percentage.toFixed(1)}%`;
+                
+                // Determine grade
+                let grade, status, className;
+                if (percentage >= 80) {
+                    grade = 'A';
+                    status = 'Excellent';
+                    className = 'excellent';
+                } else if (percentage >= 70) {
+                    grade = 'B';
+                    status = 'Good';
+                    className = 'good';
+                } else if (percentage >= 60) {
+                    grade = 'C';
+                    status = 'Average';
+                    className = 'average';
+                } else if (percentage >= 50) {
+                    grade = 'D';
+                    status = 'Pass';
+                    className = 'average';
+                } else {
+                    grade = 'F';
+                    status = 'Fail';
+                    className = 'poor';
+                }
+
+                gradeDisplay.textContent = grade;
+                gradeDisplay.className = `grade-badge ${grade}`;
+                statusDisplay.textContent = status;
+                percentageDisplay.className = `percentage-display ${className}`;
+            } else {
+                percentageDisplay.textContent = '-';
+                gradeDisplay.textContent = '-';
+                gradeDisplay.className = 'grade-badge';
+                statusDisplay.textContent = '-';
+                percentageDisplay.className = 'percentage-display';
+            }
+
+            updateProgress();
+        }
+
+        // Function to update progress
+        function updateProgress() {
+            const completedInputs = document.querySelectorAll('.marks-input.valid').length;
+            const totalInputs = marksInputs.length;
+            const remaining = totalInputs - completedInputs;
+
+            document.getElementById('completed-count').textContent = completedInputs;
+            document.getElementById('remaining-count').textContent = remaining;
+        }
+
+        // Add event listeners to all marks inputs
+        marksInputs.forEach(input => {
+            input.addEventListener('input', () => calculatePercentageAndGrade(input));
+            input.addEventListener('blur', () => calculatePercentageAndGrade(input));
+        });
+
+        // Fill average marks function
+        window.fillAverageMarks = function() {
+            const averageMarks = (totalMarks * 0.7).toFixed(1);
+            marksInputs.forEach(input => {
+                input.value = averageMarks;
+                calculatePercentageAndGrade(input);
+            });
+        };
+
+        // Clear all marks function
+        window.clearAllMarks = function() {
+            marksInputs.forEach(input => {
+                input.value = '';
+                input.classList.remove('valid', 'invalid');
+                calculatePercentageAndGrade(input);
+            });
+        };
+
+        // Validate and preview function
+        window.validateAndPreview = function() {
+            const invalidInputs = document.querySelectorAll('.marks-input.invalid');
+            if (invalidInputs.length > 0) {
+                alert(`Please correct ${invalidInputs.length} invalid mark entries before proceeding.`);
+                invalidInputs[0].focus();
+                return false;
+            }
+
+            const emptyInputs = document.querySelectorAll('.marks-input:not(.valid)').length;
+            if (emptyInputs > 0) {
+                if (confirm(`${emptyInputs} recruits have no marks entered. Do you want to continue?`)) {
+                    document.getElementById('marks-form').submit();
+                }
+            } else {
+                document.getElementById('marks-form').submit();
+            }
+        };
+
+        // Form submission validation
+        document.getElementById('marks-form').addEventListener('submit', function(e) {
+            const invalidInputs = document.querySelectorAll('.marks-input.invalid');
+            if (invalidInputs.length > 0) {
+                e.preventDefault();
+                alert(`Please correct ${invalidInputs.length} invalid mark entries before saving.`);
+                invalidInputs[0].focus();
+                return false;
+            }
+
+            const completedInputs = document.querySelectorAll('.marks-input.valid').length;
+            if (completedInputs === 0) {
+                e.preventDefault();
+                alert('Please enter at least one mark before saving.');
+                return false;
+            }
+
+            return confirm(`Are you sure you want to save marks for ${completedInputs} recruits?`);
+        });
+    }
+});
+</script>
+{% endblock %}

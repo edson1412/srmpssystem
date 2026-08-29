@@ -1,0 +1,113 @@
+{% extends 'training_base.html' %}
+{% load static %}
+
+{% block training_title %}Recruits - Prison HRMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .recruit-list-shell {
+        min-height: calc(100vh - 150px);
+        padding: 1.5rem;
+    }
+
+    .recruit-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(226, 232, 240, 1);
+    }
+
+    .filter-group {
+        gap: 1rem;
+        display: flex;
+        flex-wrap: wrap;
+        margin-bottom: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block training_content %}
+<div class="recruit-list-shell">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 fw-bold">Recruits</h1>
+            <p class="text-muted mb-0">Browse recruits by intake and status.</p>
+        </div>
+        <a href="{% url 'hrms:intake_list' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Intakes
+        </a>
+    </div>
+
+    <div class="recruit-card">
+        <form method="get" class="filter-group mb-4">
+            <div class="w-100 w-md-auto">
+                <label class="form-label" for="intake">Intake</label>
+                <select name="intake" id="intake" class="form-select">
+                    <option value="">All intakes</option>
+                    {% for intake in intakes %}
+                        <option value="{{ intake.pk }}" {% if selected_intake == intake.pk|stringformat:'s' %}selected{% endif %}>
+                            {{ intake.get_display_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="w-100 w-md-auto">
+                <label class="form-label" for="status">Status</label>
+                <select name="status" id="status" class="form-select">
+                    <option value="">All statuses</option>
+                    <option value="enrolled" {% if selected_status == 'enrolled' %}selected{% endif %}>Enrolled</option>
+                    <option value="in_training" {% if selected_status == 'in_training' %}selected{% endif %}>In Training</option>
+                    <option value="graduated" {% if selected_status == 'graduated' %}selected{% endif %}>Graduated</option>
+                    <option value="dismissed" {% if selected_status == 'dismissed' %}selected{% endif %}>Dismissed</option>
+                    <option value="withdrawn" {% if selected_status == 'withdrawn' %}selected{% endif %}>Withdrawn</option>
+                </select>
+            </div>
+            <div class="d-flex align-items-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-filter me-2"></i>Filter
+                </button>
+            </div>
+        </form>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Training ID</th>
+                        <th>Name</th>
+                        <th>Intake</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for recruit in recruits %}
+                        <tr>
+                            <td>{{ recruit.training_id }}</td>
+                            <td>
+                                <a href="{% url 'hrms:recruit_detail' pk=recruit.pk %}" class="text-decoration-none fw-semibold">
+                                    {{ recruit.full_name }}
+                                </a>
+                            </td>
+                            <td>{{ recruit.intake.get_display_name }}</td>
+                            <td>{{ recruit.get_recruit_type_display }}</td>
+                            <td>{{ recruit.get_status_display }}</td>
+                            <td class="text-end">
+                                <a href="{% url 'hrms:recruit_detail' pk=recruit.pk %}" class="btn btn-sm btn-outline-primary">
+                                    View
+                                </a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">No recruits found for the selected filters.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

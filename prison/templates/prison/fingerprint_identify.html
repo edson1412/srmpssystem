@@ -1,0 +1,552 @@
+{% extends "prison/base.html" %}
+{% load static %}
+
+{% block page_title %}Fingerprint Identification{% endblock %}
+
+{% block extra_css %}
+<style>
+    .identify-container {
+        background: #ffffff;
+        border-radius: 14px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        padding: 32px;
+        max-width: 700px;
+        margin: 0 auto;
+    }
+
+    .scanner-status {
+        padding: 40px 20px;
+        border: 3px dashed #e2e8f0;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        min-height: 250px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .scanner-status.scanning {
+        border-color: #1a73e8;
+        background: rgba(26, 115, 232, 0.05);
+    }
+
+    .scanner-status.success {
+        border-color: #16a34a;
+        background: rgba(22, 163, 74, 0.05);
+    }
+
+    .scanner-status.error {
+        border-color: #dc2626;
+        background: rgba(220, 38, 38, 0.05);
+    }
+
+    .scanner-status .icon {
+        font-size: 4rem;
+        color: #94a3b8;
+        transition: all 0.3s ease;
+    }
+
+    .scanner-status.scanning .icon {
+        color: #1a73e8;
+        animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    .scanner-status.success .icon {
+        color: #16a34a;
+    }
+
+    .scanner-status.error .icon {
+        color: #dc2626;
+    }
+
+    .spinner-icon {
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.1); opacity: 0.7; }
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .btn-scan {
+        padding: 12px 40px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #1a73e8;
+        border: none;
+        color: #fff;
+        transition: all 0.2s ease;
+        font-size: 1rem;
+        min-width: 200px;
+    }
+
+    .btn-scan:hover {
+        background: #1557b0;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(26, 115, 232, 0.3);
+    }
+
+    .btn-scan:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .btn-reset {
+        padding: 10px 28px;
+        font-weight: 600;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        background: #fff;
+        transition: all 0.2s ease;
+    }
+
+    .btn-reset:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+
+    .threshold-setting {
+        margin: 16px 0;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .threshold-setting label {
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: #334155;
+    }
+
+    .threshold-setting input[type="range"] {
+        width: 200px;
+        accent-color: #1a73e8;
+    }
+
+    .threshold-value {
+        font-weight: 600;
+        color: #1a73e8;
+        min-width: 40px;
+    }
+
+    .info-box {
+        background: #f8fafc;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-top: 16px;
+        font-size: 0.8rem;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-align: left;
+    }
+
+    .info-box i {
+        color: #1a73e8;
+        font-size: 1.2rem;
+    }
+
+    /* Results Section */
+    .results-section {
+        margin-top: 24px;
+        display: none;
+    }
+
+    .results-section.show {
+        display: block;
+    }
+
+    .match-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin-bottom: 12px;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .match-card:hover {
+        border-color: #1a73e8;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .match-card .match-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .match-card .match-score {
+        font-weight: 700;
+        font-size: 1.1rem;
+        padding: 2px 12px;
+        border-radius: 20px;
+        background: #dbeafe;
+        color: #1a73e8;
+    }
+
+    .match-card .match-score.high {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    .match-card .match-score.medium {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .match-card .match-score.low {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .match-card .prisoner-link {
+        color: #0f172a;
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .match-card .prisoner-link:hover {
+        color: #1a73e8;
+    }
+
+    .match-card .badge-station {
+        font-size: 0.65rem;
+        background: #f1f5f9;
+        color: #64748b;
+        padding: 2px 10px;
+        border-radius: 12px;
+    }
+
+    .no-matches {
+        text-align: center;
+        padding: 32px 20px;
+        color: #94a3b8;
+    }
+
+    .no-matches i {
+        font-size: 3rem;
+        display: block;
+        margin-bottom: 12px;
+        color: #cbd5e1;
+    }
+
+    .device-select {
+        margin-bottom: 16px;
+    }
+
+    .device-select select {
+        border-radius: 8px;
+        border-color: #e2e8f0;
+        padding: 8px 14px;
+        font-size: 0.875rem;
+        width: 100%;
+        max-width: 300px;
+    }
+
+    @media (max-width: 768px) {
+        .identify-container {
+            padding: 16px;
+        }
+        .scanner-status {
+            min-height: 180px;
+            padding: 16px;
+        }
+        .scanner-status .icon {
+            font-size: 3rem;
+        }
+        .btn-scan {
+            min-width: 150px;
+            padding: 10px 24px;
+            font-size: 0.875rem;
+        }
+        .threshold-setting input[type="range"] {
+            width: 120px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h1 class="h3 fw-bold mb-1">Fingerprint Identification</h1>
+            <p class="text-muted small mb-0">
+                <i class="bi bi-search me-1"></i>
+                Scan a fingerprint to identify a prisoner
+            </p>
+        </div>
+        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <div class="identify-container">
+        <form method="post" id="identifyForm">
+            {% csrf_token %}
+            
+            <!-- Device Selection -->
+            <div class="device-select">
+                <label for="device_id" class="form-label fw-semibold small text-muted">Scanner Device</label>
+                <select name="device_id" id="device_id" class="form-select">
+                    {% if lenovo_device %}
+                        <option value="{{ lenovo_device.id }}" selected>
+                            {{ lenovo_device.name }} (Integrated)
+                        </option>
+                    {% endif %}
+                    {% for device in devices %}
+                        {% if device.id != lenovo_device.id %}
+                            <option value="{{ device.id }}">{{ device.name }}</option>
+                        {% endif %}
+                    {% endfor %}
+                    <option value="">Other (Default)</option>
+                </select>
+            </div>
+
+            <!-- Threshold Setting -->
+            <div class="threshold-setting">
+                <label for="threshold">Match Threshold:</label>
+                <input type="range" id="threshold" name="search_threshold" min="50" max="95" value="70">
+                <span class="threshold-value" id="thresholdValue">70%</span>
+            </div>
+
+            <!-- Scanner Status -->
+            <div class="scanner-status" id="scannerStatus">
+                <i class="bi bi-fingerprint icon" id="scannerIcon"></i>
+                <h4 class="mt-3" id="statusTitle">Ready to Scan</h4>
+                <p class="text-muted" id="statusMessage">Place your finger on the scanner to identify a prisoner</p>
+            </div>
+
+            <!-- Hidden Inputs -->
+            <input type="hidden" name="fingerprint_data" id="fingerprint_data" value="">
+
+            <!-- Buttons -->
+            <div class="d-flex flex-wrap gap-3 justify-content-center mt-4">
+                <button type="button" class="btn-scan" id="scanBtn">
+                    <i class="bi bi-scan me-2"></i> Scan & Identify
+                </button>
+                <button type="button" class="btn-reset" id="resetBtn">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                </button>
+            </div>
+
+            <!-- Info Box -->
+            <div class="info-box">
+                <i class="bi bi-info-circle"></i>
+                <div>
+                    <strong>Note:</strong> The system will search for a matching fingerprint in the database and display any matching prisoners.
+                    {% if lenovo_device %}
+                        <br>Your Lenovo laptop's integrated fingerprint scanner is detected and ready to use.
+                    {% endif %}
+                </div>
+            </div>
+        </form>
+
+        <!-- Results Section -->
+        <div class="results-section" id="resultsSection">
+            <hr>
+            <h5 class="fw-semibold mb-3">Search Results</h5>
+            <div id="resultsContent">
+                <!-- Results will be rendered here -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const scanBtn = document.getElementById('scanBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const statusEl = document.getElementById('scannerStatus');
+    const statusTitle = document.getElementById('statusTitle');
+    const statusMessage = document.getElementById('statusMessage');
+    const scannerIcon = document.getElementById('scannerIcon');
+    const fingerprintDataInput = document.getElementById('fingerprint_data');
+    const thresholdSlider = document.getElementById('threshold');
+    const thresholdValue = document.getElementById('thresholdValue');
+    const resultsSection = document.getElementById('resultsSection');
+    const resultsContent = document.getElementById('resultsContent');
+    const deviceSelect = document.getElementById('device_id');
+
+    // Update threshold display
+    thresholdSlider.addEventListener('input', function() {
+        thresholdValue.textContent = this.value + '%';
+    });
+
+    // Simulate fingerprint capture and search
+    function simulateCaptureAndSearch() {
+        return new Promise((resolve) => {
+            statusEl.className = 'scanner-status scanning';
+            scannerIcon.className = 'bi bi-fingerprint icon spinner-icon';
+            statusTitle.textContent = 'Scanning...';
+            statusMessage.textContent = 'Please hold your finger on the scanner';
+            scanBtn.disabled = true;
+
+            setTimeout(() => {
+                // Generate simulated fingerprint data
+                const template = btoa('fingerprint_data_' + Date.now() + '_' + Math.random().toString(36).substring(2));
+                resolve(template);
+            }, 2000);
+        });
+    }
+
+    // Perform fingerprint search via API
+    async function performSearch(fingerprintData, threshold) {
+        try {
+            const response = await fetch('{% url "fingerprint_search_api" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    fingerprint_data: fingerprintData,
+                    threshold: parseFloat(threshold)
+                })
+            });
+
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Search failed:', error);
+            throw error;
+        }
+    }
+
+    // Render results
+    function renderResults(matches) {
+        resultsSection.classList.add('show');
+        
+        if (!matches || matches.length === 0) {
+            resultsContent.innerHTML = `
+                <div class="no-matches">
+                    <i class="bi bi-person-x"></i>
+                    <p>No matching prisoners found.</p>
+                    <small class="text-muted">Try adjusting the match threshold or scan again.</small>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        matches.forEach((match, index) => {
+            // Determine score class
+            let scoreClass = 'low';
+            if (match.score >= 80) scoreClass = 'high';
+            else if (match.score >= 60) scoreClass = 'medium';
+
+            html += `
+                <div class="match-card">
+                    <div class="match-info">
+                        <span class="match-score ${scoreClass}">${Math.round(match.score)}%</span>
+                        <a href="/prisoners/${match.id}/" class="prisoner-link">
+                            ${match.prisoner_number} - ${match.full_name}
+                        </a>
+                        <span class="badge-station">${match.prison_station || 'No Station'}</span>
+                        <span class="badge ${match.is_active ? 'bg-success' : 'bg-secondary'}">
+                            ${match.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                        ${match.is_identity_verified ? 
+                            '<span class="badge bg-info"><i class="bi bi-check-circle"></i> Verified</span>' : 
+                            '<span class="badge bg-warning text-dark">Unverified</span>'
+                        }
+                    </div>
+                    <div>
+                        <a href="/prisoners/${match.id}/" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye"></i> View
+                        </a>
+                    </div>
+                </div>
+            `;
+        });
+
+        resultsContent.innerHTML = html;
+    }
+
+    // Handle scan button click
+    scanBtn.addEventListener('click', async function() {
+        try {
+            // Capture fingerprint (simulated or real)
+            let fingerprintData;
+            
+            if (window.FingerprintScanner) {
+                // Use real scanner
+                const scanner = new window.FingerprintScanner();
+                fingerprintData = await new Promise((resolve, reject) => {
+                    scanner.capture({
+                        onSuccess: (result) => resolve(result.template),
+                        onError: (error) => reject(error)
+                    });
+                });
+            } else {
+                fingerprintData = await simulateCaptureAndSearch();
+            }
+
+            // Update UI
+            statusEl.className = 'scanner-status';
+            scannerIcon.className = 'bi bi-search icon';
+            statusTitle.textContent = 'Searching...';
+            statusMessage.textContent = 'Checking fingerprint against database';
+            scanBtn.disabled = true;
+
+            // Perform search
+            const threshold = thresholdSlider.value;
+            const result = await performSearch(fingerprintData, threshold);
+
+            // Update UI based on results
+            if (result.success) {
+                statusEl.className = 'scanner-status success';
+                scannerIcon.className = 'bi bi-check-circle-fill icon';
+                statusTitle.textContent = 'Search Complete';
+                statusMessage.textContent = `Found ${result.count || 0} matching prisoner(s)`;
+                
+                renderResults(result.matches || []);
+            } else {
+                throw new Error(result.error || 'Search failed');
+            }
+
+        } catch (error) {
+            statusEl.className = 'scanner-status error';
+            scannerIcon.className = 'bi bi-x-circle-fill icon';
+            statusTitle.textContent = 'Error';
+            statusMessage.textContent = error.message || 'Failed to complete the search';
+            resultsSection.classList.remove('show');
+        } finally {
+            scanBtn.disabled = false;
+        }
+    });
+
+    // Reset
+    resetBtn.addEventListener('click', function() {
+        statusEl.className = 'scanner-status';
+        scannerIcon.className = 'bi bi-fingerprint icon';
+        statusTitle.textContent = 'Ready to Scan';
+        statusMessage.textContent = 'Place your finger on the scanner to identify a prisoner';
+        scanBtn.disabled = false;
+        resultsSection.classList.remove('show');
+        fingerprintDataInput.value = '';
+    });
+});
+</script>
+{% endblock %}

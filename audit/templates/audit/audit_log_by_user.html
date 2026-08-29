@@ -1,0 +1,257 @@
+{% extends 'ict_base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="h2">Audit Activity - {{ user_obj.get_full_name }}</h1>
+            <p class="text-muted">Complete activity log for {{ user_obj.username }}</p>
+        </div>
+        <div class="col-md-4 text-right">
+            <a href="{% url 'audit:audit_log_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Logs
+            </a>
+            <a href="{% url 'audit:audit_summary' %}" class="btn btn-info">
+                <i class="fas fa-chart-line"></i> Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- User Information Card -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p>
+                        <strong>Full Name:</strong> {{ user_obj.get_full_name }}<br>
+                        <strong>Username:</strong> {{ user_obj.username }}<br>
+                        <strong>Email:</strong> {{ user_obj.email }}<br>
+                        <strong>Role:</strong> {{ user_obj.get_role_display }}
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <p>
+                        <strong>Last Login:</strong> {{ user_obj.last_login|default:"Never" }}<br>
+                        <strong>Account Active:</strong> {% if user_obj.is_active %}✓ Yes{% else %}✗ No{% endif %}<br>
+                        <strong>Is Staff:</strong> {% if user_obj.is_staff %}✓ Yes{% else %}✗ No{% endif %}<br>
+                        <strong>Is Superuser:</strong> {% if user_obj.is_superuser %}✓ Yes{% else %}✗ No{% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Form -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Filters</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <input type="hidden" name="user" value="{{ user_obj.id }}">
+                <div class="col-md-4">
+                    <label class="form-label">From Date</label>
+                    <input type="date" name="date_from" class="form-control" value="{{ request.GET.date_from }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">To Date</label>
+                    <input type="date" name="date_to" class="form-control" value="{{ request.GET.date_to }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-primary w-100">Filter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Total Actions</h5>
+                    <h2>{{ total_logs }}</h2>
+                </div>
+            </div>
+        </div>
+
+        {% for stat in action_stats %}
+            {% if stat.action == 'CREATE' %}
+                <div class="col-md-3">
+                    <div class="card text-white bg-success">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">Creates</h5>
+                            <h2>{{ stat.count }}</h2>
+                        </div>
+                    </div>
+                </div>
+            {% elif stat.action == 'UPDATE' %}
+                <div class="col-md-3">
+                    <div class="card text-white bg-warning">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">Updates</h5>
+                            <h2>{{ stat.count }}</h2>
+                        </div>
+                    </div>
+                </div>
+            {% elif stat.action == 'DELETE' %}
+                <div class="col-md-3">
+                    <div class="card text-white bg-danger">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">Deletes</h5>
+                            <h2>{{ stat.count }}</h2>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+
+    <!-- Activity Breakdown -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Actions Breakdown</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Action</th>
+                                    <th>Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stat in action_stats %}
+                                    <tr>
+                                        <td>
+                                            {% if stat.action == 'CREATE' %}
+                                                <span class="badge bg-success">CREATE</span>
+                                            {% elif stat.action == 'UPDATE' %}
+                                                <span class="badge bg-warning">UPDATE</span>
+                                            {% elif stat.action == 'DELETE' %}
+                                                <span class="badge bg-danger">DELETE</span>
+                                            {% else %}
+                                                <span class="badge bg-info">{{ stat.action }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td><strong>{{ stat.count }}</strong></td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Models Modified</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Model</th>
+                                    <th>Changes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stat in model_stats %}
+                                    <tr>
+                                        <td>{{ stat.model_name }}</td>
+                                        <td><strong>{{ stat.count }}</strong></td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="2" class="text-center text-muted">No activity</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Activity Log -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Activity Log (Latest 100)</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Action</th>
+                            <th>Model/Object</th>
+                            <th>IP Address</th>
+                            <th>Fields Changed</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                            <tr>
+                                <td>
+                                    <small>{{ log.timestamp|date:"Y-m-d H:i:s" }}</small>
+                                </td>
+                                <td>
+                                    {% if log.action == 'CREATE' %}
+                                        <span class="badge bg-success">CREATE</span>
+                                    {% elif log.action == 'UPDATE' %}
+                                        <span class="badge bg-warning">UPDATE</span>
+                                    {% elif log.action == 'DELETE' %}
+                                        <span class="badge bg-danger">DELETE</span>
+                                    {% else %}
+                                        <span class="badge bg-info">{{ log.get_action_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>{{ log.model_name }}</strong>
+                                    {% if log.object_id %}
+                                        (#{{ log.object_id }})
+                                    {% endif %}
+                                    <br>
+                                    <small class="text-muted">{{ log.object_str|truncatewords:10 }}</small>
+                                </td>
+                                <td>
+                                    <code>{{ log.ip_address|default:"—" }}</code>
+                                </td>
+                                <td>
+                                    {% if log.changed_fields %}
+                                        <small>{{ log.changed_fields|join:", " }}</small>
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'audit:audit_log_detail' log.id %}" class="btn btn-sm btn-outline-primary">
+                                        View
+                                    </a>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">
+                                    No audit log entries found.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Setup Initial Data - Prison HRMS{% endblock %}
+
+{% block content %}
+<div class="container d-flex justify-content-center align-items-center min-vh-100">
+    <div class="card shadow-lg p-4" style="max-width: 600px; width: 100%; border-radius: 15px;">
+        <div class="card-body text-center">
+            <i class="fas fa-database fa-5x text-primary mb-4"></i>
+            <h2 class="card-title mb-3" style="color: #0056b3; font-weight: bold;">Setup Initial HRMS Data</h2>
+            <p class="lead mb-4">
+                This page allows a superuser to populate initial data for Ranks, Office Assignments, and Leave Types.
+                This is typically a one-time setup.
+            </p>
+            <p class="text-muted mb-4">
+                Clicking the button below will add predefined ranks (e.g., Watchman, Commissioner), office assignments (e.g., General Duties, Hospital), and leave types (e.g., Annual, Maternity) to your database if they don't already exist.
+            </p>
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg rounded-pill custom-button">
+                        <i class="fas fa-cogs me-2"></i> Populate Initial Data
+                    </button>
+                    <a href="{% url 'hrms:dashboard' %}" class="btn btn-outline-secondary btn-lg rounded-pill">
+                        <i class="fas fa-times-circle me-2"></i> Go to Dashboard
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

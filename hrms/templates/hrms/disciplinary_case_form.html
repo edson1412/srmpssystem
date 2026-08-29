@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }} - HRMS{% endblock %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-danger text-white">
+        <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Record Disciplinary Case for {{ officer.full_name }}</h5>
+    </div>
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ form|crispy }}
+            
+            <!-- File Upload Section -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card border-secondary">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-paperclip me-2"></i>Supporting Documents</h6>
+                        </div>
+                        <div class="card-body">
+                            {{ file_formset.management_form }}
+                            <div id="file-formset">
+                                {% for file_form in file_formset %}
+                                    <div class="file-form-row mb-3 p-3 border rounded" style="background-color: #f8f9fa;">
+                                        {{ file_form.id }}
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <label class="form-label">File Description</label>
+                                                {{ file_form.file_name }}
+                                                {% if file_form.file_name.errors %}
+                                                    <div class="text-danger small">
+                                                        {{ file_form.file_name.errors.0 }}
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-5">
+                                                <label class="form-label">File</label>
+                                                {{ file_form.file }}
+                                                {% if file_form.file.errors %}
+                                                    <div class="text-danger small">
+                                                        {{ file_form.file.errors.0 }}
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-1">
+                                                <label class="form-label">Remove</label>
+                                                {{ file_form.DELETE }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            <div class="mt-3">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addFileForm()">
+                                    <i class="fas fa-plus me-1"></i>Add Another File
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-danger shadow-sm">
+                    <i class="fas fa-save me-2"></i>Save Case
+                </button>
+                <a href="{% url 'hrms:officer_detail' service_number=officer.service_number %}" class="btn btn-secondary shadow-sm">
+                    <i class="fas fa-times-circle me-2"></i>Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function addFileForm() {
+    const formset = document.getElementById('file-formset');
+    const totalForms = document.getElementById('id_files-TOTAL_FORMS');
+    const maxForms = document.getElementById('id_files-MAX_NUM_FORMS');
+    
+    if (parseInt(totalForms.value) >= parseInt(maxForms.value)) {
+        alert('Maximum number of files reached.');
+        return;
+    }
+    
+    const newForm = formset.children[0].cloneNode(true);
+    const formRegex = RegExp(`files-(\\d+-)`, 'g');
+    const formNum = parseInt(totalForms.value);
+    
+    // Update form attributes
+    newForm.innerHTML = newForm.innerHTML.replace(formRegex, `files-${formNum}-`);
+    newForm.innerHTML = newForm.innerHTML.replace(/__prefix__/g, formNum);
+    
+    // Clear form values
+    const inputs = newForm.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+        if (input.type === 'file') {
+            input.value = '';
+        } else if (input.type === 'text' || input.type === 'textarea') {
+                            input.value = '';
+                        } else if (input.type === 'checkbox') {
+                            input.checked = false;
+                        }
+    });
+    
+    formset.appendChild(newForm);
+    totalForms.value = formNum + 1;
+}
+
+// Remove file form when DELETE checkbox is checked
+document.addEventListener('change', function(e) {
+    if (e.target && e.target.name && e.target.name.includes('DELETE')) {
+        const fileRow = e.target.closest('.file-form-row');
+        if (e.target.checked && fileRow) {
+            fileRow.style.display = 'none';
+            fileRow.style.opacity = '0.5';
+        } else if (fileRow) {
+            fileRow.style.display = 'block';
+            fileRow.style.opacity = '1';
+        }
+    }
+});
+</script>
+{% endblock %}
+

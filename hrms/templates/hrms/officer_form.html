@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }} - HRMS{% endblock %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="fas fa-user-plus me-2"></i>Officer Details</h5>
+    </div>
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ officer_form|crispy }}
+
+            <div class="card shadow-sm rounded-3 mb-4 border-secondary">
+                <div class="card-header bg-secondary text-white rounded-top-3">
+                    <h5 class="mb-0"><i class="fas fa-graduation-cap me-2"></i>Educational Qualifications</h5>
+                </div>
+                <div class="card-body">
+                    {{ education_formset.management_form }}
+                    <div id="education-form-container">
+                        {% for form in education_formset %}
+                            <div class="education-formset-row mb-3 p-3 border rounded-3 bg-light">
+                                <h6 class="mb-3 text-primary">Qualification #{{ forloop.counter }}</h6>
+                                {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+                                {% if form.instance.pk %}{{ form.DELETE }}{% endif %}
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">{{ form.institution|as_crispy_field }}</div>
+                                    <div class="col-md-6 mb-3">{{ form.qualification|as_crispy_field }}</div>
+                                    <div class="col-md-6 mb-3">{{ form.year_obtained|as_crispy_field }}</div>
+                                    <div class="col-md-6 mb-3">{{ form.supporting_document|as_crispy_field }}</div>
+                                </div>
+                                {% if form.instance.pk %}
+                                    <div class="form-check">
+                                        {{ form.DELETE }}
+                                        <label class="form-check-label" for="{{ form.DELETE.id_for_label }}">Delete this qualification</label>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <button type="button" class="btn btn-outline-secondary btn-sm mt-3" id="add-education-form">
+                        <i class="fas fa-plus-circle me-2"></i>Add Another Qualification
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary mt-3 shadow-sm">
+                <i class="fas fa-save me-2"></i>Save Officer
+            </button>
+            <a href="{% url 'hrms:officer_list' %}" class="btn btn-secondary mt-3 ms-2 shadow-sm">
+                <i class="fas fa-times-circle me-2"></i>Cancel
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const addEducationFormBtn = document.getElementById('add-education-form');
+        const educationFormContainer = document.getElementById('education-form-container');
+        const totalFormsInput = document.getElementById('id_education-TOTAL_FORMS');
+
+        addEducationFormBtn.addEventListener('click', function() {
+            const currentForms = parseInt(totalFormsInput.value);
+            const newFormIndex = currentForms;
+            const newForm = educationFormContainer.children[0].cloneNode(true); // Clone the first form structure
+
+            // Clear input values and update names/ids for new form
+            newForm.querySelectorAll('input, select, textarea').forEach(input => {
+                input.id = input.id.replace(/-\d+-/, `-${newFormIndex}-`);
+                input.name = input.name.replace(/-\d+-/, `-${newFormIndex}-`);
+                input.value = ''; // Clear previous values
+                if (input.type === 'checkbox') {
+                    input.checked = false;
+                }
+            });
+
+            // Update label 'for' attributes
+            newForm.querySelectorAll('label').forEach(label => {
+                if (label.htmlFor) {
+                    label.htmlFor = label.htmlFor.replace(/-\d+-/, `-${newFormIndex}-`);
+                }
+            });
+
+            // Update the title for the new form
+            const titleElement = newForm.querySelector('h6');
+            if (titleElement) {
+                titleElement.textContent = `Qualification #${newFormIndex + 1}`;
+            }
+
+            // Show delete checkbox for new forms (if hidden by default for existing)
+            const deleteCheckboxDiv = newForm.querySelector('.form-check');
+            if (deleteCheckboxDiv) {
+                deleteCheckboxDiv.style.display = 'block'; // Ensure it's visible
+                const deleteCheckbox = deleteCheckboxDiv.querySelector('input[type="checkbox"]');
+                if (deleteCheckbox) {
+                    deleteCheckbox.checked = false; // Ensure it's unchecked
+                }
+            }
+
+            educationFormContainer.appendChild(newForm);
+            totalFormsInput.value = newFormIndex + 1;
+        });
+    });
+</script>
+{% endblock %}
