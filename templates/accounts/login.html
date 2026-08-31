@@ -1,52 +1,457 @@
-{% load static %}
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Prison Management System</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="{% static 'css/styles.css' %}" rel="stylesheet">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login · Malawi Prison Service</title>
+    <!-- Google Font (Inter) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
+    <!-- Bootstrap 5.3 + Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <!-- Load static for logo -->
+    {% load static %}
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(145deg, #4a0e0e 0%, #2d0808 50%, #1a0505 100%);
+            padding: 1.5rem;
+            position: relative;
+        }
+
+        /* subtle animated background ornaments - maroon tones */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -30%;
+            left: -20%;
+            width: 80%;
+            height: 80%;
+            background: radial-gradient(circle, rgba(139, 42, 42, 0.15) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+            animation: floatOrb 18s ease-in-out infinite alternate;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: -20%;
+            right: -15%;
+            width: 70%;
+            height: 70%;
+            background: radial-gradient(circle, rgba(120, 30, 30, 0.10) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+            animation: floatOrb 22s ease-in-out infinite alternate-reverse;
+        }
+
+        @keyframes floatOrb {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(40px, 30px) scale(1.2); }
+        }
+
+        .login-wrapper {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        .login-card {
+            background: rgba(255, 248, 245, 0.92);
+            backdrop-filter: blur(16px) saturate(180%);
+            -webkit-backdrop-filter: blur(16px) saturate(180%);
+            border-radius: 40px;
+            padding: 2.5rem 2.2rem;
+            box-shadow: 
+                0 30px 60px -20px rgba(0, 0, 0, 0.6),
+                0 8px 24px -6px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(139, 42, 42, 0.15);
+            transition: transform 0.25s ease, box-shadow 0.3s ease;
+        }
+
+        .login-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 40px 80px -24px rgba(0, 0, 0, 0.7);
+        }
+
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .brand-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex-shrink: 0;
+            background: white;
+            box-shadow: 0 8px 18px -6px rgba(139, 42, 42, 0.3);
+            padding: 8px;
+        }
+
+        .brand-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .brand-text {
+            font-weight: 700;
+            font-size: 1.5rem;
+            letter-spacing: -0.02em;
+            color: #3a0a0a;
+            line-height: 1.2;
+        }
+
+        .brand-text small {
+            display: block;
+            font-weight: 400;
+            font-size: 0.7rem;
+            letter-spacing: 0.3px;
+            color: #6b3a3a;
+            margin-top: 2px;
+        }
+
+        .login-title {
+            font-weight: 600;
+            font-size: 1.6rem;
+            color: #3a0a0a;
+            margin-bottom: 0.25rem;
+            letter-spacing: -0.02em;
+        }
+
+        .login-sub {
+            color: #7a4a4a;
+            font-size: 0.95rem;
+            font-weight: 400;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid rgba(139, 42, 42, 0.08);
+            padding-bottom: 1.25rem;
+        }
+
+        .form-floating-custom {
+            position: relative;
+            margin-bottom: 1.25rem;
+        }
+
+        .form-floating-custom .form-control {
+            height: 58px;
+            padding: 1rem 1.25rem 0.25rem 3rem;
+            border-radius: 18px;
+            border: 1.5px solid rgba(139, 42, 42, 0.2);
+            background: rgba(255, 248, 245, 0.6);
+            backdrop-filter: blur(4px);
+            font-size: 1rem;
+            font-weight: 500;
+            color: #2d0808;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+        }
+
+        .form-floating-custom .form-control:focus {
+            border-color: #7a1f1f;
+            background: rgba(255, 248, 245, 0.95);
+            box-shadow: 0 4px 14px rgba(139, 42, 42, 0.12), inset 0 1px 0 #fff;
+            outline: none;
+        }
+
+        .form-floating-custom .form-control::placeholder {
+            color: #9a7a7a;
+            font-weight: 400;
+            font-size: 0.95rem;
+        }
+
+        .form-floating-custom .input-icon {
+            position: absolute;
+            left: 1.1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #8a5a5a;
+            font-size: 1.2rem;
+            pointer-events: none;
+            transition: color 0.2s;
+        }
+
+        .form-floating-custom .form-control:focus ~ .input-icon {
+            color: #7a1f1f;
+        }
+
+        .form-floating-custom label {
+            position: absolute;
+            left: 3rem;
+            top: 0.5rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #7a4a4a;
+            pointer-events: none;
+            transition: all 0.1s;
+        }
+
+        .login-btn {
+            width: 100%;
+            height: 58px;
+            border-radius: 40px;
+            background: linear-gradient(135deg, #5a1515, #7a1f1f);
+            border: none;
+            font-weight: 600;
+            font-size: 1.05rem;
+            color: white;
+            box-shadow: 0 8px 24px -6px rgba(139, 42, 42, 0.4);
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+            margin-top: 0.75rem;
+        }
+
+        .login-btn:hover {
+            transform: scale(1.02);
+            background: linear-gradient(135deg, #4a1010, #6a1a1a);
+            box-shadow: 0 12px 32px -8px rgba(139, 42, 42, 0.5);
+        }
+
+        .login-btn:active {
+            transform: scale(0.98);
+        }
+
+        .login-btn i {
+            font-size: 1.2rem;
+        }
+
+        .alert-custom {
+            border-radius: 20px;
+            border: none;
+            background: rgba(139, 42, 42, 0.08);
+            backdrop-filter: blur(4px);
+            color: #6a1a1a;
+            padding: 0.9rem 1.2rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #7a1f1f;
+        }
+
+        .alert-custom i {
+            font-size: 1.3rem;
+            color: #7a1f1f;
+        }
+
+        .footer-meta {
+            margin-top: 1.8rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: #7a4a4a;
+            border-top: 1px solid rgba(139, 42, 42, 0.08);
+            padding-top: 1.2rem;
+        }
+
+        .footer-meta a {
+            color: #5a1515;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.15s;
+        }
+
+        .footer-meta a:hover {
+            color: #7a1f1f;
+            text-decoration: underline;
+        }
+
+        /* Responsive fine-tune */
+        @media (max-width: 480px) {
+            .login-card {
+                padding: 2rem 1.5rem;
+                border-radius: 32px;
+            }
+            .brand-text {
+                font-size: 1.3rem;
+            }
+            .login-title {
+                font-size: 1.4rem;
+            }
+            .form-floating-custom .form-control {
+                height: 54px;
+                padding-left: 2.8rem;
+                font-size: 0.95rem;
+            }
+            .login-btn {
+                height: 54px;
+                font-size: 1rem;
+            }
+            .brand-icon {
+                width: 60px;
+                height: 60px;
+                padding: 6px;
+            }
+        }
+
+        /* micro-interaction: focus glow - maroon */
+        .form-floating-custom .form-control:focus {
+            border-color: #7a1f1f;
+            box-shadow: 0 0 0 4px rgba(139, 42, 42, 0.15);
+        }
+
+        /* placeholder shift */
+        .form-floating-custom .form-control:not(:placeholder-shown) {
+            padding-top: 1.5rem;
+            padding-bottom: 0.25rem;
+        }
+
+        .form-floating-custom .form-control:not(:placeholder-shown) ~ label {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* lock icon - maroon */
+        .lock-icon {
+            background: rgba(139, 42, 42, 0.08);
+            border-radius: 40px;
+            padding: 0.2rem 1rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #7a1f1f;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+    </style>
 </head>
-<body class="login-page">
-    <div class="container">
-        <div class="row justify-content-center mt-5">
-            <div class="col-md-6">
-                <img src="{% static 'images/logo.png' %}" alt="Prison Management Logo" class="logo">
-                <div class="card">
-                    <div class="card-body">
-                        <h2 class="card-title text-center mb-4">Login</h2>
-                        {% if form.errors %}
-                            <div class="alert alert-danger">
-                                Invalid username or password.
-                            </div>
-                        {% endif %}
-                        <form method="post" id="loginForm">
-                            {% csrf_token %}
-                            <div class="mb-3">
-                                <label for="{{ form.username.id_for_label }}" class="form-label">Username</label>
-                                <input type="text" name="{{ form.username.name }}" id="{{ form.username.id_for_label }}" class="form-control" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="{{ form.password.id_for_label }}" class="form-label">Password</label>
-                                <input type="password" name="{{ form.password.name }}" id="{{ form.password.id_for_label }}" class="form-control" required>
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100">Login</button>
-                        </form>
-                    </div>
+<body>
+    <div class="login-wrapper">
+        <div class="login-card">
+            <!-- Brand -->
+            <div class="brand-logo">
+                <div class="brand-icon">
+                    <img src="{% static 'images/logo.png' %}" alt="MPS Logo" />
+                </div>
+                <div class="brand-text">
+                    Malawi Prison
+                    <small>Service · Management System</small>
                 </div>
             </div>
+
+            <!-- Title -->
+            <h2 class="login-title text-center">Welcome back</h2>
+            <p class="login-sub text-center">
+                <span class="lock-icon"><i class="bi bi-lock-fill"></i> secure access</span>
+            </p>
+
+            <!-- Error messages -->
+            {% if form.errors %}
+                <div class="alert-custom">
+                    <i class="bi bi-exclamation-circle-fill"></i>
+                    <span>Invalid username or password. Please try again.</span>
+                </div>
+            {% endif %}
+
+            <!-- Login Form -->
+            <form method="post" id="loginForm" autocomplete="off">
+                {% csrf_token %}
+
+                <!-- Username -->
+                <div class="form-floating-custom">
+                    <input type="text" 
+                           name="{{ form.username.name }}" 
+                           id="{{ form.username.id_for_label }}" 
+                           class="form-control" 
+                           placeholder="Username" 
+                           required 
+                           autofocus
+                           value="{{ form.username.value|default:'' }}">
+                    <i class="bi bi-person input-icon"></i>
+                    <label for="{{ form.username.id_for_label }}">Username</label>
+                </div>
+
+                <!-- Password -->
+                <div class="form-floating-custom">
+                    <input type="password" 
+                           name="{{ form.password.name }}" 
+                           id="{{ form.password.id_for_label }}" 
+                           class="form-control" 
+                           placeholder="Password" 
+                           required>
+                    <i class="bi bi-key input-icon"></i>
+                    <label for="{{ form.password.id_for_label }}">Password</label>
+                </div>
+
+                <!-- Submit -->
+                <button type="submit" class="login-btn">
+                    <i class="bi bi-box-arrow-in-right"></i>
+                    Sign in
+                </button>
+
+                <div class="footer-meta">
+                    <span><i class="bi bi-building me-1"></i> MPS v2.0</span>
+                    <a href="#" onclick="event.preventDefault(); alert('Contact system administrator for password reset.');">
+                        <i class="bi bi-question-circle me-1"></i> Forgot password?
+                    </a>
+                </div>
+            </form>
         </div>
     </div>
 
+    <!-- Bootstrap JS (optional, for any toggles) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
+    </script>
     <script>
-        // Prevent back to login page after successful login
-        document.getElementById('loginForm').addEventListener('submit', function(event) {
-            setTimeout(function() {
-                history.replaceState(null, '', '/');
-            }, 100); // Delay to ensure redirect to dashboard
-        });
+        (function() {
+            // Prevent back-to-login after successful login (history replace)
+            const loginForm = document.getElementById('loginForm');
+            if (loginForm) {
+                loginForm.addEventListener('submit', function(e) {
+                    // We let the form submit naturally, but after a tiny delay
+                    // replace the current history state to avoid back-to-login.
+                    // This is a common UX pattern for login pages.
+                    setTimeout(function() {
+                        if (window.history && window.history.replaceState) {
+                            window.history.replaceState(null, '', window.location.href);
+                        }
+                    }, 80);
+                });
+            }
+
+            // Optional: add a tiny "focus" effect on load
+            const firstInput = document.querySelector('.form-floating-custom .form-control');
+            if (firstInput) {
+                // Only if there's no error, to not steal attention from error message
+                const hasError = document.querySelector('.alert-custom');
+                if (!hasError) {
+                    setTimeout(() => firstInput.focus(), 120);
+                }
+            }
+        })();
     </script>
 </body>
 </html>
