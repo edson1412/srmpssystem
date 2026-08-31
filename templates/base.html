@@ -194,6 +194,9 @@
                 <a href="{% url 'upcoming_releases_report' %}" class="nav-link {% if 'upcoming_releases_report' in request.path %}active{% endif %}">
                     <i class="bi bi-calendar-check"></i> Upcoming Releases
                 </a>
+                <a href="{% url 'returns_hub' %}" class="nav-link {% if 'returns_hub' in request.path %}active{% endif %}">
+                    <i class="bi bi-file-earmark"></i> Returns Hub
+                </a>
                 {% if request.user.is_super_admin or request.user.is_prison_admin %}
                 <a href="{% url 'activity_log_list' %}" class="nav-link {% if 'activity_log_list' in request.path %}active{% endif %}">
                     <i class="bi bi-clock-history"></i> Activity Log

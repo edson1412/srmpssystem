@@ -16,7 +16,7 @@ from .views import (
     fingerprint_match_history,
     link_prisoner_identities,
     fingerprint_dashboard, # New Ration Transaction Views
-    # lockup_summary_view, # New: Import the new lockup summary view
+    #lockup_summary_view, # New: Import the new lockup summary view
 )
 
 
@@ -80,6 +80,45 @@ urlpatterns = [
     path('release-hub/<int:prisoner_id>/forward/', views.forward_release_for_review, name='forward_release_for_review'),
     path('release-hub/reviews/<int:review_id>/approve/', views.approve_release_review, name='approve_release_review'),
     path('release-hub/reviews/<int:review_id>/reject/', views.reject_release_review, name='reject_release_review'),
+
+    # Returns URLs
+    path('returns/', views.returns_hub, name='returns_hub'),
+    path('returns/create/', views.return_create, name='return_create'),
+    path('returns/<int:return_id>/', views.return_detail, name='return_detail'),
+    path('returns/<int:return_id>/edit/', views.return_edit, name='return_edit'),
+    path('returns/<int:return_id>/delete/', views.return_delete, name='return_delete'),
+
+    # CSV Import/Export
+    path('returns/<int:return_id>/import-csv/', views.return_import_csv, name='return_import_csv'),
+    path('returns/<int:return_id>/export-csv/', views.return_export_csv, name='return_export_csv'),
+    path('returns/<int:return_id>/export-pdf/', views.return_export_pdf, name='return_export_pdf'),
+
+    # Workflow Actions
+    path('returns/<int:return_id>/submit/', views.return_submit, name='return_submit'),
+    path('returns/<int:return_id>/approve/', views.return_approve, name='return_approve'),
+    path('returns/<int:return_id>/reject/', views.return_reject, name='return_reject'),
+    path('returns/<int:return_id>/complete/', views.return_complete, name='return_complete'),
+    path('returns/upload/', views.return_create, name='upload_return'),
+
+    # Bulk Actions
+    path('returns/bulk-action/', views.return_bulk_action, name='return_bulk_action'),
+
+    # Templates
+    path('returns/templates/', views.template_list, name='template_list'),
+    path('returns/templates/create/', views.template_create, name='template_create'),
+    path('returns/templates/<int:template_id>/edit/', views.template_edit, name='template_edit'),
+    path('returns/templates/<int:template_id>/delete/', views.template_delete, name='template_delete'),
+
+    # Search
+    path('returns/search/', views.return_search, name='return_search'),
+
+    # AJAX Endpoints
+    path('returns/ajax/template/', views.return_ajax_get_template, name='return_ajax_get_template'),
+    path('returns/ajax/preview-csv/', views.return_ajax_preview_csv, name='return_ajax_preview_csv'),
+    path('returns/ajax/stats/', views.return_ajax_get_stats, name='return_ajax_get_stats'),
+
+    # File Download
+    path('returns/<int:return_id>/download/', views.return_download_file, name='return_download_file'),
 
     # NEW: Ration Management URLs
     path('rations/', RationItemListView.as_view(), name='ration_item_list'), # List and Add via POST

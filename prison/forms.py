@@ -1,4 +1,5 @@
-# forms.py
+# forms.py - Complete fixed version
+
 from django import forms
 from .models import *
 from accounts.models import CustomUser, PrisonStation, Region
@@ -7,6 +8,9 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from dateutil.relativedelta import relativedelta
 from decimal import Decimal
+import json
+import csv
+import io
 
 User = get_user_model()
 
@@ -353,8 +357,6 @@ class ExtendedSearchForm(forms.Form):
 
 # ============ FINGERPRINT / BIOMETRIC FORMS ============
 
-# In forms.py - Update FingerprintCaptureForm
-
 class FingerprintCaptureForm(forms.Form):
     """Form for capturing fingerprint data"""
     fingerprint_data = forms.CharField(widget=forms.HiddenInput(), required=True)
@@ -378,13 +380,11 @@ class FingerprintCaptureForm(forms.Form):
         device_id = self.cleaned_data.get('device_id')
         if device_id:
             try:
-                # Validate that the device exists
                 from .models import FingerprintDevice
                 FingerprintDevice.objects.get(id=device_id)
             except FingerprintDevice.DoesNotExist:
                 raise ValidationError("Selected device does not exist.")
         return device_id
-
 
 class FingerprintSearchForm(forms.Form):
     """Form for searching prisoners by fingerprint"""
@@ -403,7 +403,6 @@ class FingerprintSearchForm(forms.Form):
             raise ValidationError("Invalid fingerprint data. Please try again.")
         return data
 
-
 class PrisonerIdentityVerificationForm(forms.ModelForm):
     """Form for verifying prisoner identity"""
     class Meta:
@@ -420,7 +419,6 @@ class PrisonerIdentityVerificationForm(forms.ModelForm):
         self.fields['identity_verification_notes'].required = False
         if self.instance and self.instance.pk:
             self.fields['identity_verified_at'].initial = timezone.now()
-
 
 class FingerprintDeviceForm(forms.ModelForm):
     """Form for managing fingerprint devices"""
@@ -439,7 +437,6 @@ class FingerprintDeviceForm(forms.ModelForm):
             raise ValidationError("A device with this serial number already exists.")
         return serial
 
-
 class FingerprintMatchConfirmForm(forms.Form):
     """Form for confirming a fingerprint match"""
     confirmed = forms.BooleanField(required=True, label="Confirm this match")
@@ -452,7 +449,6 @@ class FingerprintMatchConfirmForm(forms.Form):
         required=False,
         label="Link identities (if this is the same person with different names)"
     )
-
 
 class RationItemForm(forms.ModelForm):
     class Meta:
@@ -575,3 +571,996 @@ class RecidivismConfirmationForm(forms.Form):
         label="Link to previous record",
         help_text="Link this prisoner to their previous record for tracking"
     )
+
+class InmateReturnForm(forms.ModelForm):
+    """Form for uploading and managing inmate returns with CSV support"""
+    
+    # Additional fields for CSV import
+    csv_file = forms.FileField(
+        required=False,
+        label='CSV File',
+        help_text='Upload a CSV file with inmate data. The file should match the selected return type template.',
+        widget=forms.FileInput(attrs={
+            'class': 'form-control',
+            'accept': '.csv',
+            'data-max-size': '10485760',  # 10MB
+        })
+    )
+    
+    # Preview options
+    preview_data = forms.BooleanField(
+        required=False,
+        initial=True,
+        label='Preview data after import',
+        help_text='Show a preview of the imported data before saving'
+    )
+    
+    # Override station field to filter by user permissions
+    station = forms.ModelChoiceField(
+        queryset=PrisonStation.objects.all(),
+        required=True,
+        label='Prison Station',
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    class Meta:
+        model = InmateReturn
+        fields = [
+            'title',
+            'return_type',
+            'month',
+            'year',
+            'station',
+            'file',
+            'status',
+            'remarks',
+        ]
+        widgets = {
+            'title': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'e.g., Convicted Inmates Return - Zomba - November 2026'
+            }),
+            'return_type': forms.Select(attrs={
+                'class': 'form-control',
+                'onchange': 'updateTemplateInfo(this.value)'
+            }),
+            'month': forms.Select(attrs={'class': 'form-control'}),
+            'year': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '2020',
+                'max': '2030'
+            }),
+            'file': forms.FileInput(attrs={
+                'class': 'form-control',
+                'accept': '.pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.csv'
+            }),
+            'status': forms.Select(attrs={'class': 'form-control'}),
+            'remarks': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Any additional remarks...'
+            }),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        self.imported_data = kwargs.pop('imported_data', None)
+        super().__init__(*args, **kwargs)
+        
+        # Set month choices
+        self.fields['month'].choices = [
+            ('', 'Select Month'),
+            (1, 'January'),
+            (2, 'February'),
+            (3, 'March'),
+            (4, 'April'),
+            (5, 'May'),
+            (6, 'June'),
+            (7, 'July'),
+            (8, 'August'),
+            (9, 'September'),
+            (10, 'October'),
+            (11, 'November'),
+            (12, 'December'),
+        ]
+        
+        # Set year choices (last 5 years to next 2 years)
+        current_year = timezone.now().year
+        year_choices = [(y, str(y)) for y in range(current_year - 5, current_year + 3)]
+        self.fields['year'].choices = [('', 'Select Year')] + year_choices
+        
+        # Set status choices
+        status_choices = [('', 'Select Status')] + list(InmateReturn.STATUS_CHOICES)
+        self.fields['status'].choices = status_choices
+        
+        # Filter stations based on user permissions
+        if self.user:
+            if not (hasattr(self.user, 'is_super_admin') and self.user.is_super_admin()):
+                if hasattr(self.user, 'prison_station') and self.user.prison_station:
+                    self.fields['station'].queryset = PrisonStation.objects.filter(
+                        id=self.user.prison_station.id
+                    )
+                    self.fields['station'].initial = self.user.prison_station
+                    self.fields['station'].widget.attrs['readonly'] = True
+                    self.fields['station'].widget.attrs['disabled'] = True
+                    self.fields['station'].required = False
+                else:
+                    self.fields['station'].queryset = PrisonStation.objects.none()
+                    self.fields['station'].help_text = "You must be assigned to a prison station."
+            else:
+                self.fields['station'].queryset = PrisonStation.objects.all().order_by('name')
+        
+        # Set default values for new instances
+        if not self.instance.pk:
+            self.fields['year'].initial = current_year
+            self.fields['month'].initial = timezone.now().month
+            self.fields['status'].initial = 'draft'
+    
+    def clean_file(self):
+        """Validate the uploaded file"""
+        file = self.cleaned_data.get('file')
+        if file:
+            # Check file size (max 10MB)
+            if file.size > 10 * 1024 * 1024:
+                raise forms.ValidationError("File size cannot exceed 10MB.")
+            
+            # Check file type
+            allowed_extensions = [
+                '.pdf', '.doc', '.docx', '.xls', '.xlsx', 
+                '.jpg', '.jpeg', '.png', '.csv'
+            ]
+            file_ext = file.name.split('.')[-1].lower()
+            if f'.{file_ext}' not in allowed_extensions:
+                raise forms.ValidationError(
+                    "File type not allowed. Please upload PDF, Word, Excel, CSV, or image files."
+                )
+        
+        return file
+    
+    def clean_csv_file(self):
+        """Validate the CSV file"""
+        csv_file = self.cleaned_data.get('csv_file')
+        if csv_file:
+            # Check file size (max 10MB)
+            if csv_file.size > 10 * 1024 * 1024:
+                raise forms.ValidationError("CSV file size cannot exceed 10MB.")
+            
+            # Check file type
+            if not csv_file.name.endswith('.csv'):
+                raise forms.ValidationError("Please upload a CSV file.")
+            
+            # Validate CSV structure
+            try:
+                content = csv_file.read().decode('utf-8')
+                csv_reader = csv.reader(io.StringIO(content))
+                rows = list(csv_reader)
+                
+                if not rows:
+                    raise forms.ValidationError("CSV file is empty.")
+                
+                # Get headers and check against template
+                headers = [h.strip().lower() for h in rows[0]]
+                return_type = self.cleaned_data.get('return_type')
+                
+                if return_type:
+                    try:
+                        template = ReturnTemplate.objects.get(return_type=return_type)
+                        template_headers = [col['header'].strip().lower() for col in template.columns]
+                        
+                        # Check if required headers are present
+                        missing_headers = []
+                        for req_header in template_headers:
+                            if not any(req_header in h or h in req_header for h in headers):
+                                missing_headers.append(req_header)
+                        
+                        if missing_headers:
+                            # Check if it's a different template format
+                            if len(missing_headers) > len(template_headers) // 2:
+                                raise forms.ValidationError(
+                                    f"CSV headers don't match the template. Missing: {', '.join(missing_headers[:5])}"
+                                )
+                    
+                    except ReturnTemplate.DoesNotExist:
+                        pass  # No template defined, skip validation
+                
+                # Reset file pointer
+                csv_file.seek(0)
+                
+                # Store row count for later use
+                self.csv_row_count = len(rows) - 1  # Exclude header row
+                
+            except Exception as e:
+                raise forms.ValidationError(f"Error reading CSV file: {str(e)}")
+        
+        return csv_file
+    
+    def clean(self):
+        """Clean and validate all form data"""
+        cleaned_data = super().clean()
+        
+        # Validate return type and station combination
+        return_type = cleaned_data.get('return_type')
+        station = cleaned_data.get('station')
+        
+        if return_type and station:
+            # Check if a return of this type already exists for this month/year
+            month = cleaned_data.get('month')
+            year = cleaned_data.get('year')
+            
+            if month and year and not self.instance.pk:
+                existing = InmateReturn.objects.filter(
+                    station=station,
+                    return_type=return_type,
+                    month=month,
+                    year=year
+                ).exclude(status='rejected')
+                
+                if existing.exists():
+                    existing_return = existing.first()
+                    raise forms.ValidationError(
+                        f"A {existing_return.get_return_type_display()} return for {existing_return.get_month_display()} {year} "
+                        f"already exists for {station.name} (Status: {existing_return.get_status_display()})."
+                    )
+        
+        # Auto-generate title if not provided
+        title = cleaned_data.get('title')
+        if not title and return_type and station and month and year:
+            type_label = dict(InmateReturn.RETURN_TYPE_CHOICES).get(return_type, return_type)
+            month_name = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+                         'July', 'August', 'September', 'October', 'November', 'December'][month]
+            cleaned_data['title'] = f"{type_label} - {station.name} - {month_name} {year}"
+        
+        return cleaned_data
+    
+    def save(self, commit=True):
+        """Save the form and handle CSV import"""
+        instance = super().save(commit=False)
+        
+        # Set uploaded_by if not set
+        if self.user:
+            instance.uploaded_by = self.user
+        
+        # Store file metadata
+        if instance.file:
+            instance.file_name = instance.file.name
+            instance.file_size = instance.file.size if hasattr(instance.file, 'size') else None
+            instance.file_type = instance.file.name.split('.')[-1].lower() if '.' in instance.file.name else None
+        
+        # Handle CSV import
+        csv_file = self.cleaned_data.get('csv_file')
+        if csv_file:
+            # Save the instance first to get an ID
+            if commit:
+                instance.save()
+            
+            # Import CSV data
+            from .import_export_utils import ReturnDataImporter
+            importer = ReturnDataImporter(instance, csv_file)
+            success = importer.import_data()
+            
+            if success:
+                instance.has_csv_data = True
+                instance.csv_row_count = importer.imported_count
+                instance.csv_imported_at = timezone.now()
+                instance.update_summary()
+                
+                # Add imported data to instance for use in views
+                self.imported_data = {
+                    'count': importer.imported_count,
+                    'errors': importer.errors,
+                    'warnings': importer.warnings,
+                }
+        else:
+            if commit:
+                instance.save()
+        
+        if commit and not csv_file:
+            instance.save()
+        
+        return instance
+    
+    def get_template_info(self):
+        """Get template information for the selected return type"""
+        return_type = self.cleaned_data.get('return_type')
+        if return_type:
+            try:
+                template = ReturnTemplate.objects.get(return_type=return_type)
+                return {
+                    'name': template.name,
+                    'columns': template.columns,
+                    'headers': template.get_column_headers(),
+                    'sample_data': template.sample_data,
+                    'description': template.description,
+                }
+            except ReturnTemplate.DoesNotExist:
+                pass
+        return None
+    
+    def get_csv_preview(self):
+        """Get preview of CSV data if available"""
+        if hasattr(self, 'csv_preview_data'):
+            return self.csv_preview_data
+        return None
+    
+    def get_summary_stats(self):
+        """Get summary statistics for the imported data"""
+        if hasattr(self, 'imported_data'):
+            return {
+                'total_rows': self.imported_data.get('count', 0),
+                'errors': self.imported_data.get('errors', []),
+                'warnings': self.imported_data.get('warnings', []),
+            }
+        return None
+
+
+class InmateReturnFilterForm(forms.Form):
+    """Form for filtering inmate returns in list views"""
+    
+    return_type = forms.ChoiceField(
+        choices=[('', 'All Types')] + list(InmateReturn.RETURN_TYPE_CHOICES),
+        required=False,
+        label='Return Type',
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    station = forms.ModelChoiceField(
+        queryset=PrisonStation.objects.all(),
+        required=False,
+        label='Station',
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    status = forms.ChoiceField(
+        choices=[('', 'All Status')] + list(InmateReturn.STATUS_CHOICES),
+        required=False,
+        label='Status',
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    month = forms.ChoiceField(
+        choices=[('', 'All Months')] + [(i, ['January', 'February', 'March', 'April', 'May', 'June',
+                                              'July', 'August', 'September', 'October', 'November', 'December'][i-1]) 
+                                        for i in range(1, 13)],
+        required=False,
+        label='Month',
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    year = forms.ChoiceField(
+        required=False,
+        label='Year',
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    has_csv_data = forms.ChoiceField(
+        choices=[('', 'All'), ('yes', 'Has CSV Data'), ('no', 'No CSV Data')],
+        required=False,
+        label='CSV Data',
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    search_query = forms.CharField(
+        required=False,
+        label='Search',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Search by title, station, or type...'
+        })
+    )
+    
+    date_from = forms.DateField(
+        required=False,
+        label='From Date',
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        })
+    )
+    
+    date_to = forms.DateField(
+        required=False,
+        label='To Date',
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        })
+    )
+    
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        # Set year choices
+        current_year = timezone.now().year
+        year_choices = [(y, str(y)) for y in range(current_year - 5, current_year + 2)]
+        self.fields['year'].choices = [('', 'All Years')] + year_choices
+        
+        # Filter stations based on user permissions
+        if self.user:
+            if not (hasattr(self.user, 'is_super_admin') and self.user.is_super_admin()):
+                if hasattr(self.user, 'prison_station') and self.user.prison_station:
+                    self.fields['station'].queryset = PrisonStation.objects.filter(
+                        id=self.user.prison_station.id
+                    )
+                    self.fields['station'].initial = self.user.prison_station
+                    self.fields['station'].widget.attrs['readonly'] = True
+                else:
+                    self.fields['station'].queryset = PrisonStation.objects.none()
+    
+    def filter_queryset(self, queryset):
+        """Apply filters to the queryset"""
+        cleaned_data = self.cleaned_data
+        
+        if cleaned_data.get('return_type'):
+            queryset = queryset.filter(return_type=cleaned_data['return_type'])
+        
+        if cleaned_data.get('station'):
+            queryset = queryset.filter(station=cleaned_data['station'])
+        
+        if cleaned_data.get('status'):
+            queryset = queryset.filter(status=cleaned_data['status'])
+        
+        if cleaned_data.get('month'):
+            queryset = queryset.filter(month=cleaned_data['month'])
+        
+        if cleaned_data.get('year'):
+            queryset = queryset.filter(year=cleaned_data['year'])
+        
+        if cleaned_data.get('has_csv_data'):
+            if cleaned_data['has_csv_data'] == 'yes':
+                queryset = queryset.filter(has_csv_data=True)
+            elif cleaned_data['has_csv_data'] == 'no':
+                queryset = queryset.filter(has_csv_data=False)
+        
+        if cleaned_data.get('search_query'):
+            search = cleaned_data['search_query']
+            queryset = queryset.filter(
+                Q(title__icontains=search) |
+                Q(station__name__icontains=search) |
+                Q(return_type__icontains=search) |
+                Q(file_name__icontains=search)
+            )
+        
+        if cleaned_data.get('date_from'):
+            queryset = queryset.filter(uploaded_at__date__gte=cleaned_data['date_from'])
+        
+        if cleaned_data.get('date_to'):
+            queryset = queryset.filter(uploaded_at__date__lte=cleaned_data['date_to'])
+        
+        return queryset
+
+
+class ReturnDataImportForm(forms.Form):
+    """Form for importing CSV data into an existing return"""
+    
+    csv_file = forms.FileField(
+        required=True,
+        label='CSV File',
+        help_text='Upload a CSV file with inmate data matching the return type template.',
+        widget=forms.FileInput(attrs={
+            'class': 'form-control',
+            'accept': '.csv'
+        })
+    )
+    
+    replace_existing = forms.BooleanField(
+        required=False,
+        initial=False,
+        label='Replace existing data',
+        help_text='If checked, existing data will be replaced with the new CSV data.',
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    
+    skip_errors = forms.BooleanField(
+        required=False,
+        initial=False,
+        label='Skip rows with errors',
+        help_text='Continue importing even if some rows have errors.',
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    
+    def __init__(self, *args, **kwargs):
+        self.inmate_return = kwargs.pop('inmate_return', None)
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        if self.inmate_return:
+            self.fields['csv_file'].help_text = f'Upload CSV data for {self.inmate_return.get_return_type_display()}'
+    
+    def clean_csv_file(self):
+        """Validate the CSV file"""
+        csv_file = self.cleaned_data.get('csv_file')
+        
+        if not csv_file:
+            raise forms.ValidationError("Please select a CSV file.")
+        
+        # Check file size
+        if csv_file.size > 10 * 1024 * 1024:
+            raise forms.ValidationError("CSV file size cannot exceed 10MB.")
+        
+        # Check file type
+        if not csv_file.name.endswith('.csv'):
+            raise forms.ValidationError("Please upload a CSV file.")
+        
+        # Validate CSV structure
+        try:
+            content = csv_file.read().decode('utf-8')
+            csv_reader = csv.reader(io.StringIO(content))
+            rows = list(csv_reader)
+            
+            if not rows:
+                raise forms.ValidationError("CSV file is empty.")
+            
+            if len(rows) < 2:
+                raise forms.ValidationError("CSV file must contain at least one data row.")
+            
+            # Check headers against template
+            if self.inmate_return:
+                headers = [h.strip().lower() for h in rows[0]]
+                try:
+                    template = ReturnTemplate.objects.get(return_type=self.inmate_return.return_type)
+                    template_headers = [col['header'].strip().lower() for col in template.columns]
+                    
+                    # Check if at least some headers match
+                    matching_headers = []
+                    for h in headers:
+                        for th in template_headers:
+                            if h in th or th in h:
+                                matching_headers.append(h)
+                                break
+                    
+                    if len(matching_headers) < len(template_headers) // 3:
+                        raise forms.ValidationError(
+                            f"CSV headers don't match the template. Found: {', '.join(headers[:5])}. "
+                            f"Expected headers include: {', '.join(template_headers[:5])}"
+                        )
+                
+                except ReturnTemplate.DoesNotExist:
+                    pass  # No template defined, skip validation
+            
+            # Store the CSV data for processing
+            self.csv_rows = rows
+            self.csv_headers = rows[0]
+            self.csv_data_rows = rows[1:]
+            
+            # Reset file pointer
+            csv_file.seek(0)
+            
+        except Exception as e:
+            raise forms.ValidationError(f"Error reading CSV file: {str(e)}")
+        
+        return csv_file
+    
+    def import_data(self):
+        """Import the CSV data into the return"""
+        if not self.inmate_return or not hasattr(self, 'csv_data_rows'):
+            return {'success': False, 'error': 'No data to import'}
+        
+        from .import_export_utils import ReturnDataImporter
+        
+        if self.cleaned_data.get('replace_existing'):
+            # Delete existing data
+            self.inmate_return.data_rows.all().delete()
+        
+        # Import the data
+        importer = ReturnDataImporter(self.inmate_return, self.cleaned_data['csv_file'])
+        success = importer.import_data()
+        
+        if success:
+            self.inmate_return.has_csv_data = True
+            self.inmate_return.csv_row_count = importer.imported_count
+            self.inmate_return.csv_imported_at = timezone.now()
+            self.inmate_return.update_summary()
+            self.inmate_return.save()
+        
+        return {
+            'success': success,
+            'count': importer.imported_count,
+            'errors': importer.errors,
+            'warnings': importer.warnings,
+        }
+
+class ReturnTemplateForm(forms.ModelForm):
+    """Form for creating and managing return templates"""
+    
+    class Meta:
+        model = ReturnTemplate
+        fields = [
+            'name',
+            'return_type',
+            'description',
+            'columns',
+            'sample_data',
+            'is_active',
+            'is_default',
+        ]
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'return_type': forms.Select(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'columns': forms.Textarea(attrs={'class': 'form-control', 'rows': 10}),
+            'sample_data': forms.Textarea(attrs={'class': 'form-control', 'rows': 5}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_default': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        # Add help texts
+        self.fields['columns'].help_text = 'JSON array of column definitions with key, header, and type.'
+        self.fields['columns'].initial = json.dumps([
+            {'key': 'serial_no', 'header': 'Ser. No.', 'type': 'number', 'required': True},
+            {'key': 'prisoner_number', 'header': 'Pri. No.', 'type': 'string', 'required': True},
+            {'key': 'full_name', 'header': 'Names', 'type': 'string', 'required': True},
+        ], indent=2)
+        
+        self.fields['sample_data'].help_text = 'JSON array of sample data rows (optional).'
+        self.fields['sample_data'].initial = json.dumps([
+            {'serial_no': 1, 'prisoner_number': 'P-0001', 'full_name': 'Sample Prisoner 1'},
+            {'serial_no': 2, 'prisoner_number': 'P-0002', 'full_name': 'Sample Prisoner 2'},
+        ], indent=2)
+    
+    def clean_columns(self):
+        """Validate the columns JSON"""
+        columns = self.cleaned_data.get('columns')
+        if isinstance(columns, str):
+            try:
+                columns = json.loads(columns)
+            except json.JSONDecodeError:
+                raise forms.ValidationError("Invalid JSON format for columns.")
+        
+        if not columns or not isinstance(columns, list):
+            raise forms.ValidationError("Columns must be a non-empty JSON array.")
+        
+        # Validate each column
+        for idx, col in enumerate(columns):
+            if not col.get('key'):
+                raise forms.ValidationError(f"Column {idx + 1} is missing a 'key' field.")
+            if not col.get('header'):
+                raise forms.ValidationError(f"Column '{col.get('key')}' is missing a 'header' field.")
+        
+        return columns
+    
+    def clean_sample_data(self):
+        """Validate the sample data JSON"""
+        sample_data = self.cleaned_data.get('sample_data')
+        if sample_data:
+            if isinstance(sample_data, str):
+                try:
+                    sample_data = json.loads(sample_data)
+                except json.JSONDecodeError:
+                    raise forms.ValidationError("Invalid JSON format for sample data.")
+            
+            if sample_data and not isinstance(sample_data, list):
+                raise forms.ValidationError("Sample data must be a JSON array.")
+        
+        return sample_data
+    
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        
+        # Convert JSON strings to lists if needed
+        columns = self.cleaned_data.get('columns')
+        if isinstance(columns, str):
+            instance.columns = json.loads(columns)
+        
+        sample_data = self.cleaned_data.get('sample_data')
+        if sample_data and isinstance(sample_data, str):
+            instance.sample_data = json.loads(sample_data)
+        
+        if self.user:
+            instance.created_by = self.user
+        
+        if commit:
+            instance.save()
+        
+        return instance
+
+class ReturnBulkActionForm(forms.Form):
+    """Form for performing bulk actions on returns"""
+    
+    ACTION_CHOICES = [
+        ('', 'Select Action'),
+        ('submit', 'Submit for Approval'),
+        ('approve', 'Approve'),
+        ('reject', 'Reject'),
+        ('delete', 'Delete'),
+        ('export_csv', 'Export as CSV'),
+        ('export_pdf', 'Export as PDF'),
+    ]
+    
+    action = forms.ChoiceField(
+        choices=ACTION_CHOICES,
+        required=True,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    return_ids = forms.ModelMultipleChoiceField(
+        queryset=InmateReturn.objects.all(),
+        required=True,
+        widget=forms.SelectMultiple(attrs={'class': 'form-control'})
+    )
+    
+    rejection_reason = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        label='Rejection Reason (required for reject action)'
+    )
+    
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        action = cleaned_data.get('action')
+        rejection_reason = cleaned_data.get('rejection_reason')
+        
+        if action == 'reject' and not rejection_reason:
+            self.add_error('rejection_reason', 'Rejection reason is required for reject action.')
+        
+        return cleaned_data
+    
+    def execute_action(self):
+        """Execute the bulk action"""
+        action = self.cleaned_data.get('action')
+        return_ids = self.cleaned_data.get('return_ids')
+        rejection_reason = self.cleaned_data.get('rejection_reason')
+        
+        results = {
+            'success': [],
+            'failed': [],
+            'total': return_ids.count()
+        }
+        
+        for return_obj in return_ids:
+            try:
+                if action == 'submit':
+                    return_obj.submit(self.user)
+                    results['success'].append(return_obj.id)
+                
+                elif action == 'approve':
+                    return_obj.approve(self.user)
+                    results['success'].append(return_obj.id)
+                
+                elif action == 'reject':
+                    return_obj.reject(self.user, rejection_reason)
+                    results['success'].append(return_obj.id)
+                
+                elif action == 'delete':
+                    return_obj.delete()
+                    results['success'].append(return_obj.id)
+                
+                elif action == 'export_csv':
+                    # Handle export logic here
+                    results['success'].append(return_obj.id)
+                
+                elif action == 'export_pdf':
+                    # Handle export logic here
+                    results['success'].append(return_obj.id)
+            
+            except Exception as e:
+                results['failed'].append({
+                    'id': return_obj.id,
+                    'reason': str(e)
+                })
+        
+        return results
+
+
+# Temporarily commented out due to import issues with ReturnTemplate
+# class ReturnTemplateForm(forms.ModelForm):
+#     """Form for creating and managing return templates"""
+#     
+#     class Meta:
+#         model = ReturnTemplate
+#         fields = [
+#             'name',
+#             'return_type',
+#             'description',
+#             'columns',
+#             'sample_data',
+#             'is_active',
+#             'is_default',
+#         ]
+#         widgets = {
+#             'name': forms.TextInput(attrs={'class': 'form-control'}),
+#             'return_type': forms.Select(attrs={'class': 'form-control'}),
+#             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+#             'columns': forms.Textarea(attrs={'class': 'form-control', 'rows': 10}),
+#             'sample_data': forms.Textarea(attrs={'class': 'form-control', 'rows': 5}),
+#             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+#             'is_default': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+#         }
+#     
+#     def __init__(self, *args, **kwargs):
+#         self.user = kwargs.pop('user', None)
+#         super().__init__(*args, **kwargs)
+#         
+#         # Add help texts
+#         self.fields['columns'].help_text = 'JSON array of column definitions with key, header, and type.'
+#         self.fields['columns'].initial = json.dumps([
+#             {'key': 'serial_no', 'header': 'Ser. No.', 'type': 'number', 'required': True},
+#             {'key': 'prisoner_number', 'header': 'Pri. No.', 'type': 'string', 'required': True},
+#             {'key': 'full_name', 'header': 'Names', 'type': 'string', 'required': True},
+#         ], indent=2)
+#         
+#         self.fields['sample_data'].help_text = 'JSON array of sample data rows (optional).'
+#         self.fields['sample_data'].initial = json.dumps([
+#             {'serial_no': 1, 'prisoner_number': 'P-0001', 'full_name': 'Sample Prisoner 1'},
+#             {'serial_no': 2, 'prisoner_number': 'P-0002', 'full_name': 'Sample Prisoner 2'},
+#         ], indent=2)
+#     
+#     def clean_columns(self):
+#         """Validate the columns JSON"""
+#         columns = self.cleaned_data.get('columns')
+#         if isinstance(columns, str):
+#             try:
+#                 columns = json.loads(columns)
+#             except json.JSONDecodeError:
+#                 raise forms.ValidationError("Invalid JSON format for columns.")
+#         
+#         if not columns or not isinstance(columns, list):
+#             raise forms.ValidationError("Columns must be a non-empty JSON array.")
+#         
+#         # Validate each column
+#         for idx, col in enumerate(columns):
+#             if not col.get('key'):
+#                 raise forms.ValidationError(f"Column {idx + 1} is missing a 'key' field.")
+#             if not col.get('header'):
+#                 raise forms.ValidationError(f"Column '{col.get('key')}' is missing a 'header' field.")
+#         
+#         return columns
+#     
+#     def clean_sample_data(self):
+#         """Validate the sample data JSON"""
+#         sample_data = self.cleaned_data.get('sample_data')
+#         if sample_data:
+#             if isinstance(sample_data, str):
+#                 try:
+#                     sample_data = json.loads(sample_data)
+#                 except json.JSONDecodeError:
+#                     raise forms.ValidationError("Invalid JSON format for sample data.")
+#             
+#             if sample_data and not isinstance(sample_data, list):
+#                 raise forms.ValidationError("Sample data must be a JSON array.")
+#         
+#         return sample_data
+#     
+#     def save(self, commit=True):
+#         instance = super().save(commit=False)
+#         
+#         # Convert JSON strings to lists if needed
+#         if isinstance(self.cleaned_data['columns'], str):
+#             instance.columns = json.loads(self.cleaned_data['columns'])
+#         
+#         if self.cleaned_data.get('sample_data') and isinstance(self.cleaned_data['sample_data'], str):
+#             instance.sample_data = json.loads(self.cleaned_data['sample_data'])
+#         
+#         if self.user:
+#             instance.created_by = self.user
+#         
+#         if commit:
+#             instance.save()
+#         
+#         return instance
+
+
+class ReturnSearchForm(forms.Form):
+    """Advanced search form for return data"""
+    
+    SEARCH_FIELDS = [
+        ('prisoner_number', 'Prisoner Number'),
+        ('full_name', 'Full Name'),
+        ('offense', 'Offense'),
+        ('court', 'Court'),
+        ('district', 'District'),
+        ('nationality', 'Nationality'),
+        ('case_status', 'Case Status'),
+    ]
+    
+    search_field = forms.ChoiceField(
+        choices=SEARCH_FIELDS,
+        required=False,
+        label='Search Field',
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    search_value = forms.CharField(
+        required=False,
+        label='Search Value',
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    
+    sex = forms.ChoiceField(
+        choices=[('', 'All')] + [('m', 'Male'), ('f', 'Female')],
+        required=False,
+        label='Gender',
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    age_from = forms.IntegerField(
+        required=False,
+        label='Age From',
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
+    )
+    
+    age_to = forms.IntegerField(
+        required=False,
+        label='Age To',
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
+    )
+    
+    return_type = forms.ChoiceField(
+        choices=[('', 'All Return Types')] + list(InmateReturn.RETURN_TYPE_CHOICES),
+        required=False,
+        label='Return Type',
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    month = forms.ChoiceField(
+        choices=[('', 'All Months')] + [(i, ['January', 'February', 'March', 'April', 'May', 'June',
+                                              'July', 'August', 'September', 'October', 'November', 'December'][i-1]) 
+                                        for i in range(1, 13)],
+        required=False,
+        label='Month',
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    year = forms.ChoiceField(
+        required=False,
+        label='Year',
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Set year choices
+        current_year = timezone.now().year
+        year_choices = [(y, str(y)) for y in range(current_year - 10, current_year + 1)]
+        self.fields['year'].choices = [('', 'All Years')] + year_choices
+    
+    def search(self, queryset):
+        """Apply search filters to the queryset"""
+        cleaned_data = self.cleaned_data
+        
+        # Search by field
+        search_field = cleaned_data.get('search_field')
+        search_value = cleaned_data.get('search_value')
+        
+        if search_field and search_value:
+            field_lookup = f"{search_field}__icontains"
+            queryset = queryset.filter(**{field_lookup: search_value})
+        
+        # Filter by gender
+        sex = cleaned_data.get('sex')
+        if sex:
+            queryset = queryset.filter(sex__iexact=sex)
+        
+        # Filter by age range
+        age_from = cleaned_data.get('age_from')
+        age_to = cleaned_data.get('age_to')
+        
+        if age_from:
+            queryset = queryset.filter(age__gte=age_from)
+        if age_to:
+            queryset = queryset.filter(age__lte=age_to)
+        
+        # Filter by return type
+        return_type = cleaned_data.get('return_type')
+        if return_type:
+            queryset = queryset.filter(inmate_return__return_type=return_type)
+        
+        # Filter by month/year
+        month = cleaned_data.get('month')
+        year = cleaned_data.get('year')
+        
+        if month:
+            queryset = queryset.filter(inmate_return__month=month)
+        if year:
+            queryset = queryset.filter(inmate_return__year=year)
+        
+        return queryset

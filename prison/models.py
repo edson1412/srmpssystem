@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from dateutil.relativedelta import relativedelta
 from django.core.validators import MinValueValidator
 from django.db.models import Count, Sum
+from datetime import datetime 
 import math
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -26,7 +27,6 @@ class Prisoner(models.Model):
     SEX_CHOICES = [
         ('male', 'Male'),
         ('female', 'Female'),
-        ('other', 'Other'),
     ]
 
     prisoner_number = models.CharField(max_length=20, unique=True)
@@ -488,13 +488,11 @@ class PrisonerParticulars(models.Model):
         ('burundi', 'Burundi'),
         ('rwandan', 'Rwandan'),
         ('botswana', 'Botswana'),
-        ('other', 'Other'),
     ]
 
     RELIGION_CHOICES = [
         ('christian', 'Christian'),
         ('muslim', 'Muslim'),
-        ('other', 'Other'),
     ]
 
     EDUCATION_LEVEL_CHOICES = [
@@ -552,7 +550,6 @@ class PhysicalCharacteristics(models.Model):
         ('black', 'Black'),
         ('blue', 'Blue'),
         ('green', 'Green'),
-        ('other', 'Other'),
     ]
 
     HEALTH_CHOICES = [
@@ -563,7 +560,6 @@ class PhysicalCharacteristics(models.Model):
         ('ptsd', 'PTSD'),
         ('stis', 'STIs'),
         ('malnutrition', 'Malnutrition'),
-        ('other', 'Other'),
     ]
 
     prisoner = models.OneToOneField(Prisoner, on_delete=models.CASCADE, primary_key=True, related_name='physical')
@@ -659,14 +655,12 @@ class Visitor(models.Model):
         ('friend', 'Friend'),
         ('lawyer', 'Lawyer'),
         ('official', 'Government Official'),
-        ('other', 'Other'),
     ]
 
     ID_TYPE_CHOICES = [
         ('national_id', 'National ID'),
         ('passport', 'Passport'),
         ('drivers_license', 'Driver\'s License'),
-        ('other', 'Other'),
     ]
 
     prisoner = models.ForeignKey(Prisoner, on_delete=models.CASCADE)
@@ -705,7 +699,6 @@ class MedicalRecord(models.Model):
         ('chronic', 'Chronic Condition'),
         ('mental', 'Mental Health'),
         ('dental', 'Dental'),
-        ('other', 'Other'),
     ]
 
     prisoner = models.ForeignKey(Prisoner, on_delete=models.CASCADE, related_name='medical_records')
@@ -968,8 +961,1966 @@ class FingerprintAuditLog(models.Model):
             models.Index(fields=['operation', '-performed_at']),
         ]
 
+
+class InmateReturn(models.Model):
+    """
+    Comprehensive model for inmate returns and reports.
+    Manages all types of prison returns including convicted, remanded, 
+    foreigner, medical, and special category returns.
+    """
+    
+    # ============ RETURN TYPE CHOICES ============
+    RETURN_TYPE_CHOICES = [
+        ('convicted', 'Convicted Inmates Return'),
+        ('remanded', 'Remanded Inmates Return'),
+        ('remand_murder', 'Remanded Murder Cases Return'),
+        ('convicted_foreigners', 'Convicted Foreigners Return'),
+        ('foreigners_remand', 'Foreigners Remand Return'),
+        ('general_remandees', 'General Remandees Return'),
+        ('chronically_ill', 'Chronically Ill Inmates Return'),
+        ('convicted_elderly', 'Convicted Elderly (70 yrs & above)'),
+        ('convicted_pregnant', 'Convicted Pregnant Inmates'),
+        ('discharged_after_reductions', 'Discharged After Effecting Months Reduction'),
+        ('children_with_mothers', 'Children Accompanying Their Mothers'),
+        ('convicted_pregnant_mothers', 'Convicted Pregnant Mothers'),
+        ('remand_pregnant_mothers_murder', 'Remandees Pregnant Mothers on Homicide'),
+        ('children_with_mothers_homicide', 'Children Accompanying Mothers on Homicide'),
+        ('pending_cases', 'Pending Cases Return'),
+        ('due_discharge', 'Due Discharge'),
+        ('lockup_summary', 'Lockup Summary'),
+        ('quarterly', 'Quarterly Report'),
+        ('annual', 'Annual Report'),
+        ('monthly_statistics', 'Monthly Statistics'),
+        ('weekly_summary', 'Weekly Summary'),
+        ('special', 'Special Return'),
+        ('other', 'Other Return'),
+    ]
+    
+    # ============ STATUS CHOICES ============
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('submitted', 'Submitted for Approval'),
+        ('processing', 'Processing'),
+        ('under_review', 'Under Review'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('completed', 'Completed'),
+        ('archived', 'Archived'),
+    ]
+    
+    # ============ BASIC INFORMATION ============
+    title = models.CharField(
+        max_length=300, 
+        help_text="Descriptive title for the return (e.g., 'Convicted Inmates Return - Zomba - November 2026')"
+    )
+    return_type = models.CharField(
+        max_length=50, 
+        choices=RETURN_TYPE_CHOICES,
+        help_text="Type of return being generated"
+    )
+    description = models.TextField(
+        blank=True, 
+        help_text="Optional detailed description of the return"
+    )
+    
+    # ============ PERIOD INFORMATION ============
+    month = models.IntegerField(
+        blank=True, 
+        null=True,
+        help_text="Month (1-12) for period-specific returns"
+    )
+    year = models.IntegerField(
+        blank=True, 
+        null=True,
+        help_text="Year for period-specific returns"
+    )
+    start_date = models.DateField(
+        blank=True, 
+        null=True,
+        help_text="Start date for custom date ranges"
+    )
+    end_date = models.DateField(
+        blank=True, 
+        null=True,
+        help_text="End date for custom date ranges"
+    )
+    reporting_period = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Description of reporting period (e.g., 'Q1 2026', 'January 2026')"
+    )
+    
+    # ============ STATION INFORMATION ============
+    station = models.ForeignKey(
+        PrisonStation,
+        on_delete=models.CASCADE,
+        related_name='inmate_returns',
+        help_text="Prison station that this return belongs to"
+    )
+    region = models.ForeignKey(
+        Region,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='inmate_returns',
+        help_text="Region of the station (auto-populated)"
+    )
+    
+    # ============ FILE MANAGEMENT ============
+    file = models.FileField(
+        upload_to='inmate_returns/%Y/%m/',
+        blank=True,
+        null=True,
+        help_text="Uploaded file (PDF, Word, Excel, CSV, etc.)"
+    )
+    file_name = models.CharField(
+        max_length=255, 
+        blank=True,
+        help_text="Original file name"
+    )
+    file_size = models.BigIntegerField(
+        blank=True, 
+        null=True, 
+        help_text="File size in bytes"
+    )
+    file_type = models.CharField(
+        max_length=50, 
+        blank=True,
+        help_text="File extension/type"
+    )
+    file_hash = models.CharField(
+        max_length=64,
+        blank=True,
+        help_text="SHA-256 hash of the file for integrity checking"
+    )
+    file_uploaded_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text="When the file was uploaded"
+    )
+    
+    # ============ CSV DATA MANAGEMENT ============
+    has_csv_data = models.BooleanField(
+        default=False,
+        help_text="Whether this return has imported CSV data"
+    )
+    csv_row_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of rows imported from CSV"
+    )
+    csv_imported_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text="When CSV data was imported"
+    )
+    csv_imported_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='imported_csv_returns',
+        help_text="User who imported the CSV data"
+    )
+    
+    # ============ WORKFLOW STATUS ============
+    status = models.CharField(
+        max_length=20, 
+        choices=STATUS_CHOICES, 
+        default='draft'
+    )
+    status_history = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="History of status changes with timestamps and users"
+    )
+    
+    # ============ APPROVAL TRACKING ============
+    submitted_at = models.DateTimeField(
+        blank=True, 
+        null=True,
+        help_text="When the return was submitted for approval"
+    )
+    submitted_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='submitted_returns',
+        help_text="User who submitted the return"
+    )
+    approved_at = models.DateTimeField(
+        blank=True, 
+        null=True,
+        help_text="When the return was approved"
+    )
+    approved_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='approved_returns',
+        help_text="User who approved the return"
+    )
+    approval_notes = models.TextField(
+        blank=True,
+        help_text="Notes from the approver"
+    )
+    rejected_at = models.DateTimeField(
+        blank=True, 
+        null=True,
+        help_text="When the return was rejected"
+    )
+    rejected_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='rejected_returns',
+        help_text="User who rejected the return"
+    )
+    rejection_reason = models.TextField(
+        blank=True,
+        help_text="Reason for rejection"
+    )
+    completed_at = models.DateTimeField(
+        blank=True, 
+        null=True,
+        help_text="When the return was marked as completed"
+    )
+    completed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='completed_returns',
+        help_text="User who marked the return as completed"
+    )
+    
+    # ============ REVIEWER ASSIGNMENT ============
+    assigned_to = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_returns',
+        help_text="User assigned to review this return"
+    )
+    review_deadline = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text="Deadline for review/approval"
+    )
+    
+    # ============ METADATA AND STATISTICS ============
+    total_records = models.PositiveIntegerField(
+        default=0,
+        help_text="Total number of records in this return"
+    )
+    unique_prisoners = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of unique prisoners in the return"
+    )
+    male_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of male prisoners"
+    )
+    female_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of female prisoners"
+    )
+    offense_breakdown = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Breakdown of offenses with counts"
+    )
+    age_distribution = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Age distribution statistics"
+    )
+    summary_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Comprehensive summary data for the return"
+    )
+    
+    # ============ NOTES AND REMARKS ============
+    remarks = models.TextField(
+        blank=True,
+        help_text="General remarks or notes about this return"
+    )
+    internal_notes = models.TextField(
+        blank=True,
+        help_text="Internal notes for staff (not shown to external users)"
+    )
+    
+    # ============ VISIBILITY AND PERMISSIONS ============
+    is_public = models.BooleanField(
+        default=False,
+        help_text="Whether this return is publicly visible"
+    )
+    is_template = models.BooleanField(
+        default=False,
+        help_text="Whether this return can be used as a template"
+    )
+    
+    # ============ AUDIT TRAIL ============
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_returns',
+        help_text="User who created this return"
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When this return was created"
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text="When this return was last updated"
+    )
+    last_accessed_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text="When this return was last accessed"
+    )
+    
+    # ============ METADATA ============
+    version = models.PositiveIntegerField(
+        default=1,
+        help_text="Version number of this return"
+    )
+    tags = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Tags for categorization and search"
+    )
+    custom_fields = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Custom fields for additional data"
+    )
+    
+    # ============ META OPTIONS ============
+    class Meta:
+        verbose_name = "Inmate Return"
+        verbose_name_plural = "Inmate Returns"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['station', '-created_at']),
+            models.Index(fields=['return_type', '-created_at']),
+            models.Index(fields=['status']),
+            models.Index(fields=['month', 'year']),
+            models.Index(fields=['submitted_at']),
+            models.Index(fields=['approved_at']),
+            models.Index(fields=['created_by']),
+            models.Index(fields=['assigned_to']),
+        ]
+        unique_together = [
+            ['station', 'return_type', 'month', 'year'],
+        ]
+        
+    # ============ STRING REPRESENTATION ============
     def __str__(self):
-        return f"{self.prisoner} - {self.get_operation_display()} at {self.performed_at}"
+        if self.month and self.year:
+            month_name = self.get_month_display()
+            return f"{self.title} - {self.station.name} - {month_name} {self.year}"
+        return f"{self.title} - {self.station.name} ({self.created_at.strftime('%Y-%m-%d')})"
+    
+    # ============ DISPLAY HELPERS ============
+    def get_month_display(self):
+        """Return month name"""
+        if self.month:
+            months = ['January', 'February', 'March', 'April', 'May', 'June',
+                     'July', 'August', 'September', 'October', 'November', 'December']
+            return months[self.month - 1]
+        return None
+    
+    def get_status_display(self):
+        """Return human-readable status"""
+        return dict(self.STATUS_CHOICES).get(self.status, self.status)
+    
+    def get_return_type_display(self):
+        """Return human-readable return type"""
+        return dict(self.RETURN_TYPE_CHOICES).get(self.return_type, self.return_type)
+    
+    def get_file_size_display(self):
+        """Return human-readable file size"""
+        if self.file_size:
+            size = self.file_size
+            for unit in ['B', 'KB', 'MB', 'GB']:
+                if size < 1024.0:
+                    return f"{size:.1f} {unit}"
+                size /= 1024.0
+            return f"{size:.1f} TB"
+        return "Unknown"
+    
+    def get_reporting_period_display(self):
+        """Get human-readable reporting period"""
+        if self.reporting_period:
+            return self.reporting_period
+        if self.month and self.year:
+            return f"{self.get_month_display()} {self.year}"
+        if self.start_date and self.end_date:
+            return f"{self.start_date.strftime('%d-%m-%Y')} to {self.end_date.strftime('%d-%m-%Y')}"
+        return "N/A"
+    
+    # ============ WORKFLOW METHODS ============
+    def can_edit(self, user):
+        """Check if user can edit this return"""
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser or (hasattr(user, 'is_super_admin') and user.is_super_admin()):
+            return True
+        if self.status not in ['draft', 'rejected']:
+            return False
+        if self.created_by == user:
+            return True
+        if hasattr(user, 'prison_station') and user.prison_station == self.station:
+            return True
+        return False
+    
+    def can_delete(self, user):
+        """Check if user can delete this return"""
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser or (hasattr(user, 'is_super_admin') and user.is_super_admin()):
+            return True
+        if self.status not in ['draft', 'rejected']:
+            return False
+        if self.created_by == user:
+            return True
+        if (hasattr(user, 'is_prison_admin') and user.is_prison_admin() and 
+            hasattr(user, 'prison_station') and user.prison_station == self.station):
+            return True
+        return False
+    
+    def can_approve(self, user):
+        """Check if user can approve this return"""
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser or (hasattr(user, 'is_super_admin') and user.is_super_admin()):
+            return True
+        if hasattr(user, 'is_officer_in_charge') and user.is_officer_in_charge():
+            if hasattr(user, 'prison_station') and user.prison_station == self.station:
+                return True
+        if hasattr(user, 'is_station_officer') and user.is_station_officer():
+            if hasattr(user, 'prison_station') and user.prison_station == self.station:
+                return True
+        return False
+    
+    # ============ STATUS TRANSITIONS ============
+    def submit(self, user):
+        """Submit return for approval"""
+        if self.status != 'draft':
+            raise ValidationError(f"Cannot submit return with status '{self.get_status_display()}'")
+        
+        if not self.data_rows.exists() and not self.file:
+            raise ValidationError("Cannot submit a return with no data. Please add data or upload a file.")
+        
+        self.status = 'submitted'
+        self.submitted_at = timezone.now()
+        self.submitted_by = user
+        self._add_status_history('submitted', user, 'Return submitted for approval')
+        self.save()
+    
+    def process(self, user):
+        """Start processing the return"""
+        if self.status != 'submitted':
+            raise ValidationError(f"Cannot process return with status '{self.get_status_display()}'")
+        
+        self.status = 'processing'
+        self._add_status_history('processing', user, 'Return being processed')
+        self.save()
+    
+    def review(self, user):
+        """Mark return as under review"""
+        if self.status not in ['submitted', 'processing']:
+            raise ValidationError(f"Cannot review return with status '{self.get_status_display()}'")
+        
+        self.status = 'under_review'
+        self.assigned_to = user
+        self._add_status_history('under_review', user, 'Return under review')
+        self.save()
+    
+    def approve(self, user, notes=''):
+        """Approve the return"""
+        if self.status not in ['submitted', 'processing', 'under_review']:
+            raise ValidationError(f"Cannot approve return with status '{self.get_status_display()}'")
+        
+        self.status = 'approved'
+        self.approved_at = timezone.now()
+        self.approved_by = user
+        self.approval_notes = notes
+        self._add_status_history('approved', user, f'Return approved. Notes: {notes}')
+        self.save()
+    
+    def reject(self, user, reason):
+        """Reject the return"""
+        if self.status not in ['submitted', 'processing', 'under_review']:
+            raise ValidationError(f"Cannot reject return with status '{self.get_status_display()}'")
+        
+        if not reason:
+            raise ValidationError("Rejection reason is required")
+        
+        self.status = 'rejected'
+        self.rejected_at = timezone.now()
+        self.rejected_by = user
+        self.rejection_reason = reason
+        self._add_status_history('rejected', user, f'Return rejected. Reason: {reason}')
+        self.save()
+    
+    def complete(self):
+        """Mark return as completed"""
+        if self.status != 'approved':
+            raise ValidationError(f"Cannot complete return with status '{self.get_status_display()}'")
+        
+        self.status = 'completed'
+        self.completed_at = timezone.now()
+        self._add_status_history('completed', None, 'Return completed')
+        self.save()
+    
+    def archive(self, user):
+        """Archive the return"""
+        if self.status not in ['approved', 'completed']:
+            raise ValidationError(f"Cannot archive return with status '{self.get_status_display()}'")
+        
+        self.status = 'archived'
+        self._add_status_history('archived', user, 'Return archived')
+        self.save()
+    
+    def _add_status_history(self, status, user, note=''):
+        """Add entry to status history"""
+        entry = {
+            'status': status,
+            'timestamp': timezone.now().isoformat(),
+            'user': user.username if user else 'System',
+            'user_id': user.id if user else None,
+            'note': note
+        }
+        self.status_history.append(entry)
+        if len(self.status_history) > 50:  # Limit history size
+            self.status_history = self.status_history[-50:]
+    
+    # ============ DATA MANAGEMENT ============
+    def update_summary(self):
+        """Update summary statistics"""
+        data_rows = self.data_rows.all()
+        
+        self.total_records = data_rows.count()
+        self.unique_prisoners = data_rows.values('prisoner_number').distinct().count()
+        self.male_count = data_rows.filter(sex__iexact='M').count()
+        self.female_count = data_rows.filter(sex__iexact='F').count()
+        
+        # Offense breakdown
+        offense_data = {}
+        for row in data_rows.values('offense').exclude(offense__isnull=True).exclude(offense=''):
+            offense = row.get('offense')
+            if offense:
+                offense_data[offense] = offense_data.get(offense, 0) + 1
+        self.offense_breakdown = offense_data
+        
+        # Age distribution
+        age_groups = {
+            '0-18': 0,
+            '19-30': 0,
+            '31-45': 0,
+            '46-60': 0,
+            '61+': 0,
+            'Unknown': 0
+        }
+        for row in data_rows:
+            if row.age:
+                if row.age <= 18:
+                    age_groups['0-18'] += 1
+                elif row.age <= 30:
+                    age_groups['19-30'] += 1
+                elif row.age <= 45:
+                    age_groups['31-45'] += 1
+                elif row.age <= 60:
+                    age_groups['46-60'] += 1
+                else:
+                    age_groups['61+'] += 1
+            else:
+                age_groups['Unknown'] += 1
+        self.age_distribution = age_groups
+        
+        # Summary data
+        self.summary_data = {
+            'total_records': self.total_records,
+            'unique_prisoners': self.unique_prisoners,
+            'male_count': self.male_count,
+            'female_count': self.female_count,
+            'offense_breakdown': self.offense_breakdown,
+            'age_distribution': self.age_distribution,
+            'updated_at': timezone.now().isoformat(),
+        }
+        
+        self.save(update_fields=[
+            'total_records', 'unique_prisoners', 'male_count', 'female_count',
+            'offense_breakdown', 'age_distribution', 'summary_data'
+        ])
+    
+    def get_summary(self):
+        """Get summary data"""
+        if not self.summary_data:
+            self.update_summary()
+        return self.summary_data
+    
+    def get_data_by_offense(self, limit=10):
+        """Get top offenses by count"""
+        if self.offense_breakdown:
+            sorted_offenses = sorted(
+                self.offense_breakdown.items(),
+                key=lambda x: x[1],
+                reverse=True
+            )
+            return sorted_offenses[:limit]
+        return []
+    
+    def get_data_by_gender(self):
+        """Get gender breakdown"""
+        return {
+            'male': self.male_count,
+            'female': self.female_count,
+            'unknown': self.total_records - self.male_count - self.female_count
+        }
+    
+    def get_data_by_age_group(self):
+        """Get age distribution"""
+        return self.age_distribution
+    
+    # ============ VALIDATION ============
+    def clean(self):
+        """Validate the model"""
+        if self.month and (self.month < 1 or self.month > 12):
+            raise ValidationError({'month': 'Month must be between 1 and 12'})
+        
+        if self.start_date and self.end_date and self.start_date > self.end_date:
+            raise ValidationError({'start_date': 'Start date must be before end date'})
+    
+    # ============ SAVE OVERRIDE ============
+    def save(self, *args, **kwargs):
+        """Save with additional processing"""
+        # Auto-populate region from station
+        if self.station and self.station.region:
+            self.region = self.station.region
+        
+        # Set reporting period if not set
+        if not self.reporting_period:
+            if self.month and self.year:
+                self.reporting_period = f"{self.get_month_display()} {self.year}"
+            elif self.start_date and self.end_date:
+                self.reporting_period = f"{self.start_date.strftime('%d-%m-%Y')} to {self.end_date.strftime('%d-%m-%Y')}"
+        
+        # Auto-generate title if not set
+        if not self.title:
+            type_label = dict(self.RETURN_TYPE_CHOICES).get(self.return_type, self.return_type)
+            if self.month and self.year:
+                month_name = self.get_month_display()
+                self.title = f"{type_label} - {self.station.name} - {month_name} {self.year}"
+            else:
+                self.title = f"{type_label} - {self.station.name} - {timezone.now().strftime('%Y-%m-%d')}"
+        
+        super().save(*args, **kwargs)
+    
+    # ============ EXPORT METHODS ============
+    def export_to_csv(self):
+        """Export return data to CSV"""
+        import csv
+        import io
+        
+        output = io.StringIO()
+        
+        # Get columns from template or auto-detect
+        columns = self._get_columns()
+        
+        # Write headers
+        writer = csv.writer(output)
+        writer.writerow([col['header'] for col in columns])
+        
+        # Write data
+        for row in self.data_rows.all().order_by('row_number'):
+            row_data = []
+            for col in columns:
+                value = getattr(row, col['key'], '')
+                if isinstance(value, date):
+                    value = value.strftime('%d-%m-%Y')
+                elif value is None:
+                    value = ''
+                row_data.append(value)
+            writer.writerow(row_data)
+        
+        return output.getvalue()
+    
+    def _get_columns(self):
+        """Get columns for export"""
+        # Try to get from template
+        try:
+            from .models import ReturnTemplate
+            template = ReturnTemplate.objects.get(return_type=self.return_type)
+            return template.columns
+        except:
+            pass
+        
+        # Auto-detect from data
+        if self.data_rows.exists():
+            first_row = self.data_rows.first()
+            columns = []
+            for field in InmateReturnData._meta.fields:
+                field_name = field.name
+                if field_name not in ['id', 'inmate_return', 'additional_data', 'created_at', 'updated_at']:
+                    value = getattr(first_row, field_name)
+                    if value:
+                        columns.append({
+                            'key': field_name,
+                            'header': field_name.replace('_', ' ').title()
+                        })
+            return columns
+        
+        # Default columns
+        return [
+            {'key': 'serial_no', 'header': 'Ser. No.'},
+            {'key': 'prisoner_number', 'header': 'Prisoner No.'},
+            {'key': 'full_name', 'header': 'Full Name'},
+            {'key': 'sex', 'header': 'Sex'},
+            {'key': 'age', 'header': 'Age'},
+            {'key': 'offense', 'header': 'Offense'},
+            {'key': 'remarks', 'header': 'Remarks'},
+        ]
+    
+    def get_data_dict(self):
+        """Get all data as a dictionary"""
+        data = {
+            'id': self.id,
+            'title': self.title,
+            'return_type': self.return_type,
+            'return_type_label': self.get_return_type_display(),
+            'status': self.status,
+            'status_label': self.get_status_display(),
+            'station': self.station.name if self.station else None,
+            'station_id': self.station.id if self.station else None,
+            'region': self.region.name if self.region else None,
+            'month': self.month,
+            'month_name': self.get_month_display(),
+            'year': self.year,
+            'reporting_period': self.get_reporting_period_display(),
+            'start_date': self.start_date.isoformat() if self.start_date else None,
+            'end_date': self.end_date.isoformat() if self.end_date else None,
+            'total_records': self.total_records,
+            'unique_prisoners': self.unique_prisoners,
+            'male_count': self.male_count,
+            'female_count': self.female_count,
+            'has_csv_data': self.has_csv_data,
+            'csv_row_count': self.csv_row_count,
+            'file_name': self.file_name,
+            'file_size': self.file_size,
+            'file_type': self.file_type,
+            'created_by': self.created_by.username if self.created_by else None,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat(),
+            'submitted_at': self.submitted_at.isoformat() if self.submitted_at else None,
+            'approved_at': self.approved_at.isoformat() if self.approved_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+            'remarks': self.remarks,
+            'approval_notes': self.approval_notes,
+            'rejection_reason': self.rejection_reason,
+            'status_history': self.status_history,
+            'summary': self.summary_data,
+            'offense_breakdown': self.offense_breakdown,
+            'age_distribution': self.age_distribution,
+            'tags': self.tags,
+            'custom_fields': self.custom_fields,
+        }
+        return data
+    
+    def get_status_history_display(self):
+        """Get formatted status history for display"""
+        history = []
+        for entry in self.status_history:
+            history.append({
+                'status': entry.get('status', ''),
+                'status_label': dict(self.STATUS_CHOICES).get(entry.get('status', ''), entry.get('status', '')),
+                'timestamp': entry.get('timestamp', ''),
+                'user': entry.get('user', 'System'),
+                'note': entry.get('note', '')
+            })
+        return history
+
+
+class InmateReturnData(models.Model):
+    """
+    Data rows for inmate returns. Each row represents a prisoner record.
+    Comprehensive fields to support all return types.
+    """
+    
+    # ============ RELATIONSHIPS ============
+    inmate_return = models.ForeignKey(
+        InmateReturn,
+        on_delete=models.CASCADE,
+        related_name='data_rows',
+        help_text="The return this data belongs to"
+    )
+    
+    # ============ ROW IDENTIFICATION ============
+    row_number = models.PositiveIntegerField(
+        help_text="Row number in the CSV/return"
+    )
+    serial_no = models.PositiveIntegerField(
+        blank=True, 
+        null=True,
+        help_text="Serial number within the return"
+    )
+    
+    # ============ PRISONER IDENTIFICATION ============
+    prisoner_number = models.CharField(
+        max_length=20, 
+        blank=True,
+        help_text="Prisoner number"
+    )
+    full_name = models.CharField(
+        max_length=200, 
+        blank=True,
+        help_text="Full name of the prisoner"
+    )
+    first_name = models.CharField(
+        max_length=100, 
+        blank=True,
+        help_text="First name"
+    )
+    surname = models.CharField(
+        max_length=100, 
+        blank=True,
+        help_text="Surname"
+    )
+    middle_name = models.CharField(
+        max_length=100, 
+        blank=True,
+        help_text="Middle name"
+    )
+    
+    # ============ DEMOGRAPHICS ============
+    sex = models.CharField(
+        max_length=10, 
+        blank=True,
+        choices=[('M', 'Male'), ('F', 'Female'), ('U', 'Unknown')],
+        help_text="Gender"
+    )
+    age = models.PositiveIntegerField(
+        blank=True, 
+        null=True,
+        help_text="Age in years"
+    )
+    date_of_birth = models.DateField(
+        blank=True, 
+        null=True,
+        help_text="Date of birth"
+    )
+    
+    # ============ PRISONER CLASSIFICATION ============
+    prisoner_class = models.CharField(
+        max_length=20, 
+        blank=True,
+        choices=[('convicted', 'Convicted'), ('remand', 'Remand'), ('pending', 'Pending')],
+        help_text="Prisoner class"
+    )
+    is_convicted = models.BooleanField(
+        default=False,
+        help_text="Whether the prisoner is convicted"
+    )
+    is_remand = models.BooleanField(
+        default=False,
+        help_text="Whether the prisoner is on remand"
+    )
+    
+    # ============ OFFENSE AND COURT ============
+    offense = models.CharField(
+        max_length=300, 
+        blank=True,
+        help_text="Offense committed"
+    )
+    offense_code = models.CharField(
+        max_length=50, 
+        blank=True,
+        help_text="Offense code or section"
+    )
+    court = models.CharField(
+        max_length=200, 
+        blank=True,
+        help_text="Court name"
+    )
+    court_case_number = models.CharField(
+        max_length=100, 
+        blank=True,
+        help_text="Court case number"
+    )
+    judge_name = models.CharField(
+        max_length=200, 
+        blank=True,
+        help_text="Judge/Magistrate name"
+    )
+    case_status = models.CharField(
+        max_length=100, 
+        blank=True,
+        help_text="Case status (e.g., pending, concluded)"
+    )
+    
+    # ============ SENTENCE DETAILS ============
+    sentence_months = models.FloatField(
+        blank=True, 
+        null=True,
+        help_text="Sentence length in months"
+    )
+    sentence_years = models.FloatField(
+        blank=True, 
+        null=True,
+        help_text="Sentence length in years"
+    )
+    sentence_days = models.PositiveIntegerField(
+        blank=True, 
+        null=True,
+        help_text="Additional sentence days"
+    )
+    sentence_type = models.CharField(
+        max_length=50,
+        blank=True,
+        choices=[
+            ('imprisonment', 'Imprisonment'),
+            ('fine', 'Fine'),
+            ('community_service', 'Community Service'),
+            ('suspended', 'Suspended Sentence'),
+            ('life', 'Life Imprisonment'),
+            ('death', 'Death Sentence'),
+        ],
+        help_text="Type of sentence"
+    )
+    
+    # ============ DATE FIELDS ============
+    date_of_committal = models.DateField(
+        blank=True, 
+        null=True,
+        help_text="Date of committal"
+    )
+    date_of_admission = models.DateField(
+        blank=True, 
+        null=True,
+        help_text="Date of admission to prison"
+    )
+    date_of_conviction = models.DateField(
+        blank=True, 
+        null=True,
+        help_text="Date of conviction"
+    )
+    date_of_sentence = models.DateField(
+        blank=True, 
+        null=True,
+        help_text="Date of sentencing"
+    )
+    release_date_without_remission = models.DateField(
+        blank=True, 
+        null=True,
+        help_text="Release date without remission"
+    )
+    release_date_with_remission = models.DateField(
+        blank=True, 
+        null=True,
+        help_text="Release date with remission"
+    )
+    expected_date_release = models.DateField(
+        blank=True, 
+        null=True,
+        help_text="Expected date of release"
+    )
+    actual_release_date = models.DateField(
+        blank=True, 
+        null=True,
+        help_text="Actual date of release"
+    )
+    last_court_appearance = models.DateField(
+        blank=True, 
+        null=True,
+        help_text="Last court appearance date"
+    )
+    next_court_date = models.DateField(
+        blank=True, 
+        null=True,
+        help_text="Next court date"
+    )
+    
+    # ============ REMISSION AND REDUCTIONS ============
+    remission_months = models.FloatField(
+        blank=True, 
+        null=True,
+        help_text="Remission months granted"
+    )
+    reduction_months = models.FloatField(
+        blank=True, 
+        null=True,
+        help_text="Additional reduction months"
+    )
+    reduction_reason = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Reason for reduction"
+    )
+    amnesty_earned = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Amnesty earned"
+    )
+    sentence_served = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Time served so far"
+    )
+    pre_trial_period = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Pre-trial period"
+    )
+    
+    # ============ LOCATION/ADDRESS ============
+    village = models.CharField(
+        max_length=200, 
+        blank=True,
+        help_text="Village/Town"
+    )
+    chief = models.CharField(
+        max_length=200, 
+        blank=True,
+        help_text="Chief/Area"
+    )
+    district = models.CharField(
+        max_length=200, 
+        blank=True,
+        help_text="District"
+    )
+    region_location = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Region"
+    )
+    country = models.CharField(
+        max_length=100, 
+        blank=True,
+        help_text="Country"
+    )
+    nationality = models.CharField(
+        max_length=100, 
+        blank=True,
+        help_text="Nationality"
+    )
+    home_location = models.CharField(
+        max_length=300,
+        blank=True,
+        help_text="Home location/address"
+    )
+    
+    # ============ ADDITIONAL IDENTIFICATION ============
+    national_id = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="National ID number"
+    )
+    passport_number = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Passport number"
+    )
+    driving_license = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Driving license number"
+    )
+    phone_number = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Phone number"
+    )
+    
+    # ============ PREVIOUS CONVICTIONS ============
+    previous_conviction_particulars = models.TextField(
+        blank=True,
+        help_text="Details of previous convictions"
+    )
+    previous_conviction_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of previous convictions"
+    )
+    is_recidivist = models.BooleanField(
+        default=False,
+        help_text="Whether the prisoner is a recidivist"
+    )
+    
+    # ============ CONDUCT AND BEHAVIOR ============
+    conduct = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Conduct rating/status"
+    )
+    behavior_rating = models.CharField(
+        max_length=50,
+        blank=True,
+        choices=[
+            ('excellent', 'Excellent'),
+            ('good', 'Good'),
+            ('satisfactory', 'Satisfactory'),
+            ('poor', 'Poor'),
+            ('bad', 'Bad'),
+        ],
+        help_text="Behavior rating"
+    )
+    
+    # ============ MEDICAL AND SPECIAL CATEGORIES ============
+    is_chronically_ill = models.BooleanField(
+        default=False,
+        help_text="Whether the prisoner is chronically ill"
+    )
+    illness_description = models.CharField(
+        max_length=300,
+        blank=True,
+        help_text="Description of illness"
+    )
+    is_pregnant = models.BooleanField(
+        default=False,
+        help_text="Whether the prisoner is pregnant"
+    )
+    gestation_period = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Gestation period (months)"
+    )
+    is_elderly = models.BooleanField(
+        default=False,
+        help_text="Whether the prisoner is elderly (70+)"
+    )
+    
+    # ============ CHILDREN INFORMATION ============
+    has_children = models.BooleanField(
+        default=False,
+        help_text="Whether the prisoner has children"
+    )
+    children_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of children"
+    )
+    child_name = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Name of child"
+    )
+    child_age = models.PositiveIntegerField(
+        blank=True, 
+        null=True,
+        help_text="Age of child"
+    )
+    child_sex = models.CharField(
+        max_length=10,
+        blank=True,
+        help_text="Sex of child"
+    )
+    children_details = models.TextField(
+        blank=True,
+        help_text="Detailed information about children"
+    )
+    
+    # ============ ARREST AND AUTHORITY ============
+    arresting_authority = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Arresting authority/officer"
+    )
+    date_of_arrest = models.DateField(
+        blank=True, 
+        null=True,
+        help_text="Date of arrest"
+    )
+    place_of_arrest = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Place of arrest"
+    )
+    
+    # ============ ADDITIONAL FIELDS ============
+    cell_block = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Cell block"
+    )
+    cell_number = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Cell number"
+    )
+    prisoner_type = models.CharField(
+        max_length=50,
+        blank=True,
+        choices=[
+            ('convicted', 'Convicted'),
+            ('remand', 'Remand'),
+            ('pending', 'Pending'),
+            ('foreigner', 'Foreigner'),
+            ('special', 'Special'),
+        ],
+        help_text="Type of prisoner"
+    )
+    security_level = models.CharField(
+        max_length=50,
+        blank=True,
+        choices=[
+            ('low', 'Low'),
+            ('medium', 'Medium'),
+            ('high', 'High'),
+            ('maximum', 'Maximum'),
+        ],
+        help_text="Security level"
+    )
+    
+    # ============ REMARKS ============
+    remarks = models.TextField(
+        blank=True,
+        help_text="General remarks"
+    )
+    special_remarks = models.TextField(
+        blank=True,
+        help_text="Special remarks"
+    )
+    
+    # ============ ADDITIONAL DATA ============
+    additional_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Additional data fields (key-value pairs)"
+    )
+    
+    # ============ AUDIT ============
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When this record was created"
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text="When this record was last updated"
+    )
+    
+    # ============ META OPTIONS ============
+    class Meta:
+        verbose_name = "Inmate Return Data"
+        verbose_name_plural = "Inmate Return Data"
+        ordering = ['inmate_return', 'row_number', 'serial_no']
+        indexes = [
+            models.Index(fields=['inmate_return', 'row_number']),
+            models.Index(fields=['prisoner_number']),
+            models.Index(fields=['full_name']),
+            models.Index(fields=['offense']),
+            models.Index(fields=['sex']),
+            models.Index(fields=['district']),
+            models.Index(fields=['nationality']),
+            models.Index(fields=['prisoner_class']),
+        ]
+    
+    # ============ STRING REPRESENTATION ============
+    def __str__(self):
+        return f"{self.inmate_return.title} - Row {self.row_number} ({self.full_name or 'Unknown'})"
+    
+    # ============ DATA ACCESS ============
+    def get_full_name(self):
+        """Get full name with proper formatting"""
+        if self.full_name:
+            return self.full_name
+        parts = [self.first_name, self.middle_name, self.surname]
+        return ' '.join([p for p in parts if p])
+    
+    def get_data_dict(self):
+        """Return all data as a dictionary"""
+        data = {}
+        for field in self._meta.fields:
+            field_name = field.name
+            if field_name not in ['id', 'inmate_return', 'additional_data', 'created_at', 'updated_at']:
+                value = getattr(self, field_name)
+                if value:
+                    if isinstance(value, (date, datetime)):
+                        data[field_name] = value.isoformat()
+                    else:
+                        data[field_name] = value
+        if self.additional_data:
+            data.update(self.additional_data)
+        return data
+    
+    def get_age_group(self):
+        """Get age group for this prisoner"""
+        if not self.age:
+            return 'Unknown'
+        if self.age <= 18:
+            return '0-18'
+        elif self.age <= 30:
+            return '19-30'
+        elif self.age <= 45:
+            return '31-45'
+        elif self.age <= 60:
+            return '46-60'
+        else:
+            return '61+'
+    
+    def get_sex_display(self):
+        """Get human-readable sex display"""
+        return dict(self._meta.get_field('sex').choices).get(self.sex, self.sex)
+    
+    def get_prisoner_type_display(self):
+        """Get human-readable prisoner type"""
+        return dict(self._meta.get_field('prisoner_type').choices).get(self.prisoner_type, self.prisoner_type)
+    
+    # ============ VALIDATION ============
+    def clean(self):
+        """Validate the model"""
+        # Validate dates
+        if self.date_of_birth and self.age:
+            calculated_age = (date.today() - self.date_of_birth).days // 365
+            if abs(calculated_age - self.age) > 5:
+                # Raise warning but allow it (data might be approximate)
+                pass
+        
+        # Validate age range
+        if self.age and (self.age < 0 or self.age > 150):
+            raise ValidationError({'age': 'Age must be between 0 and 150'})
+        
+        # Validate sentence
+        if self.sentence_months and self.sentence_months < 0:
+            raise ValidationError({'sentence_months': 'Sentence must be non-negative'})
+    
+    def save(self, *args, **kwargs):
+        """Save with additional processing"""
+        # Auto-calculate some fields
+        if self.date_of_birth and not self.age:
+            today = date.today()
+            self.age = (today - self.date_of_birth).days // 365
+        
+        # Auto-set prisoner class based on other fields
+        if not self.prisoner_class:
+            if self.is_convicted:
+                self.prisoner_class = 'convicted'
+            elif self.is_remand:
+                self.prisoner_class = 'remand'
+        
+        # Auto-set recidivist flag
+        if self.previous_conviction_count > 0:
+            self.is_recidivist = True
+        
+        # Auto-set elderly flag
+        if self.age and self.age >= 70:
+            self.is_elderly = True
+        
+        super().save(*args, **kwargs)
+
+
+
+class InmateReturnData(models.Model):
+    """Structured data for inmate returns extracted from CSV/Excel uploads"""
+    
+    inmate_return = models.ForeignKey(
+        InmateReturn, 
+        on_delete=models.CASCADE, 
+        related_name='data_rows'
+    )
+    
+    # Common fields for all return types
+    serial_no = models.IntegerField(default=0)
+    prisoner_number = models.CharField(max_length=50, blank=True, null=True, db_index=True)
+    first_name = models.CharField(max_length=100, blank=True, null=True)
+    surname = models.CharField(max_length=100, blank=True, null=True)
+    full_name = models.CharField(max_length=200, blank=True, null=True, db_index=True)
+    sex = models.CharField(max_length=10, blank=True, null=True, db_index=True)
+    age = models.IntegerField(blank=True, null=True, db_index=True)
+    offense = models.CharField(max_length=255, blank=True, null=True, db_index=True)
+    
+    # Location/address fields
+    village = models.CharField(max_length=100, blank=True, null=True)
+    chief = models.CharField(max_length=100, blank=True, null=True)
+    district = models.CharField(max_length=100, blank=True, null=True, db_index=True)
+    country = models.CharField(max_length=50, blank=True, null=True)
+    nationality = models.CharField(max_length=50, blank=True, null=True, db_index=True)
+    
+    # Court/legal fields
+    court = models.CharField(max_length=100, blank=True, null=True)
+    case_no = models.CharField(max_length=100, blank=True, null=True)
+    sentence_months = models.FloatField(blank=True, null=True)
+    date_of_committal = models.DateField(blank=True, null=True)
+    date_of_admission = models.DateField(blank=True, null=True)
+    date_of_conviction = models.DateField(blank=True, null=True)
+    release_date_without_remission = models.DateField(blank=True, null=True)
+    release_date_with_remission = models.DateField(blank=True, null=True)
+    expected_date_release = models.DateField(blank=True, null=True)
+    
+    # Remand specific
+    arresting_authority = models.CharField(max_length=100, blank=True, null=True)
+    last_court_appearance = models.DateField(blank=True, null=True)
+    judge_name = models.CharField(max_length=100, blank=True, null=True)
+    case_status = models.CharField(max_length=100, blank=True, null=True)
+    pre_trial_period = models.CharField(max_length=50, blank=True, null=True)
+    
+    # Pardon specific
+    sentence_served = models.CharField(max_length=50, blank=True, null=True)
+    amnesty_earned = models.CharField(max_length=100, blank=True, null=True)
+    previous_conviction_particulars = models.TextField(blank=True, null=True)
+    conduct = models.CharField(max_length=50, blank=True, null=True)
+    
+    # Children accompanying mothers
+    child_name = models.CharField(max_length=200, blank=True, null=True)
+    child_age = models.IntegerField(blank=True, null=True)
+    child_sex = models.CharField(max_length=10, blank=True, null=True)
+    gestation_period = models.CharField(max_length=50, blank=True, null=True)
+    
+    # General
+    remarks = models.TextField(blank=True, null=True)
+    
+    # Metadata
+    row_number = models.IntegerField(default=0)
+    imported_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    # Additional JSON field for any extra data not covered
+    extra_data = models.JSONField(default=dict, blank=True)
+    
+    class Meta:
+        verbose_name = "Inmate Return Data"
+        verbose_name_plural = "Inmate Return Data"
+        ordering = ['inmate_return', 'serial_no', 'row_number']
+        indexes = [
+            models.Index(fields=['inmate_return', 'prisoner_number']),
+            models.Index(fields=['inmate_return', 'serial_no']),
+            models.Index(fields=['inmate_return', 'full_name']),
+            models.Index(fields=['inmate_return', 'offense']),
+            models.Index(fields=['inmate_return', 'sex']),
+            models.Index(fields=['inmate_return', 'nationality']),
+            models.Index(fields=['inmate_return', 'district']),
+        ]
+    
+    def __str__(self):
+        return f"{self.inmate_return.title} - Row {self.row_number} ({self.full_name or self.prisoner_number or 'No Name'})"
+    
+    def get_display_name(self):
+        """Get the best available name"""
+        if self.full_name:
+            return self.full_name
+        if self.first_name and self.surname:
+            return f"{self.first_name} {self.surname}"
+        return self.prisoner_number or "Unknown"
+    
+    def get_age_display(self):
+        """Get age with suffix"""
+        if self.age:
+            return f"{self.age} years"
+        return "Unknown"
+    
+    def get_sex_display(self):
+        """Get full sex display"""
+        if self.sex:
+            if self.sex.lower() in ['m', 'male']:
+                return 'Male'
+            elif self.sex.lower() in ['f', 'female']:
+                return 'Female'
+        return self.sex or "Unknown"
+
+
+class ReturnTemplate(models.Model):
+    """Predefined templates for different return types"""
+    
+    RETURN_TYPE_CHOICES = InmateReturn.RETURN_TYPE_CHOICES
+    
+    name = models.CharField(max_length=100)
+    return_type = models.CharField(max_length=50, choices=RETURN_TYPE_CHOICES, unique=True, db_index=True)
+    description = models.TextField(blank=True, null=True)
+    
+    # Column definitions as JSON
+    columns = models.JSONField(
+        default=list, 
+        help_text="List of column definitions with key, header, and type"
+    )
+    
+    # Sample data for demonstration
+    sample_data = models.JSONField(default=list, blank=True, help_text="Sample data for template")
+    
+    # Column groups for better organization
+    column_groups = models.JSONField(
+        default=dict, 
+        blank=True,
+        help_text="Group columns for display purposes"
+    )
+    
+    is_active = models.BooleanField(default=True)
+    is_default = models.BooleanField(default=False, help_text="Whether this is the default template for this type")
+    
+    # Version tracking
+    version = models.IntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_templates'
+    )
+    
+    class Meta:
+        verbose_name = "Return Template"
+        verbose_name_plural = "Return Templates"
+        ordering = ['name']
+    
+    def __str__(self):
+        return f"{self.name} - {self.get_return_type_display()}"
+    
+    def get_column_headers(self):
+        """Get just the column headers from the columns definition"""
+        return [col.get('header', col.get('key', '')) for col in self.columns]
+    
+    def get_column_keys(self):
+        """Get all column keys"""
+        return [col['key'] for col in self.columns if 'key' in col]
+    
+    def get_required_columns(self):
+        """Get columns marked as required"""
+        return [col for col in self.columns if col.get('required', False)]
+    
+    def get_column_by_key(self, key):
+        """Get a column definition by its key"""
+        for col in self.columns:
+            if col.get('key') == key:
+                return col
+        return None
+    
+    def get_field_mapping(self):
+        """Get mapping of CSV headers to model fields"""
+        mapping = {}
+        for col in self.columns:
+            header = col.get('header', '').lower().strip()
+            key = col.get('key')
+            if header and key:
+                mapping[header] = key
+        return mapping
+    
+    def to_dict(self):
+        """Convert template to dictionary"""
+        return {
+            'id': self.id,
+            'name': self.name,
+            'return_type': self.return_type,
+            'description': self.description,
+            'columns': self.columns,
+            'column_headers': self.get_column_headers(),
+            'is_active': self.is_active,
+        }
+    
+    def validate_data_row(self, row_data):
+        """Validate a data row against the template"""
+        errors = []
+        required_cols = self.get_required_columns()
+        
+        for col in required_cols:
+            key = col.get('key')
+            if key and not row_data.get(key):
+                errors.append(f"Missing required field: {col.get('header', key)}")
+        
+        return errors
+    
+    def create_sample_data(self):
+        """Create sample data for this template"""
+        if not self.sample_data:
+            # Generate sample data based on columns
+            sample = []
+            for i in range(1, 4):
+                row = {}
+                for col in self.columns:
+                    key = col.get('key')
+                    if key:
+                        # Generate sample values based on field type
+                        field_type = col.get('type', 'string')
+                        if field_type == 'number':
+                            row[key] = i * 10
+                        elif field_type == 'date':
+                            row[key] = f"2024-01-{i:02d}"
+                        elif field_type == 'string':
+                            if key == 'serial_no':
+                                row[key] = i
+                            elif key == 'prisoner_number':
+                                row[key] = f"P-{i:04d}"
+                            elif key == 'full_name':
+                                row[key] = f"Sample Prisoner {i}"
+                            elif key == 'sex':
+                                row[key] = 'M' if i % 2 == 1 else 'F'
+                            elif key == 'age':
+                                row[key] = 20 + i * 5
+                            else:
+                                row[key] = f"Sample {key.replace('_', ' ').title()} {i}"
+                        else:
+                            row[key] = f"Sample {i}"
+                sample.append(row)
+            self.sample_data = sample
+            self.save(update_fields=['sample_data'])
+        
+        return self.sample_data
+
+
+def create_default_templates():
+    """Create all default return templates"""
+    from django.db import transaction
+    
+    templates = [
+        {
+            'name': 'Convicted Inmates Return',
+            'return_type': 'convicted',
+            'description': 'Return for convicted inmates held at the station for a specific month',
+            'columns': [
+                {'key': 'serial_no', 'header': 'Ser. No.', 'type': 'number', 'required': True},
+                {'key': 'prisoner_number', 'header': 'Pri. No.', 'type': 'string', 'required': True},
+                {'key': 'full_name', 'header': 'Names', 'type': 'string', 'required': True},
+                {'key': 'village', 'header': 'Village', 'type': 'string'},
+                {'key': 'chief', 'header': 'T/A', 'type': 'string'},
+                {'key': 'district', 'header': 'D.', 'type': 'string'},
+                {'key': 'sex', 'header': 'Sex', 'type': 'string'},
+                {'key': 'age', 'header': 'Age', 'type': 'number'},
+                {'key': 'offense', 'header': 'Offence', 'type': 'string'},
+                {'key': 'court', 'header': 'Court/Case No', 'type': 'string'},
+                {'key': 'sentence_months', 'header': 'Sent.', 'type': 'number'},
+                {'key': 'date_of_committal', 'header': 'Date of Commital', 'type': 'date'},
+                {'key': 'release_date_without_remission', 'header': 'Expiry Date of Release Without Remission', 'type': 'date'},
+                {'key': 'release_date_with_remission', 'header': 'Expiry Date of Release With Rem.', 'type': 'date'},
+            ],
+            'is_default': True,
+        },
+        {
+            'name': 'Due Discharge',
+            'return_type': 'discharge',
+            'description': 'Due discharge list for the month',
+            'columns': [
+                {'key': 'serial_no', 'header': 'S/No.', 'type': 'number', 'required': True},
+                {'key': 'prisoner_number', 'header': 'PRIS. No.', 'type': 'string', 'required': True},
+                {'key': 'full_name', 'header': 'NAME', 'type': 'string', 'required': True},
+                {'key': 'village', 'header': 'Village', 'type': 'string'},
+                {'key': 'chief', 'header': 'T/A', 'type': 'string'},
+                {'key': 'district', 'header': 'D.', 'type': 'string'},
+                {'key': 'sex', 'header': 'SEX', 'type': 'string'},
+                {'key': 'age', 'header': 'AGE', 'type': 'number'},
+                {'key': 'offense', 'header': 'OFFENCE', 'type': 'string'},
+                {'key': 'court', 'header': 'COURT/ CASE No', 'type': 'string'},
+                {'key': 'sentence_months', 'header': 'SENT.', 'type': 'number'},
+                {'key': 'date_of_committal', 'header': 'DATE OF CONV.', 'type': 'date'},
+                {'key': 'amnesty_earned', 'header': 'AMNESTY EARNED', 'type': 'string'},
+                {'key': 'expected_date_release', 'header': 'DUE DATE', 'type': 'date'},
+                {'key': 'remarks', 'header': 'REMARKS i.e loss of remission', 'type': 'string'},
+            ],
+            'is_default': True,
+        },
+        {
+            'name': 'Remand Murder Prisoners',
+            'return_type': 'remand_murder',
+            'description': 'Return for remand murder prisoners held at the station',
+            'columns': [
+                {'key': 'serial_no', 'header': 'Ser. No.', 'type': 'number', 'required': True},
+                {'key': 'prisoner_number', 'header': 'PRIS. NO', 'type': 'string', 'required': True},
+                {'key': 'full_name', 'header': 'NAME', 'type': 'string', 'required': True},
+                {'key': 'village', 'header': 'Village', 'type': 'string'},
+                {'key': 'chief', 'header': 'T/A', 'type': 'string'},
+                {'key': 'district', 'header': 'D.', 'type': 'string'},
+                {'key': 'age', 'header': 'AGE', 'type': 'number'},
+                {'key': 'sex', 'header': 'SEX', 'type': 'string'},
+                {'key': 'offense', 'header': 'OFFENCE', 'type': 'string'},
+                {'key': 'court', 'header': 'COURT/ CASE No', 'type': 'string'},
+                {'key': 'date_of_admission', 'header': 'DATE OF ADMISSION', 'type': 'date'},
+                {'key': 'arresting_authority', 'header': 'ARRESTING AUTHORITY', 'type': 'string'},
+                {'key': 'last_court_appearance', 'header': 'LAST COURT APPEARANCE', 'type': 'date'},
+                {'key': 'judge_name', 'header': 'JUDGE NAME', 'type': 'string'},
+                {'key': 'case_status', 'header': 'STATUS', 'type': 'string'},
+            ],
+            'is_default': True,
+        },
+        {
+            'name': 'Convicted Foreigners Return',
+            'return_type': 'convicted_foreigners',
+            'description': 'Return for convicted foreigners held at the station',
+            'columns': [
+                {'key': 'serial_no', 'header': 'SER. NO.', 'type': 'number', 'required': True},
+                {'key': 'prisoner_number', 'header': 'PRIS. No', 'type': 'string', 'required': True},
+                {'key': 'full_name', 'header': 'NAME', 'type': 'string', 'required': True},
+                {'key': 'village', 'header': 'Village', 'type': 'string'},
+                {'key': 'chief', 'header': 'T/A', 'type': 'string'},
+                {'key': 'district', 'header': 'D.', 'type': 'string'},
+                {'key': 'country', 'header': 'Country', 'type': 'string'},
+                {'key': 'sex', 'header': 'SEX', 'type': 'string'},
+                {'key': 'age', 'header': 'AGE', 'type': 'number'},
+                {'key': 'offense', 'header': 'OFFENCE', 'type': 'string'},
+                {'key': 'court', 'header': 'COURT', 'type': 'string'},
+                {'key': 'sentence_months', 'header': 'SENTENCE', 'type': 'number'},
+                {'key': 'date_of_conviction', 'header': 'DATE OF CONVICTION', 'type': 'date'},
+                {'key': 'amnesty_earned', 'header': 'AMNESTY EARNED', 'type': 'string'},
+                {'key': 'expected_date_release', 'header': 'EXPECTED DATE OF RELEASE', 'type': 'date'},
+                {'key': 'remarks', 'header': 'REMARKS i.e loss of remission', 'type': 'string'},
+            ],
+            'is_default': True,
+        },
+        {
+            'name': 'Foreign Remand Prisoners',
+            'return_type': 'foreigners_remand',
+            'description': 'Return for foreign remand prisoners held at the station',
+            'columns': [
+                {'key': 'serial_no', 'header': 'SER.NO.', 'type': 'number', 'required': True},
+                {'key': 'prisoner_number', 'header': 'PRI.NO.', 'type': 'string', 'required': True},
+                {'key': 'full_name', 'header': 'NAME', 'type': 'string', 'required': True},
+                {'key': 'village', 'header': 'Village', 'type': 'string'},
+                {'key': 'chief', 'header': 'T/A', 'type': 'string'},
+                {'key': 'district', 'header': 'D.', 'type': 'string'},
+                {'key': 'country', 'header': 'Country', 'type': 'string'},
+                {'key': 'sex', 'header': 'SEX', 'type': 'string'},
+                {'key': 'age', 'header': 'AGE', 'type': 'number'},
+                {'key': 'offense', 'header': 'OFFENCE', 'type': 'string'},
+                {'key': 'court', 'header': 'COURT AND CASE NO.', 'type': 'string'},
+                {'key': 'date_of_admission', 'header': 'DATE OF ADMISSION', 'type': 'date'},
+                {'key': 'arresting_authority', 'header': 'ARRESTING AUTHORITY', 'type': 'string'},
+                {'key': 'pre_trial_period', 'header': 'PRE-TRIAL PERIOD', 'type': 'string'},
+                {'key': 'remarks', 'header': 'REMARKS', 'type': 'string'},
+            ],
+            'is_default': True,
+        },
+        {
+            'name': 'General Remandees Return',
+            'return_type': 'general_remandees',
+            'description': 'Return for general remandees held at the station',
+            'columns': [
+                {'key': 'serial_no', 'header': 'SER. NO.', 'type': 'number', 'required': True},
+                {'key': 'full_name', 'header': 'NAME', 'type': 'string', 'required': True},
+                {'key': 'village', 'header': 'Village', 'type': 'string'},
+                {'key': 'chief', 'header': 'T/A', 'type': 'string'},
+                {'key': 'district', 'header': 'D.', 'type': 'string'},
+                {'key': 'sex', 'header': 'SEX', 'type': 'string'},
+                {'key': 'age', 'header': 'AGE', 'type': 'number'},
+                {'key': 'offense', 'header': 'OFFENCE', 'type': 'string'},
+                {'key': 'court', 'header': 'COURT/ CASE No', 'type': 'string'},
+                {'key': 'date_of_admission', 'header': 'DATE OF ADMISSION', 'type': 'date'},
+                {'key': 'arresting_authority', 'header': 'ARRESTING AUTHORITY', 'type': 'string'},
+                {'key': 'last_court_appearance', 'header': 'LAST COURT APPEARANCE', 'type': 'date'},
+                {'key': 'case_status', 'header': 'CASE STATUS', 'type': 'string'},
+            ],
+            'is_default': True,
+        },
+        {
+            'name': 'Normal Pardon List',
+            'return_type': 'lockup',
+            'description': 'List of convicted prisoners to be considered for normal pardon',
+            'columns': [
+                {'key': 'serial_no', 'header': 'NO', 'type': 'number', 'required': True},
+                {'key': 'prisoner_number', 'header': 'PRIS NO:', 'type': 'string', 'required': True},
+                {'key': 'full_name', 'header': 'NAME', 'type': 'string', 'required': True},
+                {'key': 'village', 'header': 'Village', 'type': 'string'},
+                {'key': 'chief', 'header': 'T/A', 'type': 'string'},
+                {'key': 'district', 'header': 'D.', 'type': 'string'},
+                {'key': 'sex', 'header': 'SEX', 'type': 'string'},
+                {'key': 'age', 'header': 'AGE', 'type': 'number'},
+                {'key': 'offense', 'header': 'OFFENCE', 'type': 'string'},
+                {'key': 'court', 'header': 'COURT', 'type': 'string'},
+                {'key': 'sentence_months', 'header': 'SENTENCE', 'type': 'number'},
+                {'key': 'date_of_committal', 'header': 'DOC', 'type': 'date'},
+                {'key': 'sentence_served', 'header': 'SENT. SERVED', 'type': 'string'},
+                {'key': 'amnesty_earned', 'header': 'AMNESTY EARNED', 'type': 'string'},
+                {'key': 'expected_date_release', 'header': 'EXPECTED DATE OF RELEASE', 'type': 'date'},
+                {'key': 'previous_conviction_particulars', 'header': 'PARTICULARS OF PREVIOUS CONVICTION', 'type': 'string'},
+                {'key': 'conduct', 'header': 'CONDUCT', 'type': 'string'},
+            ],
+            'is_default': True,
+        },
+        {
+            'name': 'Chronically Ill Convicted Inmates',
+            'return_type': 'chronically_ill',
+            'description': 'List of chronically ill convicted inmates proposed for pardon',
+            'columns': [
+                {'key': 'serial_no', 'header': 'NO', 'type': 'number', 'required': True},
+                {'key': 'prisoner_number', 'header': 'PRIS NO:', 'type': 'string', 'required': True},
+                {'key': 'full_name', 'header': 'NAME', 'type': 'string', 'required': True},
+                {'key': 'village', 'header': 'Village', 'type': 'string'},
+                {'key': 'chief', 'header': 'T/A', 'type': 'string'},
+                {'key': 'district', 'header': 'D.', 'type': 'string'},
+                {'key': 'sex', 'header': 'SEX', 'type': 'string'},
+                {'key': 'age', 'header': 'AGE', 'type': 'number'},
+                {'key': 'offense', 'header': 'OFFENCE', 'type': 'string'},
+                {'key': 'court', 'header': 'COURT', 'type': 'string'},
+                {'key': 'sentence_months', 'header': 'SENTENCE', 'type': 'number'},
+                {'key': 'date_of_committal', 'header': 'DOC', 'type': 'date'},
+                {'key': 'amnesty_earned', 'header': 'AMNESTY EARNED', 'type': 'string'},
+                {'key': 'expected_date_release', 'header': 'EXPECTED DATE OF RELEASE', 'type': 'date'},
+                {'key': 'previous_conviction_particulars', 'header': 'PARTICULARS OF PREVIOUS CONVICTION', 'type': 'string'},
+                {'key': 'conduct', 'header': 'CONDUCT', 'type': 'string'},
+            ],
+            'is_default': True,
+        },
+        {
+            'name': 'Elderly Prisoners (70+ Years)',
+            'return_type': 'convicted_elderly_prisoners',
+            'description': 'List of convicted elderly inmates aged 70 years and above proposed for pardon',
+            'columns': [
+                {'key': 'serial_no', 'header': 'NO', 'type': 'number', 'required': True},
+                {'key': 'prisoner_number', 'header': 'PRIS NO:', 'type': 'string', 'required': True},
+                {'key': 'full_name', 'header': 'NAME', 'type': 'string', 'required': True},
+                {'key': 'village', 'header': 'Village', 'type': 'string'},
+                {'key': 'chief', 'header': 'T/A', 'type': 'string'},
+                {'key': 'district', 'header': 'D.', 'type': 'string'},
+                {'key': 'sex', 'header': 'SEX', 'type': 'string'},
+                {'key': 'age', 'header': 'AGE', 'type': 'number'},
+                {'key': 'offense', 'header': 'OFFENCE', 'type': 'string'},
+                {'key': 'court', 'header': 'COURT', 'type': 'string'},
+                {'key': 'sentence_months', 'header': 'SENTENCE', 'type': 'number'},
+                {'key': 'date_of_committal', 'header': 'DOC', 'type': 'date'},
+                {'key': 'sentence_served', 'header': 'SENT. SERVED', 'type': 'string'},
+                {'key': 'amnesty_earned', 'header': 'AMNESTY EARNED', 'type': 'string'},
+                {'key': 'expected_date_release', 'header': 'EXPECTED DATE OF RELEASE', 'type': 'date'},
+                {'key': 'previous_conviction_particulars', 'header': 'PARTICULARS OF PREVIOUS CONVICTION', 'type': 'string'},
+                {'key': 'conduct', 'header': 'CONDUCT', 'type': 'string'},
+            ],
+            'is_default': True,
+        },
+        {
+            'name': 'Discharged After 6 Months Reduction',
+            'return_type': 'discharged_prisoners_after_reductions',
+            'description': 'Prisoners who have been discharged after effecting 6 months reduction',
+            'columns': [
+                {'key': 'serial_no', 'header': 'NO', 'type': 'number', 'required': True},
+                {'key': 'prisoner_number', 'header': 'PRIS NO:', 'type': 'string', 'required': True},
+                {'key': 'full_name', 'header': 'NAME', 'type': 'string', 'required': True},
+                {'key': 'village', 'header': 'Village', 'type': 'string'},
+                {'key': 'chief', 'header': 'T/A', 'type': 'string'},
+                {'key': 'district', 'header': 'D.', 'type': 'string'},
+                {'key': 'sex', 'header': 'SEX', 'type': 'string'},
+                {'key': 'age', 'header': 'AGE', 'type': 'number'},
+                {'key': 'offense', 'header': 'OFFENCE', 'type': 'string'},
+                {'key': 'court', 'header': 'COURT', 'type': 'string'},
+                {'key': 'sentence_months', 'header': 'SENTENCE', 'type': 'number'},
+                {'key': 'date_of_committal', 'header': 'DOC', 'type': 'date'},
+                {'key': 'amnesty_earned', 'header': 'AMNESTY EARNED', 'type': 'string'},
+                {'key': 'expected_date_release', 'header': 'EXPECTED DATE OF RELEASE', 'type': 'date'},
+                {'key': 'release_date_with_remission', 'header': 'EDR AFTER AMNESTY', 'type': 'date'},
+            ],
+            'is_default': True,
+        },
+        {
+            'name': 'Children Accompanying Mothers',
+            'return_type': 'children_accompanying_their_mothers',
+            'description': 'Return for children accompanying their mothers in prison',
+            'columns': [
+                {'key': 'serial_no', 'header': 'S/N', 'type': 'number', 'required': True},
+                {'key': 'prisoner_number', 'header': 'PRI NO.', 'type': 'string', 'required': True},
+                {'key': 'full_name', 'header': 'NAME', 'type': 'string', 'required': True},
+                {'key': 'village', 'header': 'Village', 'type': 'string'},
+                {'key': 'chief', 'header': 'T/A', 'type': 'string'},
+                {'key': 'district', 'header': 'D.', 'type': 'string'},
+                {'key': 'sex', 'header': 'SEX', 'type': 'string'},
+                {'key': 'age', 'header': 'AGE', 'type': 'number'},
+                {'key': 'offense', 'header': 'OFFENCE', 'type': 'string'},
+                {'key': 'court', 'header': 'COURT CASE NO.', 'type': 'string'},
+                {'key': 'sentence_months', 'header': 'SENTENCE', 'type': 'number'},
+                {'key': 'date_of_conviction', 'header': 'DATE OF CONV.', 'type': 'date'},
+                {'key': 'expected_date_release', 'header': 'E.D.R', 'type': 'date'},
+                {'key': 'child_name', 'header': 'NAME OF A CHILD', 'type': 'string'},
+                {'key': 'child_age', 'header': 'AGE', 'type': 'number'},
+                {'key': 'child_sex', 'header': 'SEX', 'type': 'string'},
+            ],
+            'is_default': True,
+        },
+        {
+            'name': 'Convicted Pregnant Prisoners',
+            'return_type': 'convicted_pregnant_inmates',
+            'description': 'Return for convicted pregnant prisoners',
+            'columns': [
+                {'key': 'prisoner_number', 'header': 'PRIS NO:', 'type': 'string', 'required': True},
+                {'key': 'full_name', 'header': 'NAME', 'type': 'string', 'required': True},
+                {'key': 'village', 'header': 'Village', 'type': 'string'},
+                {'key': 'chief', 'header': 'T/A', 'type': 'string'},
+                {'key': 'district', 'header': 'D.', 'type': 'string'},
+                {'key': 'sex', 'header': 'SEX', 'type': 'string'},
+                {'key': 'age', 'header': 'AGE', 'type': 'number'},
+                {'key': 'offense', 'header': 'OFFENCE', 'type': 'string'},
+                {'key': 'court', 'header': 'COURT', 'type': 'string'},
+                {'key': 'sentence_months', 'header': 'SENTENCE', 'type': 'number'},
+                {'key': 'date_of_committal', 'header': 'DOC', 'type': 'date'},
+                {'key': 'amnesty_earned', 'header': 'AMNESTY EARNED', 'type': 'string'},
+                {'key': 'expected_date_release', 'header': 'EXPECTED DATE OF RELEASE', 'type': 'date'},
+                {'key': 'gestation_period', 'header': 'GESTATION PERIOD', 'type': 'string'},
+                {'key': 'remarks', 'header': 'REMARKS', 'type': 'string'},
+            ],
+            'is_default': True,
+        },
+        {
+            'name': 'Pregnant Remand (Murder)',
+            'return_type': 'remandee_preg_inmates_murder',
+            'description': 'Return for pregnant remand (murder) inmates',
+            'columns': [
+                {'key': 'serial_no', 'header': 'S/N', 'type': 'number', 'required': True},
+                {'key': 'prisoner_number', 'header': 'REM NO.', 'type': 'string', 'required': True},
+                {'key': 'full_name', 'header': 'NAME', 'type': 'string', 'required': True},
+                {'key': 'village', 'header': 'Village', 'type': 'string'},
+                {'key': 'chief', 'header': 'T/A', 'type': 'string'},
+                {'key': 'district', 'header': 'D.', 'type': 'string'},
+                {'key': 'sex', 'header': 'SEX', 'type': 'string'},
+                {'key': 'age', 'header': 'AGE', 'type': 'number'},
+                {'key': 'offense', 'header': 'OFFENCE', 'type': 'string'},
+                {'key': 'court', 'header': 'COURT/CASE NO.', 'type': 'string'},
+                {'key': 'gestation_period', 'header': 'GESTATION PERIOD', 'type': 'string'},
+                {'key': 'remarks', 'header': 'REMARKS', 'type': 'string'},
+            ],
+            'is_default': True,
+        },
+        {
+            'name': 'Children Accompanying Mothers on Homicide',
+            'return_type': 'children_accompanying_their_mothers_on_homocide',
+            'description': 'Return for children accompanying their mothers on homicide and general remand',
+            'columns': [
+                {'key': 'serial_no', 'header': 'S/N', 'type': 'number', 'required': True},
+                {'key': 'prisoner_number', 'header': 'PRI NO.', 'type': 'string', 'required': True},
+                {'key': 'full_name', 'header': 'NAME', 'type': 'string', 'required': True},
+                {'key': 'village', 'header': 'Village', 'type': 'string'},
+                {'key': 'chief', 'header': 'T/A', 'type': 'string'},
+                {'key': 'district', 'header': 'D.', 'type': 'string'},
+                {'key': 'sex', 'header': 'SEX', 'type': 'string'},
+                {'key': 'age', 'header': 'AGE', 'type': 'number'},
+                {'key': 'offense', 'header': 'OFFENCE', 'type': 'string'},
+                {'key': 'court', 'header': 'COURT CASE NO.', 'type': 'string'},
+                {'key': 'date_of_committal', 'header': 'D.O.C', 'type': 'date'},
+                {'key': 'child_name', 'header': 'NAME OF A CHILD', 'type': 'string'},
+                {'key': 'child_age', 'header': 'AGE', 'type': 'number'},
+                {'key': 'child_sex', 'header': 'SEX', 'type': 'string'},
+            ],
+            'is_default': True,
+        },
+        {
+            'name': 'Pending Cases Return',
+            'return_type': 'pending',
+            'description': 'Return for pending cases',
+            'columns': [
+                {'key': 'serial_no', 'header': 'S/No.', 'type': 'number', 'required': True},
+                {'key': 'prisoner_number', 'header': 'PRI NO.', 'type': 'string', 'required': True},
+                {'key': 'full_name', 'header': 'NAME', 'type': 'string', 'required': True},
+                {'key': 'offense', 'header': 'OFFENCE', 'type': 'string'},
+                {'key': 'court', 'header': 'COURT/CASE NO.', 'type': 'string'},
+                {'key': 'date_of_admission', 'header': 'DATE OF ADMISSION', 'type': 'date'},
+                {'key': 'case_status', 'header': 'STATUS', 'type': 'string'},
+                {'key': 'remarks', 'header': 'REMARKS', 'type': 'string'},
+            ],
+            'is_default': True,
+        },
+    ]
+    
+    with transaction.atomic():
+        for template_data in templates:
+            ReturnTemplate.objects.get_or_create(
+                return_type=template_data['return_type'],
+                defaults={
+                    'name': template_data['name'],
+                    'description': template_data['description'],
+                    'columns': template_data['columns'],
+                    'is_default': template_data.get('is_default', False),
+                    'is_active': True,
+                }
+            )
+    
+    return ReturnTemplate.objects.count()
 
 # ============ RATION MANAGEMENT MODELS ============
 

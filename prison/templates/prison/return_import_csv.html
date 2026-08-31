@@ -1,0 +1,371 @@
+{% extends "prison/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block page_title %}Import CSV - {{ inmate_return.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 24px 28px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        margin-bottom: 24px;
+    }
+
+    .form-section-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .form-section-title i {
+        font-size: 1.1rem;
+        color: #8b5cf6;
+    }
+
+    .info-box {
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 16px 20px;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 20px;
+    }
+
+    .info-box .label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        color: #94a3b8;
+        font-weight: 600;
+    }
+
+    .info-box .value {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #0f172a;
+    }
+
+    .csv-preview {
+        background: #0f172a;
+        border-radius: 8px;
+        padding: 16px;
+        color: #e2e8f0;
+        font-family: 'Courier New', monospace;
+        font-size: 0.75rem;
+        overflow-x: auto;
+        max-height: 400px;
+        overflow-y: auto;
+        margin-top: 12px;
+    }
+
+    .csv-preview .header {
+        color: #8b5cf6;
+        font-weight: 600;
+    }
+
+    .csv-preview .row-highlight {
+        background: rgba(139, 92, 246, 0.1);
+    }
+
+    .btn-import {
+        padding: 10px 32px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #8b5cf6;
+        border: none;
+        transition: all 0.2s ease;
+        color: #fff;
+    }
+
+    .btn-import:hover {
+        background: #7c3aed;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(139, 92, 246, 0.3);
+        color: #fff;
+    }
+
+    .btn-cancel {
+        padding: 10px 28px;
+        font-weight: 600;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        background: #fff;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-cancel:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        color: #64748b;
+    }
+
+    .file-upload-area {
+        border: 2px dashed #e2e8f0;
+        border-radius: 10px;
+        padding: 40px;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .file-upload-area:hover {
+        border-color: #8b5cf6;
+        background: rgba(139, 92, 246, 0.05);
+    }
+
+    .file-upload-area.dragover {
+        border-color: #8b5cf6;
+        background: rgba(139, 92, 246, 0.1);
+    }
+
+    .file-upload-area i {
+        font-size: 3.5rem;
+        color: #94a3b8;
+        display: block;
+        margin-bottom: 12px;
+    }
+
+    .file-upload-area p {
+        color: #64748b;
+        margin-bottom: 4px;
+    }
+
+    .file-upload-area .hint {
+        font-size: 0.8rem;
+        color: #94a3b8;
+    }
+
+    .file-info {
+        display: none;
+        background: #dcfce7;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-top: 12px;
+        border: 1px solid #86efac;
+        color: #166534;
+    }
+
+    .file-info.show {
+        display: block;
+    }
+
+    .file-info i {
+        margin-right: 8px;
+    }
+
+    .form-control, .form-select {
+        border-radius: 8px;
+        border-color: #e2e8f0;
+        padding: 8px 14px;
+        font-size: 0.875rem;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #8b5cf6;
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+    }
+
+    .form-check-input:checked {
+        background-color: #8b5cf6;
+        border-color: #8b5cf6;
+    }
+
+    @media (max-width: 768px) {
+        .form-section {
+            padding: 16px 18px;
+        }
+        .file-upload-area {
+            padding: 24px;
+        }
+        .file-upload-area i {
+            font-size: 2.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h1 class="h3 fw-bold mb-1">Import CSV</h1>
+            <p class="text-muted small mb-0">
+                <i class="bi bi-file-earmark me-1"></i>
+                {{ inmate_return.title }}
+            </p>
+        </div>
+        <a href="{% url 'return_detail' inmate_return.id %}" class="btn-cancel">
+            <i class="bi bi-arrow-left me-1"></i> Back to Return
+        </a>
+    </div>
+
+    <!-- Return Info -->
+    <div class="info-box">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <div class="label">Return Type</div>
+                <div class="value">{{ inmate_return.get_return_type_display }}</div>
+            </div>
+            <div class="col-md-3">
+                <div class="label">Station</div>
+                <div class="value">{{ inmate_return.station.name }}</div>
+            </div>
+            <div class="col-md-3">
+                <div class="label">Period</div>
+                <div class="value">{{ inmate_return.get_reporting_period_display }}</div>
+            </div>
+            <div class="col-md-3">
+                <div class="label">Existing Records</div>
+                <div class="value">{{ existing_count|default:0 }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template Info -->
+    {% if template %}
+    <div class="form-section">
+        <div class="form-section-title">
+            <i class="bi bi-table"></i> Template Columns
+        </div>
+        <p class="text-muted small">Your CSV file should have the following columns. Headers are case-insensitive.</p>
+        <div class="d-flex flex-wrap gap-2 mt-2">
+            {% for col in template.columns %}
+            <span class="badge {% if col.required %}bg-danger{% else %}bg-secondary{% endif %}">
+                {{ col.header }}
+                {% if col.required %}*{% endif %}
+            </span>
+            {% endfor %}
+        </div>
+        {% if sample_csv %}
+        <div class="mt-3">
+            <h6 class="fw-bold small text-muted"><i class="bi bi-filetype-csv me-1"></i> Sample CSV Format</h6>
+            <div class="csv-preview">{{ sample_csv|linebreaks }}</div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Import Form -->
+    <form method="post" enctype="multipart/form-data" id="importForm">
+        {% csrf_token %}
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-cloud-upload"></i> Upload CSV File
+            </div>
+
+            <!-- File Upload Area -->
+            <div class="file-upload-area" id="fileDropArea">
+                <i class="bi bi-file-earmark-arrow-up"></i>
+                <p><strong>Drop your CSV file here</strong> or click to browse</p>
+                <p class="hint">Supported format: .csv, Max size: 10MB</p>
+                {{ form.csv_file }}
+            </div>
+
+            <div class="file-info" id="fileInfo">
+                <i class="bi bi-check-circle-fill"></i>
+                <span id="fileName">File selected</span>
+            </div>
+
+            <div class="row g-3 mt-3">
+                <div class="col-md-6">
+                    {{ form.replace_existing|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.skip_errors|as_crispy_field }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="d-flex gap-3 flex-wrap mt-4 mb-4">
+            <button type="submit" class="btn-import">
+                <i class="bi bi-upload me-2"></i> Import CSV
+            </button>
+            <a href="{% url 'return_detail' inmate_return.id %}" class="btn-cancel">
+                <i class="bi bi-x-lg me-1"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('id_csv_file');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const dropArea = document.getElementById('fileDropArea');
+
+    // File input change
+    fileInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            const file = this.files[0];
+            fileName.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+            fileInfo.classList.add('show');
+        } else {
+            fileInfo.classList.remove('show');
+        }
+    });
+
+    // Drag and drop
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropArea.addEventListener(eventName, function() {
+            this.classList.add('dragover');
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, function() {
+            this.classList.remove('dragover');
+        });
+    });
+
+    dropArea.addEventListener('drop', function(e) {
+        const files = e.dataTransfer.files;
+        if (files && files[0]) {
+            fileInput.files = files;
+            const file = files[0];
+            fileName.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+            fileInfo.classList.add('show');
+        }
+    });
+
+    // Click to browse
+    dropArea.addEventListener('click', function() {
+        fileInput.click();
+    });
+
+    // Form validation
+    document.getElementById('importForm').addEventListener('submit', function(e) {
+        if (!fileInput.files || !fileInput.files[0]) {
+            e.preventDefault();
+            alert('Please select a CSV file to import.');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

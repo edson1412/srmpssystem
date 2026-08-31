@@ -37,6 +37,36 @@
         <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-sm">Back to Dashboard</a>
     </div>
 
+    <!-- Quick Summary Table (Always shown on top) -->
+    <div class="card summary-card mb-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 class="summary-heading text-primary mb-0">QUICK SUMMARY</h3>
+                <span class="badge bg-primary">{{ today_date|date:"M d, Y" }}</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped summary-table mb-0">
+                    <thead>
+                        <tr class="text-center">
+                            <th>CATEGORY</th>
+                            <th>COUNT</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Male Convicted</td><td class="text-center">{{ station_summary.male_convicted|default:overall_summary.male_convicted|default:"0" }}</td></tr>
+                        <tr><td>Female Convicted</td><td class="text-center">{{ station_summary.female_convicted|default:overall_summary.female_convicted|default:"0" }}</td></tr>
+                        <tr><td>Male Remand</td><td class="text-center">{{ station_summary.male_remand|default:overall_summary.male_remand|default:"0" }}</td></tr>
+                        <tr><td>Female Remand</td><td class="text-center">{{ station_summary.female_remand|default:overall_summary.female_remand|default:"0" }}</td></tr>
+                        <tr><td>Foreigner Convicted</td><td class="text-center">{{ station_summary.foreigner_convicted|default:overall_summary.foreigner_convicted|default:"0" }}</td></tr>
+                        <tr><td>Foreigner Remand</td><td class="text-center">{{ station_summary.foreigner_remand|default:overall_summary.foreigner_remand|default:"0" }}</td></tr>
+                        <tr><td>Children</td><td class="text-center">{{ station_summary.children|default:overall_summary.children|default:"0" }}</td></tr>
+                        <tr class="table-dark text-white"><td><strong>Grand Total</strong></td><td class="text-center"><strong>{{ station_summary.total|default:overall_summary.grand_total|default:"0" }}</strong></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     {% if station_summary or regional_summary or overall_summary %}
 
         {% if regional_summary %}

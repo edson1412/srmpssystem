@@ -1,0 +1,643 @@
+{% extends "prison/base.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block page_title %}{{ inmate_return.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .page-header h1 {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .page-header h1 i {
+        color: #1a73e8;
+    }
+
+    .btn-back {
+        padding: 8px 20px;
+        font-weight: 600;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        background: #fff;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-back:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        color: #64748b;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .info-item {
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 12px 16px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .info-item .label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        color: #94a3b8;
+        font-weight: 600;
+    }
+
+    .info-item .value {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #0f172a;
+        margin-top: 2px;
+    }
+
+    .info-item .value .badge-status {
+        font-size: 0.7rem;
+        padding: 2px 12px;
+        border-radius: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .action-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 24px;
+        padding: 16px 20px;
+        background: #f8fafc;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .btn-action {
+        padding: 8px 20px;
+        font-weight: 600;
+        border-radius: 8px;
+        border: none;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.85rem;
+    }
+
+    .btn-action:hover {
+        transform: translateY(-1px);
+    }
+
+    .btn-action.primary {
+        background: #1a73e8;
+        color: #fff;
+    }
+    .btn-action.primary:hover {
+        background: #1557b0;
+        box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+    }
+
+    .btn-action.success {
+        background: #16a34a;
+        color: #fff;
+    }
+    .btn-action.success:hover {
+        background: #15803d;
+        box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+    }
+
+    .btn-action.danger {
+        background: #dc2626;
+        color: #fff;
+    }
+    .btn-action.danger:hover {
+        background: #b91c1c;
+        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+    }
+
+    .btn-action.warning {
+        background: #f59e0b;
+        color: #fff;
+    }
+    .btn-action.warning:hover {
+        background: #d97706;
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+    }
+
+    .btn-action.outline {
+        background: transparent;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+    }
+    .btn-action.outline:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+
+    .btn-action.purple {
+        background: #8b5cf6;
+        color: #fff;
+    }
+    .btn-action.purple:hover {
+        background: #7c3aed;
+        box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+    }
+
+    .section-card {
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+
+    .section-card .card-header {
+        background: transparent;
+        padding: 14px 20px;
+        border-bottom: 1px solid #f1f5f9;
+        font-weight: 600;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .section-card .card-header i {
+        color: #1a73e8;
+    }
+
+    .section-card .card-body {
+        padding: 20px;
+    }
+
+    .table-data {
+        font-size: 0.85rem;
+        margin-bottom: 0;
+    }
+
+    .table-data thead th {
+        background: #f8fafc;
+        color: #64748b;
+        font-weight: 600;
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 8px 12px;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .table-data tbody td {
+        padding: 8px 12px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        color: #334155;
+    }
+
+    .table-data tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .table-data-wrapper {
+        max-height: 500px;
+        overflow-y: auto;
+    }
+
+    .summary-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .summary-stat {
+        background: #f8fafc;
+        border-radius: 8px;
+        padding: 10px 14px;
+        text-align: center;
+        border: 1px solid #e2e8f0;
+    }
+
+    .summary-stat .number {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #0f172a;
+        display: block;
+    }
+
+    .summary-stat .label {
+        font-size: 0.65rem;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .badge-status {
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 3px 12px;
+        border-radius: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .badge-status.draft { background: #f1f5f9; color: #64748b; }
+    .badge-status.submitted { background: #fef3c7; color: #d97706; }
+    .badge-status.processing { background: #dbeafe; color: #1d4ed8; }
+    .badge-status.under_review { background: #ede9fe; color: #7c3aed; }
+    .badge-status.approved { background: #dcfce7; color: #16a34a; }
+    .badge-status.rejected { background: #fee2e2; color: #dc2626; }
+    .badge-status.completed { background: #dbeafe; color: #1a73e8; }
+    .badge-status.archived { background: #f1f5f9; color: #64748b; }
+
+    .empty-state {
+        padding: 30px 20px;
+        text-align: center;
+        color: #94a3b8;
+    }
+
+    .empty-state i {
+        font-size: 2.5rem;
+        display: block;
+        margin-bottom: 10px;
+        color: #cbd5e1;
+    }
+
+    @media (max-width: 768px) {
+        .page-header h1 {
+            font-size: 1.1rem;
+        }
+        .info-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+        .action-bar {
+            flex-direction: column;
+        }
+        .btn-action {
+            justify-content: center;
+        }
+        .summary-stats {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="page-header">
+        <h1>
+            <i class="bi bi-file-earmark-text"></i>
+            {{ inmate_return.title|truncatechars:50 }}
+        </h1>
+        <a href="{% url 'returns_hub' %}" class="btn-back">
+            <i class="bi bi-arrow-left me-1"></i> Back to Returns
+        </a>
+    </div>
+
+    <!-- Info Grid -->
+    <div class="info-grid">
+        <div class="info-item">
+            <div class="label">Return Type</div>
+            <div class="value">{{ inmate_return.get_return_type_display }}</div>
+        </div>
+        <div class="info-item">
+            <div class="label">Station</div>
+            <div class="value">{{ inmate_return.station.name }}</div>
+        </div>
+        <div class="info-item">
+            <div class="label">Period</div>
+            <div class="value">{{ inmate_return.get_reporting_period_display }}</div>
+        </div>
+        <div class="info-item">
+            <div class="label">Status</div>
+            <div class="value">
+                <span class="badge-status {{ inmate_return.status }}">
+                    {{ inmate_return.get_status_display }}
+                </span>
+            </div>
+        </div>
+        <div class="info-item">
+            <div class="label">Uploaded</div>
+            <div class="value">{{ inmate_return.created_at|date:"M d, Y H:i" }}</div>
+        </div>
+        <div class="info-item">
+            <div class="label">Records</div>
+            <div class="value">{{ total_rows|default:0 }}</div>
+        </div>
+        {% if inmate_return.file %}
+        <div class="info-item">
+            <div class="label">File</div>
+            <div class="value">
+                <a href="{% url 'return_download_file' inmate_return.id %}" class="text-primary">
+                    <i class="bi bi-file-earmark me-1"></i> {{ inmate_return.file_name }}
+                </a>
+            </div>
+        </div>
+        <div class="info-item">
+            <div class="label">File Size</div>
+            <div class="value">{{ inmate_return.get_file_size_display }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+        {% if can_edit %}
+        <a href="{% url 'return_edit' inmate_return.id %}" class="btn-action warning">
+            <i class="bi bi-pencil"></i> Edit
+        </a>
+        {% endif %}
+        {% if inmate_return.status == 'draft' %}
+        <a href="{% url 'return_submit' inmate_return.id %}" class="btn-action primary" onclick="return confirm('Submit this return for approval?')">
+            <i class="bi bi-send"></i> Submit for Approval
+        </a>
+        {% endif %}
+        {% if can_approve %}
+        <a href="{% url 'return_approve' inmate_return.id %}" class="btn-action success" onclick="return confirm('Approve this return?')">
+            <i class="bi bi-check-circle"></i> Approve
+        </a>
+        <a href="{% url 'return_reject' inmate_return.id %}" class="btn-action danger" onclick="return confirm('Reject this return?')">
+            <i class="bi bi-x-circle"></i> Reject
+        </a>
+        {% endif %}
+        {% if inmate_return.status == 'approved' %}
+        <a href="{% url 'return_complete' inmate_return.id %}" class="btn-action primary" onclick="return confirm('Mark this return as completed?')">
+            <i class="bi bi-check2-all"></i> Mark as Completed
+        </a>
+        {% endif %}
+        {% if has_data %}
+        <a href="{% url 'return_export_csv' inmate_return.id %}" class="btn-action success">
+            <i class="bi bi-filetype-csv"></i> Export CSV
+        </a>
+        <a href="{% url 'return_export_pdf' inmate_return.id %}" class="btn-action danger">
+            <i class="bi bi-file-pdf"></i> Export PDF
+        </a>
+        {% endif %}
+        {% if not has_data %}
+        <a href="{% url 'return_import_csv' inmate_return.id %}" class="btn-action purple">
+            <i class="bi bi-upload"></i> Import CSV
+        </a>
+        {% endif %}
+        {% if inmate_return.file %}
+        <a href="{% url 'return_download_file' inmate_return.id %}" class="btn-action outline">
+            <i class="bi bi-download"></i> Download File
+        </a>
+        {% endif %}
+        {% if can_delete %}
+        <a href="{% url 'return_delete' inmate_return.id %}" class="btn-action danger" onclick="return confirm('Delete this return? This action cannot be undone.')">
+            <i class="bi bi-trash"></i> Delete
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Summary Statistics -->
+    {% if summary %}
+    <div class="section-card">
+        <div class="card-header">
+            <span><i class="bi bi-graph-up"></i> Summary Statistics</span>
+        </div>
+        <div class="card-body">
+            <div class="summary-stats">
+                <div class="summary-stat">
+                    <span class="number">{{ summary.total_records|default:0 }}</span>
+                    <span class="label">Total Records</span>
+                </div>
+                <div class="summary-stat">
+                    <span class="number">{{ summary.unique_prisoners|default:0 }}</span>
+                    <span class="label">Unique Prisoners</span>
+                </div>
+                <div class="summary-stat">
+                    <span class="number">{{ summary.male_count|default:0 }}</span>
+                    <span class="label">Male</span>
+                </div>
+                <div class="summary-stat">
+                    <span class="number">{{ summary.female_count|default:0 }}</span>
+                    <span class="label">Female</span>
+                </div>
+            </div>
+
+            {% if offense_breakdown %}
+            <div class="row g-3 mt-2">
+                <div class="col-md-6">
+                    <h6 class="fw-bold small text-muted"><i class="bi bi-gavel me-1"></i> Top Offenses</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Offense</th>
+                                    <th class="text-end">Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for offense, count in offense_breakdown %}
+                                <tr>
+                                    <td>{{ offense|truncatechars:40 }}</td>
+                                    <td class="text-end"><span class="badge bg-light text-dark">{{ count }}</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="fw-bold small text-muted"><i class="bi bi-people me-1"></i> Age Distribution</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Age Group</th>
+                                    <th class="text-end">Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for group, count in age_distribution.items %}
+                                <tr>
+                                    <td>{{ group }}</td>
+                                    <td class="text-end"><span class="badge bg-light text-dark">{{ count }}</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Data Table -->
+    <div class="section-card">
+        <div class="card-header">
+            <span><i class="bi bi-table"></i> Data Rows</span>
+            <span class="badge bg-light text-muted">{{ total_rows|default:0 }} rows</span>
+        </div>
+        <div class="card-body">
+            {% if has_data %}
+            <div class="table-data-wrapper">
+                <table class="table table-data">
+                    <thead>
+                        <tr>
+                            {% for col in columns %}
+                            <th>{{ col.header }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in data_rows %}
+                        <tr>
+                            {% for col in columns %}
+                            <td>
+                                {% with value=row|get_item:col.key %}
+                                    {% if value %}
+                                        {% if value|date:"Y-m-d" %}{{ value|date:"d-m-Y" }}{% else %}{{ value }}{% endif %}
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <p class="mb-0">No data rows available for this return.</p>
+                <small class="text-muted">Import a CSV file or upload a file with data.</small>
+                <div class="mt-3">
+                    <a href="{% url 'return_import_csv' inmate_return.id %}" class="btn btn-primary btn-sm">
+                        <i class="bi bi-upload me-1"></i> Import CSV
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Status History -->
+    {% if inmate_return.status_history %}
+    <div class="section-card">
+        <div class="card-header">
+            <span><i class="bi bi-clock-history"></i> Status History</span>
+        </div>
+        <div class="card-body">
+            <div class="timeline">
+                {% for entry in inmate_return.get_status_history_display %}
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-content">
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-bold">
+                                <span class="badge-status {{ entry.status }}">
+                                    {{ entry.status_label }}
+                                </span>
+                            </span>
+                            <span class="text-muted small">{{ entry.timestamp|date:"M d, Y H:i" }}</span>
+                        </div>
+                        <div class="text-muted small">
+                            <i class="bi bi-person me-1"></i> {{ entry.user }}
+                            {% if entry.note %}
+                            <span class="mx-1">•</span> {{ entry.note }}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e2e8f0;
+}
+
+.timeline-item {
+    position: relative;
+    padding: 12px 0;
+    padding-left: 20px;
+}
+
+.timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -22px;
+    top: 18px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #1a73e8;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 3px #1a73e8;
+}
+
+.timeline-content {
+    background: #f8fafc;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add any interactive features here
+});
+</script>
+{% endblock %}

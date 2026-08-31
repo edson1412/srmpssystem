@@ -1,0 +1,341 @@
+{% extends "prison/base.html" %}
+
+{% block page_title %}Return Templates{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .page-header h1 {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .page-header h1 i {
+        color: #1a73e8;
+    }
+
+    .btn-create {
+        padding: 8px 20px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #1a73e8;
+        border: none;
+        transition: all 0.2s ease;
+        color: #fff;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-create:hover {
+        background: #1557b0;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+        color: #fff;
+    }
+
+    .btn-back {
+        padding: 8px 20px;
+        font-weight: 600;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        background: #fff;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-back:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        color: #64748b;
+    }
+
+    .section-card {
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+    }
+
+    .section-card .card-header {
+        background: transparent;
+        padding: 14px 20px;
+        border-bottom: 1px solid #f1f5f9;
+        font-weight: 600;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .section-card .card-header i {
+        color: #1a73e8;
+    }
+
+    .section-card .card-body {
+        padding: 0;
+    }
+
+    .table-templates {
+        font-size: 0.85rem;
+        margin-bottom: 0;
+    }
+
+    .table-templates thead th {
+        background: #f8fafc;
+        color: #64748b;
+        font-weight: 600;
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 10px 14px;
+    }
+
+    .table-templates tbody td {
+        padding: 10px 14px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        color: #334155;
+    }
+
+    .table-templates tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .badge-status {
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 3px 12px;
+        border-radius: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .badge-status.active { background: #dcfce7; color: #16a34a; }
+    .badge-status.inactive { background: #fee2e2; color: #dc2626; }
+
+    .badge-default {
+        font-size: 0.6rem;
+        padding: 2px 10px;
+        border-radius: 10px;
+        background: #8b5cf6;
+        color: #fff;
+    }
+
+    .btn-action-sm {
+        padding: 4px 8px;
+        font-size: 0.7rem;
+        border-radius: 6px;
+        border: none;
+        transition: all 0.15s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .btn-action-sm:hover {
+        transform: translateY(-1px);
+    }
+
+    .btn-outline-primary {
+        border: 1px solid #1a73e8;
+        color: #1a73e8;
+        background: transparent;
+    }
+
+    .btn-outline-primary:hover {
+        background: #1a73e8;
+        color: #fff;
+    }
+
+    .btn-outline-warning {
+        border: 1px solid #f59e0b;
+        color: #f59e0b;
+        background: transparent;
+    }
+
+    .btn-outline-warning:hover {
+        background: #f59e0b;
+        color: #fff;
+    }
+
+    .btn-outline-danger {
+        border: 1px solid #dc2626;
+        color: #dc2626;
+        background: transparent;
+    }
+
+    .btn-outline-danger:hover {
+        background: #dc2626;
+        color: #fff;
+    }
+
+    .empty-state {
+        padding: 40px 20px;
+        text-align: center;
+        color: #94a3b8;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        display: block;
+        margin-bottom: 12px;
+        color: #cbd5e1;
+    }
+
+    .col-preview {
+        max-width: 300px;
+    }
+
+    .col-preview .col-badge {
+        font-size: 0.65rem;
+        padding: 2px 8px;
+        border-radius: 4px;
+        background: #f1f5f9;
+        color: #475569;
+        display: inline-block;
+        margin: 1px 2px;
+        white-space: nowrap;
+    }
+
+    @media (max-width: 768px) {
+        .page-header h1 {
+            font-size: 1.1rem;
+        }
+        .table-templates {
+            font-size: 0.75rem;
+        }
+        .table-templates thead th,
+        .table-templates tbody td {
+            padding: 6px 10px;
+        }
+        .col-preview {
+            max-width: 150px;
+        }
+        .col-preview .col-badge {
+            font-size: 0.55rem;
+            padding: 1px 6px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="page-header">
+        <h1>
+            <i class="bi bi-layout-three-columns"></i>
+            Return Templates
+        </h1>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'template_create' %}" class="btn-create">
+                <i class="bi bi-plus-circle"></i> Create Template
+            </a>
+            <a href="{% url 'returns_hub' %}" class="btn-back">
+                <i class="bi bi-arrow-left me-1"></i> Back to Returns
+            </a>
+        </div>
+    </div>
+
+    <!-- Templates Table -->
+    <div class="section-card">
+        <div class="card-header">
+            <span><i class="bi bi-list-ul"></i> All Templates</span>
+            <span class="badge bg-light text-muted">{{ templates|length }} total</span>
+        </div>
+        <div class="card-body">
+            {% if templates %}
+            <div class="table-responsive">
+                <table class="table table-templates">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Return Type</th>
+                            <th>Columns</th>
+                            <th>Status</th>
+                            <th>Version</th>
+                            <th>Created</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for template in templates %}
+                        <tr>
+                            <td>
+                                <strong>{{ template.name }}</strong>
+                                {% if template.is_default %}
+                                <span class="badge-default">Default</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ template.get_return_type_display|truncatechars:20 }}</td>
+                            <td>
+                                <div class="col-preview">
+                                    {% for col in template.columns|slice:":5" %}
+                                    <span class="col-badge">{{ col.header }}</span>
+                                    {% endfor %}
+                                    {% if template.columns|length > 5 %}
+                                    <span class="col-badge">+{{ template.columns|length|add:"-5" }} more</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge-status {% if template.is_active %}active{% else %}inactive{% endif %}">
+                                    {% if template.is_active %}Active{% else %}Inactive{% endif %}
+                                </span>
+                            </td>
+                            <td>v{{ template.version }}</td>
+                            <td>{{ template.created_at|date:"M d, Y" }}</td>
+                            <td class="text-end">
+                                <div class="d-flex gap-1 justify-content-end">
+                                    <a href="{% url 'template_edit' template.id %}" class="btn-action-sm btn-outline-warning" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'template_delete' template.id %}" class="btn-action-sm btn-outline-danger" title="Delete" onclick="return confirm('Delete this template?')">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-layout-three-columns"></i>
+                <p class="mb-0">No templates found.</p>
+                <small class="text-muted">Create a template to standardize return formats.</small>
+                <div class="mt-3">
+                    <a href="{% url 'template_create' %}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-2"></i> Create First Template
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

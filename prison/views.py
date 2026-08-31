@@ -16,6 +16,7 @@ from django.views.generic import ListView, CreateView, UpdateView, DetailView, D
 from django.core.exceptions import PermissionDenied
 from collections import defaultdict
 from django.core.exceptions import PermissionDenied, ValidationError
+from .import_export_utils import ReturnDataImporter, ReturnDataExporter
 import json
 import logging
 
@@ -63,6 +64,7 @@ from .models import (
     FingerprintMatch,
     FingerprintAuditLog,
     PrisonerReleaseReview,
+    InmateReturn,
 )
 from accounts.models import CustomUser, PrisonStation, Region
 from django.contrib.auth.views import LoginView
@@ -94,6 +96,7 @@ from .forms import (
     FingerprintDeviceForm,
     FingerprintMatchConfirmForm,
     RiskAssessmentForm,
+    InmateReturnForm,
 )
 from accounts.forms import PrisonStationForm as BasePrisonStationForm
 
@@ -2045,6 +2048,1851 @@ class MedicalRecordDeleteView(RoleRequiredMixin, DeleteView):
         context['page_title'] = f"Confirm Delete Medical Record for {self.object.prisoner.full_name}"
         return context
 
+
+
+# ============ MAIN RETURNS HUB ============
+
+@login_required
+def returns_hub(request):
+    """Main hub for inmate returns with dashboard overview"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    # Check permissions
+    if not is_super_admin_user and not (hasattr(request.user, 'prison_station') and request.user.prison_station):
+        raise PermissionDenied('You must be assigned to a prison station to access the returns hub.')
+    
+    # Get the user's station
+    station = None
+    if not is_super_admin_user:
+        station = request.user.prison_station
+    
+    # Get filter form
+    filter_form = InmateReturnFilterForm(request.GET or None, user=request.user)
+    
+    # Base queryset - USE 'created_at' instead of 'uploaded_at'
+    returns_qs = InmateReturn.objects.all().select_related('station', 'created_by', 'submitted_by', 'approved_by')
+    
+    if station:
+        returns_qs = returns_qs.filter(station=station)
+    
+    # Apply filters
+    if filter_form.is_valid():
+        returns_qs = filter_form.filter_queryset(returns_qs)
+    
+    # Get returns by status
+    returns_by_status = {
+        'draft': returns_qs.filter(status='draft').count(),
+        'submitted': returns_qs.filter(status='submitted').count(),
+        'approved': returns_qs.filter(status='approved').count(),
+        'rejected': returns_qs.filter(status='rejected').count(),
+        'completed': returns_qs.filter(status='completed').count(),
+        'processing': returns_qs.filter(status='processing').count(),
+        'under_review': returns_qs.filter(status='under_review').count(),
+        'archived': returns_qs.filter(status='archived').count(),
+    }
+    
+    # Get recent returns - USE 'created_at' instead of 'uploaded_at'
+    recent_returns = returns_qs.order_by('-created_at')[:10]
+    
+    # Get returns by type for current year
+    current_year = timezone.now().year
+    returns_by_type = returns_qs.filter(year=current_year).values('return_type').annotate(
+        count=Count('id')
+    ).order_by('-count')
+    
+    # Get monthly trends
+    monthly_trends = []
+    for month in range(1, 13):
+        month_count = returns_qs.filter(month=month, year=current_year).count()
+        month_name = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+                     'July', 'August', 'September', 'October', 'November', 'December'][month]
+        monthly_trends.append({
+            'month': month_name,
+            'count': month_count
+        })
+    
+    # Get stations with returns
+    stations_with_returns = PrisonStation.objects.filter(
+        id__in=returns_qs.values_list('station_id', flat=True).distinct()
+    ).order_by('name')
+    
+    # Check for pending approvals (if user is approver)
+    pending_approvals = None
+    if is_super_admin_user or hasattr(request.user, 'is_officer_in_charge') or hasattr(request.user, 'is_station_officer'):
+        pending_approvals = returns_qs.filter(status='submitted').order_by('-created_at')[:5]
+    
+    # Get returns without CSV data
+    no_csv_data_count = returns_qs.filter(has_csv_data=False).count()
+    has_csv_data_count = returns_qs.filter(has_csv_data=True).count()
+    
+    context = {
+        'page_title': 'Returns Hub',
+        'filter_form': filter_form,
+        'returns': returns_qs.order_by('-created_at')[:50],
+        'recent_returns': recent_returns,
+        'returns_by_status': returns_by_status,
+        'returns_by_type': returns_by_type,
+        'monthly_trends': monthly_trends,
+        'stations_with_returns': stations_with_returns,
+        'pending_approvals': pending_approvals,
+        'total_returns': returns_qs.count(),
+        'current_year': current_year,
+        'has_csv_data': has_csv_data_count,
+        'no_csv_data': no_csv_data_count,
+        'show_approval_actions': is_super_admin_user or 
+                                hasattr(request.user, 'is_officer_in_charge') or 
+                                hasattr(request.user, 'is_station_officer'),
+    }
+    
+    return render(request, 'prison/returns_hub.html', context)
+
+
+# ============ RETURN CRUD OPERATIONS ============
+@login_required
+def return_create(request):
+    """Create a new inmate return"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    if not is_super_admin_user and not (hasattr(request.user, 'prison_station') and request.user.prison_station):
+        raise PermissionDenied('You must be assigned to a prison station to create returns.')
+    
+    if request.method == 'POST':
+        form = InmateReturnForm(request.POST, request.FILES, user=request.user)
+        
+        if form.is_valid():
+            inmate_return = form.save()
+            
+            # Check if CSV was uploaded
+            if hasattr(form, 'imported_data') and form.imported_data:
+                messages.success(
+                    request, 
+                    f'Return "{inmate_return.title}" created successfully with {form.imported_data["count"]} records imported from CSV.'
+                )
+                if form.imported_data.get('warnings'):
+                    for warning in form.imported_data['warnings'][:3]:
+                        messages.warning(request, warning)
+            else:
+                messages.success(request, f'Return "{inmate_return.title}" created successfully.')
+            
+            return redirect('return_detail', return_id=inmate_return.id)
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = InmateReturnForm(user=request.user)
+        
+        # Pre-fill with current month/year if no instance
+        if not request.GET:
+            form.fields['month'].initial = timezone.now().month
+            form.fields['year'].initial = timezone.now().year
+    
+    # Get template info for the selected return type
+    template_info = None
+    if request.GET.get('return_type'):
+        try:
+            template = ReturnTemplate.objects.get(return_type=request.GET['return_type'])
+            template_info = template.to_dict()
+        except ReturnTemplate.DoesNotExist:
+            pass
+    
+    context = {
+        'page_title': 'Create New Return',
+        'form': form,
+        'template_info': template_info,
+        'is_edit': False,
+        'return_type_choices': InmateReturn.RETURN_TYPE_CHOICES,
+    }
+    
+    return render(request, 'prison/return_form.html', context)
+
+
+@login_required
+def return_edit(request, return_id):
+    """Edit an existing inmate return"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    inmate_return = get_object_or_404(InmateReturn, id=return_id)
+    
+    # Check permissions
+    if not inmate_return.can_edit(request.user):
+        raise PermissionDenied('You do not have permission to edit this return.')
+    
+    if request.method == 'POST':
+        form = InmateReturnForm(request.POST, request.FILES, instance=inmate_return, user=request.user)
+        
+        if form.is_valid():
+            updated_return = form.save()
+            
+            if hasattr(form, 'imported_data') and form.imported_data:
+                messages.success(
+                    request, 
+                    f'Return "{updated_return.title}" updated successfully with {form.imported_data["count"]} records imported.'
+                )
+            else:
+                messages.success(request, f'Return "{updated_return.title}" updated successfully.')
+            
+            return redirect('return_detail', return_id=updated_return.id)
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = InmateReturnForm(instance=inmate_return, user=request.user)
+    
+    # Get template info
+    template_info = None
+    try:
+        template = ReturnTemplate.objects.get(return_type=inmate_return.return_type)
+        template_info = template.to_dict()
+    except ReturnTemplate.DoesNotExist:
+        pass
+    
+    # Get existing data count
+    data_count = inmate_return.data_rows.count()
+    
+    context = {
+        'page_title': f'Edit Return: {inmate_return.title}',
+        'form': form,
+        'inmate_return': inmate_return,
+        'template_info': template_info,
+        'is_edit': True,
+        'data_count': data_count,
+        'return_type_choices': InmateReturn.RETURN_TYPE_CHOICES,
+    }
+    
+    return render(request, 'prison/return_form.html', context)
+
+
+@login_required
+def return_detail(request, return_id):
+    """Detailed view of a specific return with data table"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    inmate_return = get_object_or_404(InmateReturn, id=return_id)
+    
+    # Check permissions
+    if not is_super_admin_user:
+        if not (hasattr(request.user, 'prison_station') and request.user.prison_station):
+            raise PermissionDenied('You must be assigned to a prison station.')
+        if inmate_return.station != request.user.prison_station:
+            raise PermissionDenied('You can only view returns from your station.')
+    
+    # Get template
+    template = None
+    try:
+        template = ReturnTemplate.objects.get(return_type=inmate_return.return_type)
+    except ReturnTemplate.DoesNotExist:
+        pass
+    
+    # Get data rows
+    data_rows = inmate_return.data_rows.all().order_by('serial_no', 'row_number')
+    
+    # Get column headers
+    columns = []
+    if template:
+        columns = template.columns
+    elif data_rows.exists():
+        # Auto-detect columns from data
+        first_row = data_rows.first()
+        auto_columns = []
+        # Get all fields from the model that have values
+        for field in InmateReturnData._meta.fields:
+            field_name = field.name
+            if hasattr(first_row, field_name):
+                value = getattr(first_row, field_name)
+                if value:
+                    auto_columns.append({
+                        'key': field_name,
+                        'header': field_name.replace('_', ' ').title()
+                    })
+        columns = auto_columns
+    
+    # Get summary
+    summary = inmate_return.get_summary()
+    
+    # Get offenses breakdown
+    offense_breakdown = inmate_return.get_data_by_offense()
+    
+    # Get gender breakdown
+    gender_breakdown = inmate_return.get_data_by_gender()
+    
+    # Get age distribution
+    age_distribution = inmate_return.get_data_by_age_group()
+    
+    # Check if user can edit/delete
+    can_edit = inmate_return.can_edit(request.user)
+    can_delete = inmate_return.can_delete(request.user)
+    can_approve = (
+        inmate_return.status == 'submitted' and 
+        (is_super_admin_user or 
+         hasattr(request.user, 'is_officer_in_charge') or 
+         hasattr(request.user, 'is_station_officer'))
+    )
+    
+    context = {
+        'page_title': f'Return: {inmate_return.title}',
+        'inmate_return': inmate_return,
+        'data_rows': data_rows,
+        'columns': columns,
+        'template': template,
+        'summary': summary,
+        'offense_breakdown': offense_breakdown,
+        'gender_breakdown': gender_breakdown,
+        'age_distribution': age_distribution,
+        'has_data': data_rows.exists(),
+        'can_edit': can_edit,
+        'can_delete': can_delete,
+        'can_approve': can_approve,
+        'total_rows': data_rows.count(),
+    }
+    
+    return render(request, 'prison/return_detail.html', context)
+
+
+@login_required
+@require_POST
+def return_delete(request, return_id):
+    """Delete an inmate return"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    inmate_return = get_object_or_404(InmateReturn, id=return_id)
+    
+    # Check permissions
+    if not inmate_return.can_delete(request.user):
+        raise PermissionDenied('You do not have permission to delete this return.')
+    
+    # Store info for message
+    title = inmate_return.title
+    
+    # Delete the file if it exists
+    if inmate_return.file:
+        try:
+            if os.path.exists(inmate_return.file.path):
+                os.remove(inmate_return.file.path)
+        except Exception as e:
+            pass  # Log error but continue
+    
+    # Delete the return (cascade will delete data rows)
+    inmate_return.delete()
+    
+    messages.success(request, f'Return "{title}" deleted successfully.')
+    
+    return redirect('returns_hub')
+
+
+@login_required
+@require_POST
+def return_submit(request, return_id):
+    """Submit a return for approval"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    inmate_return = get_object_or_404(InmateReturn, id=return_id)
+    
+    # Check permissions
+    if not is_super_admin_user:
+        if not (hasattr(request.user, 'prison_station') and request.user.prison_station):
+            raise PermissionDenied('You must be assigned to a prison station.')
+        if inmate_return.station != request.user.prison_station:
+            raise PermissionDenied('You can only submit returns from your station.')
+    
+    # Check if return can be submitted
+    if inmate_return.status != 'draft':
+        messages.warning(request, f'This return is already in {inmate_return.get_status_display()} status.')
+        return redirect('return_detail', return_id=inmate_return.id)
+    
+    # Check if return has data
+    if not inmate_return.data_rows.exists() and not inmate_return.file:
+        messages.error(request, 'Cannot submit a return with no data. Please add data first.')
+        return redirect('return_detail', return_id=inmate_return.id)
+    
+    # Submit the return
+    inmate_return.submit(request.user)
+    
+    messages.success(request, f'Return "{inmate_return.title}" has been submitted for approval.')
+    
+    return redirect('return_detail', return_id=inmate_return.id)
+
+
+@login_required
+@require_POST
+def return_approve(request, return_id):
+    """Approve a submitted return"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    inmate_return = get_object_or_404(InmateReturn, id=return_id)
+    
+    # Check permissions (approvers can be super admin, officer in charge, or station officer)
+    can_approve = (
+        is_super_admin_user or 
+        hasattr(request.user, 'is_officer_in_charge') or 
+        hasattr(request.user, 'is_station_officer')
+    )
+    
+    if not can_approve:
+        raise PermissionDenied('You do not have permission to approve returns.')
+    
+    # Check if return is from user's station (unless super admin)
+    if not is_super_admin_user:
+        if not (hasattr(request.user, 'prison_station') and request.user.prison_station):
+            raise PermissionDenied('You must be assigned to a prison station.')
+        if inmate_return.station != request.user.prison_station:
+            raise PermissionDenied('You can only approve returns from your station.')
+    
+    # Check if return can be approved
+    if inmate_return.status != 'submitted':
+        messages.warning(request, f'This return is in {inmate_return.get_status_display()} status and cannot be approved.')
+        return redirect('return_detail', return_id=inmate_return.id)
+    
+    # Add notes if provided
+    notes = request.POST.get('approval_notes', '')
+    
+    # Approve the return
+    inmate_return.approve(request.user)
+    if notes:
+        inmate_return.remarks = f"{inmate_return.remarks}\n\nApproval Notes: {notes}" if inmate_return.remarks else f"Approval Notes: {notes}"
+        inmate_return.save(update_fields=['remarks'])
+    
+    messages.success(request, f'Return "{inmate_return.title}" has been approved.')
+    
+    return redirect('return_detail', return_id=inmate_return.id)
+
+
+@login_required
+@require_POST
+def return_reject(request, return_id):
+    """Reject a submitted return"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    inmate_return = get_object_or_404(InmateReturn, id=return_id)
+    
+    # Check permissions (rejecters can be super admin, officer in charge, or station officer)
+    can_reject = (
+        is_super_admin_user or 
+        hasattr(request.user, 'is_officer_in_charge') or 
+        hasattr(request.user, 'is_station_officer')
+    )
+    
+    if not can_reject:
+        raise PermissionDenied('You do not have permission to reject returns.')
+    
+    # Check if return is from user's station (unless super admin)
+    if not is_super_admin_user:
+        if not (hasattr(request.user, 'prison_station') and request.user.prison_station):
+            raise PermissionDenied('You must be assigned to a prison station.')
+        if inmate_return.station != request.user.prison_station:
+            raise PermissionDenied('You can only reject returns from your station.')
+    
+    # Check if return can be rejected
+    if inmate_return.status != 'submitted':
+        messages.warning(request, f'This return is in {inmate_return.get_status_display()} status and cannot be rejected.')
+        return redirect('return_detail', return_id=inmate_return.id)
+    
+    # Get rejection reason
+    reason = request.POST.get('rejection_reason', '')
+    if not reason:
+        messages.error(request, 'Please provide a reason for rejection.')
+        return redirect('return_detail', return_id=inmate_return.id)
+    
+    # Reject the return
+    inmate_return.reject(request.user, reason)
+    
+    messages.info(request, f'Return "{inmate_return.title}" has been rejected. Reason: {reason}')
+    
+    return redirect('return_detail', return_id=inmate_return.id)
+
+
+@login_required
+@require_POST
+def return_complete(request, return_id):
+    """Mark a return as completed"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    inmate_return = get_object_or_404(InmateReturn, id=return_id)
+    
+    # Check permissions
+    if not is_super_admin_user:
+        if not (hasattr(request.user, 'prison_station') and request.user.prison_station):
+            raise PermissionDenied('You must be assigned to a prison station.')
+        if inmate_return.station != request.user.prison_station:
+            raise PermissionDenied('You can only complete returns from your station.')
+    
+    # Check if return can be completed
+    if inmate_return.status != 'approved':
+        messages.warning(request, f'This return is in {inmate_return.get_status_display()} status and cannot be completed.')
+        return redirect('return_detail', return_id=inmate_return.id)
+    
+    # Complete the return
+    inmate_return.complete()
+    
+    messages.success(request, f'Return "{inmate_return.title}" has been marked as completed.')
+    
+    return redirect('return_detail', return_id=inmate_return.id)
+
+
+@login_required
+def return_import_csv(request, return_id=None):
+    """Import CSV data into a return"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    # If return_id is provided, import into existing return
+    if return_id:
+        inmate_return = get_object_or_404(InmateReturn, id=return_id)
+        
+        # Check permissions
+        if not is_super_admin_user:
+            if not (hasattr(request.user, 'prison_station') and request.user.prison_station):
+                raise PermissionDenied('You must be assigned to a prison station.')
+            if inmate_return.station != request.user.prison_station:
+                raise PermissionDenied('You can only import data for returns from your station.')
+        
+        # Check if return can be modified
+        if not inmate_return.can_edit(request.user):
+            messages.warning(request, 'This return cannot be modified in its current status.')
+            return redirect('return_detail', return_id=inmate_return.id)
+        
+        template = None
+        try:
+            template = ReturnTemplate.objects.get(return_type=inmate_return.return_type)
+        except ReturnTemplate.DoesNotExist:
+            pass
+        
+        if request.method == 'POST':
+            form = ReturnDataImportForm(request.POST, request.FILES, inmate_return=inmate_return, user=request.user)
+            
+            if form.is_valid():
+                result = form.import_data()
+                
+                if result['success']:
+                    messages.success(
+                        request, 
+                        f'Successfully imported {result["count"]} records into "{inmate_return.title}".'
+                    )
+                    if result.get('warnings'):
+                        for warning in result['warnings'][:3]:
+                            messages.warning(request, warning)
+                    
+                    return redirect('return_detail', return_id=inmate_return.id)
+                else:
+                    messages.error(request, f'Failed to import CSV: {result.get("error", "Unknown error")}')
+            else:
+                messages.error(request, 'Please correct the errors below.')
+        else:
+            form = ReturnDataImportForm(inmate_return=inmate_return, user=request.user)
+        
+        # Get sample CSV format
+        sample_csv = None
+        if template:
+            sample_csv = generate_sample_csv(template)
+        
+        context = {
+            'page_title': f'Import CSV - {inmate_return.title}',
+            'inmate_return': inmate_return,
+            'form': form,
+            'template': template,
+            'sample_csv': sample_csv,
+            'existing_count': inmate_return.data_rows.count(),
+        }
+        
+        return render(request, 'prison/return_import_csv.html', context)
+    
+    # If no return_id, create a new return first
+    else:
+        return redirect('return_create')
+
+@login_required
+def template_create(request):
+    """Create a new return template"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    if not is_super_admin_user:
+        raise PermissionDenied('Only super administrators can create templates.')
+    
+    if request.method == 'POST':
+        form = ReturnTemplateForm(request.POST, user=request.user)
+        
+        if form.is_valid():
+            template = form.save()
+            messages.success(request, f'Template "{template.name}" created successfully.')
+            return redirect('template_list')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = ReturnTemplateForm(user=request.user)
+    
+    context = {
+        'page_title': 'Create Template',
+        'form': form,
+        'is_edit': False,
+    }
+    
+    return render(request, 'prison/template_form.html', context)
+
+
+@login_required
+def template_edit(request, template_id):
+    """Edit an existing return template"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    if not is_super_admin_user:
+        raise PermissionDenied('Only super administrators can edit templates.')
+    
+    template = get_object_or_404(ReturnTemplate, id=template_id)
+    
+    if request.method == 'POST':
+        form = ReturnTemplateForm(request.POST, instance=template, user=request.user)
+        
+        if form.is_valid():
+            updated_template = form.save()
+            messages.success(request, f'Template "{updated_template.name}" updated successfully.')
+            return redirect('template_list')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = ReturnTemplateForm(instance=template, user=request.user)
+    
+    context = {
+        'page_title': f'Edit Template: {template.name}',
+        'form': form,
+        'template': template,
+        'is_edit': True,
+    }
+    
+    return render(request, 'prison/template_form.html', context)
+
+
+@login_required
+def return_export_csv(request, return_id):
+    """Export return data as CSV"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    inmate_return = get_object_or_404(InmateReturn, id=return_id)
+    
+    # Check permissions
+    if not is_super_admin_user:
+        if not (hasattr(request.user, 'prison_station') and request.user.prison_station):
+            raise PermissionDenied('You must be assigned to a prison station.')
+        if inmate_return.station != request.user.prison_station:
+            raise PermissionDenied('You can only export returns from your station.')
+    
+    # Check if there's data to export
+    if not inmate_return.data_rows.exists():
+        messages.warning(request, 'No data to export for this return.')
+        return redirect('return_detail', return_id=inmate_return.id)
+    
+    # Generate CSV
+    from .import_export_utils import ReturnDataExporter
+    exporter = ReturnDataExporter(inmate_return)
+    csv_data = exporter.export_to_csv()
+    
+    # Create response
+    response = HttpResponse(csv_data, content_type='text/csv')
+    filename = f"{inmate_return.title.replace(' ', '_')}_{inmate_return.uploaded_at.strftime('%Y%m%d')}.csv"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    return response
+
+
+@login_required
+def return_download_file(request, return_id):
+    """Download the attached file for a return"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    inmate_return = get_object_or_404(InmateReturn, id=return_id)
+    
+    # Check permissions
+    if not is_super_admin_user:
+        if not (hasattr(request.user, 'prison_station') and request.user.prison_station):
+            raise PermissionDenied('You must be assigned to a prison station.')
+        if inmate_return.station != request.user.prison_station:
+            raise PermissionDenied('You can only download files from your station.')
+    
+    if not inmate_return.file:
+        messages.error(request, 'No file attached to this return.')
+        return redirect('return_detail', return_id=inmate_return.id)
+    
+    try:
+        file_path = inmate_return.file.path
+        if os.path.exists(file_path):
+            response = FileResponse(open(file_path, 'rb'), as_attachment=True)
+            response['Content-Disposition'] = f'attachment; filename="{inmate_return.file_name}"'
+            return response
+        else:
+            messages.error(request, 'File not found.')
+            return redirect('return_detail', return_id=inmate_return.id)
+    except Exception as e:
+        messages.error(request, f'Error downloading file: {str(e)}')
+        return redirect('return_detail', return_id=inmate_return.id)
+
+
+@login_required
+@require_POST
+def return_bulk_action(request):
+    """Perform bulk actions on multiple returns"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    form = ReturnBulkActionForm(request.POST, user=request.user)
+    
+    if form.is_valid():
+        result = form.execute_action()
+        
+        messages.success(request, f'Successfully processed {len(result["success"])} returns.')
+        if result['failed']:
+            for failed in result['failed']:
+                messages.error(request, f'Failed to process return ID {failed["id"]}: {failed["reason"]}')
+        
+        return redirect('returns_hub')
+    else:
+        messages.error(request, 'Please select an action and returns to process.')
+        return redirect('returns_hub')
+
+
+def generate_sample_csv(template):
+    """
+    Generate sample CSV content for a template with proper sample data.
+    """
+    import io
+    import csv
+    from datetime import datetime
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Get columns
+    if hasattr(template, 'columns') and template.columns:
+        columns = template.columns
+    else:
+        # Default columns if template has none
+        columns = [
+            {'key': 'serial_no', 'header': 'Ser. No.'},
+            {'key': 'prisoner_number', 'header': 'Prisoner No.'},
+            {'key': 'full_name', 'header': 'Full Name'},
+            {'key': 'sex', 'header': 'Sex'},
+            {'key': 'age', 'header': 'Age'},
+            {'key': 'offense', 'header': 'Offense'},
+            {'key': 'court', 'header': 'Court'},
+            {'key': 'sentence_months', 'header': 'Sentence (months)'},
+            {'key': 'date_of_committal', 'header': 'Date of Committal'},
+            {'key': 'remarks', 'header': 'Remarks'},
+        ]
+    
+    # Write headers
+    headers = [col['header'] for col in columns]
+    writer.writerow(headers)
+    
+    # Generate sample data
+    sample_rows = 5  # Number of sample rows
+    
+    # Sample data templates by field type
+    sample_names = ['John Doe', 'Mary Smith', 'David Mwale', 'Sarah Banda', 'Peter Kumwenda']
+    sample_villages = ['Chilomoni', 'Ndirande', 'Mbayani', 'Zingwangwa', 'Bangwe']
+    sample_chiefs = ['Kumwenda', 'Mpando', 'Chikowi', 'Kapeni', 'Mbewe']
+    sample_districts = ['Blantyre', 'Lilongwe', 'Mzuzu', 'Zomba', 'Mulanje']
+    sample_offenses = ['Theft', 'Burglary', 'Assault', 'Drug Possession', 'Fraud']
+    sample_courts = ['High Court', 'Magistrate Court', 'Chief Magistrate Court']
+    sample_sex = ['M', 'F', 'M', 'F', 'M']
+    sample_ages = [25, 32, 41, 28, 35]
+    
+    # Use template sample_data if available
+    if hasattr(template, 'sample_data') and template.sample_data:
+        sample_data = template.sample_data
+        for row in sample_data[:sample_rows]:
+            row_data = []
+            for col in columns:
+                key = col['key']
+                value = row.get(key, '')
+                # Format date values
+                if value and col.get('type') == 'date':
+                    if hasattr(value, 'strftime'):
+                        value = value.strftime('%d-%m-%Y')
+                row_data.append(value)
+            writer.writerow(row_data)
+    else:
+        # Generate sample data based on column keys
+        for i in range(sample_rows):
+            row_data = []
+            for idx, col in enumerate(columns):
+                key = col.get('key', '')
+                col_type = col.get('type', 'string')
+                
+                if key == 'serial_no':
+                    value = i + 1
+                elif key == 'prisoner_number' or key == 'pri_no' or key == 'prisoner_no':
+                    value = f'P-{i+1:04d}'
+                elif key == 'full_name' or key == 'name' or key == 'names':
+                    value = sample_names[i % len(sample_names)]
+                elif key == 'village':
+                    value = sample_villages[i % len(sample_villages)]
+                elif key == 'chief' or key == 't_a' or key == 't/a':
+                    value = sample_chiefs[i % len(sample_chiefs)]
+                elif key == 'district' or key == 'd.':
+                    value = sample_districts[i % len(sample_districts)]
+                elif key == 'sex':
+                    value = sample_sex[i % len(sample_sex)]
+                elif key == 'age':
+                    value = sample_ages[i % len(sample_ages)]
+                elif key == 'offense' or key == 'offence':
+                    value = sample_offenses[i % len(sample_offenses)]
+                elif key == 'court' or key == 'court_case_no' or key == 'court/case no':
+                    value = sample_courts[i % len(sample_courts)]
+                elif key == 'sentence_months' or key == 'sentence' or key == 'sent.':
+                    value = (i + 1) * 6  # 6, 12, 18, 24, 30 months
+                elif key == 'date_of_committal' or key == 'date_of_conviction' or key == 'doc':
+                    value = f'{(2024 - i)}-{(i+1):02d}-{(i+5):02d}'
+                elif key == 'release_date_without_remission' or key == 'release_date_with_remission':
+                    value = f'{(2025 - i)}-{(i+1):02d}-{(i+5):02d}'
+                elif key == 'remarks':
+                    value = f'Sample remark for row {i+1}'
+                else:
+                    # Generic value based on type
+                    if col_type == 'number':
+                        value = (i + 1) * 10
+                    elif col_type == 'date':
+                        value = f'2024-{(i+1):02d}-{(i+5):02d}'
+                    else:
+                        value = f'Sample {key.replace("_", " ").title()}'
+                
+                row_data.append(value)
+            writer.writerow(row_data)
+    
+    return output.getvalue()
+
+@login_required
+def return_create(request):
+    """Create a new inmate return"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    if not is_super_admin_user and not (hasattr(request.user, 'prison_station') and request.user.prison_station):
+        raise PermissionDenied('You must be assigned to a prison station to create returns.')
+    
+    if request.method == 'POST':
+        form = InmateReturnForm(request.POST, request.FILES, user=request.user)
+        
+        if form.is_valid():
+            inmate_return = form.save()
+            
+            # Check if CSV was uploaded
+            if hasattr(form, 'imported_data') and form.imported_data:
+                messages.success(
+                    request, 
+                    f'Return "{inmate_return.title}" created successfully with {form.imported_data["count"]} records imported from CSV.'
+                )
+                if form.imported_data.get('warnings'):
+                    for warning in form.imported_data['warnings'][:3]:
+                        messages.warning(request, warning)
+            else:
+                messages.success(request, f'Return "{inmate_return.title}" created successfully.')
+            
+            return redirect('return_detail', return_id=inmate_return.id)
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = InmateReturnForm(user=request.user)
+        
+        # Pre-fill with current month/year if no instance
+        if not request.GET:
+            form.fields['month'].initial = timezone.now().month
+            form.fields['year'].initial = timezone.now().year
+    
+    # Get template info for the selected return type
+    template_info = None
+    if request.GET.get('return_type'):
+        try:
+            template = ReturnTemplate.objects.get(return_type=request.GET['return_type'])
+            template_info = template.to_dict()
+        except ReturnTemplate.DoesNotExist:
+            pass
+    
+    context = {
+        'page_title': 'Create New Return',
+        'form': form,
+        'template_info': template_info,
+        'is_edit': False,
+        'return_type_choices': InmateReturn.RETURN_TYPE_CHOICES,
+    }
+    
+    return render(request, 'prison/return_form.html', context)
+
+
+@login_required
+def return_detail(request, return_id):
+    """Detailed view of a specific return with data table"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    inmate_return = get_object_or_404(InmateReturn, id=return_id)
+    
+    # Check permissions
+    if not is_super_admin_user:
+        if not (hasattr(request.user, 'prison_station') and request.user.prison_station):
+            raise PermissionDenied('You must be assigned to a prison station.')
+        if inmate_return.station != request.user.prison_station:
+            raise PermissionDenied('You can only view returns from your station.')
+    
+    # Get template
+    template = None
+    try:
+        template = ReturnTemplate.objects.get(return_type=inmate_return.return_type)
+    except ReturnTemplate.DoesNotExist:
+        pass
+    
+    # Get data rows
+    data_rows = inmate_return.data_rows.all().order_by('serial_no', 'row_number')
+    
+    # Get column headers
+    columns = []
+    if template:
+        columns = template.columns
+    elif data_rows.exists():
+        # Auto-detect columns from data
+        first_row = data_rows.first()
+        auto_columns = []
+        # Get all fields from the model that have values
+        for field in InmateReturnData._meta.fields:
+            field_name = field.name
+            if hasattr(first_row, field_name):
+                value = getattr(first_row, field_name)
+                if value:
+                    auto_columns.append({
+                        'key': field_name,
+                        'header': field_name.replace('_', ' ').title()
+                    })
+        columns = auto_columns
+    
+    # Get summary
+    summary = inmate_return.get_summary()
+    
+    # Get offenses breakdown
+    offense_breakdown = inmate_return.get_data_by_offense()
+    
+    # Get gender breakdown
+    gender_breakdown = inmate_return.get_data_by_gender()
+    
+    # Get age distribution
+    age_distribution = inmate_return.get_data_by_age_group()
+    
+    # Check if user can edit/delete
+    can_edit = inmate_return.can_edit(request.user)
+    can_delete = inmate_return.can_delete(request.user)
+    can_approve = (
+        inmate_return.status == 'submitted' and 
+        (is_super_admin_user or 
+         hasattr(request.user, 'is_officer_in_charge') or 
+         hasattr(request.user, 'is_station_officer'))
+    )
+    
+    # Get recent transactions/activity for this return
+    # (You can add activity log tracking if needed)
+    
+    context = {
+        'page_title': f'Return: {inmate_return.title}',
+        'inmate_return': inmate_return,
+        'data_rows': data_rows,
+        'columns': columns,
+        'template': template,
+        'summary': summary,
+        'offense_breakdown': offense_breakdown,
+        'gender_breakdown': gender_breakdown,
+        'age_distribution': age_distribution,
+        'has_data': data_rows.exists(),
+        'can_edit': can_edit,
+        'can_delete': can_delete,
+        'can_approve': can_approve,
+        'total_rows': data_rows.count(),
+    }
+    
+    return render(request, 'prison/return_detail.html', context)
+
+
+@login_required
+def return_edit(request, return_id):
+    """Edit an existing inmate return"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    inmate_return = get_object_or_404(InmateReturn, id=return_id)
+    
+    # Check permissions
+    if not inmate_return.can_edit(request.user):
+        raise PermissionDenied('You do not have permission to edit this return.')
+    
+    if request.method == 'POST':
+        form = InmateReturnForm(request.POST, request.FILES, instance=inmate_return, user=request.user)
+        
+        if form.is_valid():
+            updated_return = form.save()
+            
+            if hasattr(form, 'imported_data') and form.imported_data:
+                messages.success(
+                    request, 
+                    f'Return "{updated_return.title}" updated successfully with {form.imported_data["count"]} records imported.'
+                )
+            else:
+                messages.success(request, f'Return "{updated_return.title}" updated successfully.')
+            
+            return redirect('return_detail', return_id=updated_return.id)
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = InmateReturnForm(instance=inmate_return, user=request.user)
+    
+    # Get template info
+    template_info = None
+    try:
+        template = ReturnTemplate.objects.get(return_type=inmate_return.return_type)
+        template_info = template.to_dict()
+    except ReturnTemplate.DoesNotExist:
+        pass
+    
+    # Get existing data count
+    data_count = inmate_return.data_rows.count()
+    
+    context = {
+        'page_title': f'Edit Return: {inmate_return.title}',
+        'form': form,
+        'inmate_return': inmate_return,
+        'template_info': template_info,
+        'is_edit': True,
+        'data_count': data_count,
+        'return_type_choices': InmateReturn.RETURN_TYPE_CHOICES,
+    }
+    
+    return render(request, 'prison/return_form.html', context)
+
+
+@login_required
+@require_POST
+def return_delete(request, return_id):
+    """Delete an inmate return"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    inmate_return = get_object_or_404(InmateReturn, id=return_id)
+    
+    # Check permissions
+    if not inmate_return.can_delete(request.user):
+        raise PermissionDenied('You do not have permission to delete this return.')
+    
+    # Store info for message
+    title = inmate_return.title
+    return_id = inmate_return.id
+    
+    # Delete the file if it exists
+    if inmate_return.file:
+        try:
+            if os.path.exists(inmate_return.file.path):
+                os.remove(inmate_return.file.path)
+        except Exception as e:
+            pass  # Log error but continue
+    
+    # Delete the return (cascade will delete data rows)
+    inmate_return.delete()
+    
+    messages.success(request, f'Return "{title}" deleted successfully.')
+    
+    return redirect('returns_hub')
+
+
+# ============ CSV IMPORT/EXPORT ============
+
+@login_required
+def return_import_csv(request, return_id=None):
+    """Import CSV data into a return"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    # If return_id is provided, import into existing return
+    if return_id:
+        inmate_return = get_object_or_404(InmateReturn, id=return_id)
+        
+        # Check permissions
+        if not is_super_admin_user:
+            if not (hasattr(request.user, 'prison_station') and request.user.prison_station):
+                raise PermissionDenied('You must be assigned to a prison station.')
+            if inmate_return.station != request.user.prison_station:
+                raise PermissionDenied('You can only import data for returns from your station.')
+        
+        # Check if return can be modified
+        if not inmate_return.can_edit(request.user):
+            messages.warning(request, 'This return cannot be modified in its current status.')
+            return redirect('return_detail', return_id=inmate_return.id)
+        
+        template = None
+        try:
+            template = ReturnTemplate.objects.get(return_type=inmate_return.return_type)
+        except ReturnTemplate.DoesNotExist:
+            pass
+        
+        if request.method == 'POST':
+            form = ReturnDataImportForm(request.POST, request.FILES, inmate_return=inmate_return, user=request.user)
+            
+            if form.is_valid():
+                result = form.import_data()
+                
+                if result['success']:
+                    messages.success(
+                        request, 
+                        f'Successfully imported {result["count"]} records into "{inmate_return.title}".'
+                    )
+                    if result.get('warnings'):
+                        for warning in result['warnings'][:3]:
+                            messages.warning(request, warning)
+                    
+                    return redirect('return_detail', return_id=inmate_return.id)
+                else:
+                    messages.error(request, f'Failed to import CSV: {result.get("error", "Unknown error")}')
+            else:
+                messages.error(request, 'Please correct the errors below.')
+        else:
+            form = ReturnDataImportForm(inmate_return=inmate_return, user=request.user)
+        
+        # Get sample CSV format
+        sample_csv = None
+        if template:
+            sample_csv = generate_sample_csv(template)
+        
+        context = {
+            'page_title': f'Import CSV - {inmate_return.title}',
+            'inmate_return': inmate_return,
+            'form': form,
+            'template': template,
+            'sample_csv': sample_csv,
+            'existing_count': inmate_return.data_rows.count(),
+        }
+        
+        return render(request, 'prison/return_import_csv.html', context)
+    
+    # If no return_id, create a new return first
+    else:
+        return redirect('return_create')
+
+
+@login_required
+def return_export_csv(request, return_id):
+    """Export return data as CSV"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    inmate_return = get_object_or_404(InmateReturn, id=return_id)
+    
+    # Check permissions
+    if not is_super_admin_user:
+        if not (hasattr(request.user, 'prison_station') and request.user.prison_station):
+            raise PermissionDenied('You must be assigned to a prison station.')
+        if inmate_return.station != request.user.prison_station:
+            raise PermissionDenied('You can only export returns from your station.')
+    
+    # Check if there's data to export
+    if not inmate_return.data_rows.exists():
+        messages.warning(request, 'No data to export for this return.')
+        return redirect('return_detail', return_id=inmate_return.id)
+    
+    exporter = ReturnDataExporter(inmate_return)
+    csv_data = exporter.export_to_csv()
+    
+    # Create response
+    response = HttpResponse(csv_data, content_type='text/csv')
+    filename = f"{inmate_return.title.replace(' ', '_')}_{inmate_return.uploaded_at.strftime('%Y%m%d')}.csv"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    return response
+
+
+@login_required
+def return_export_pdf(request, return_id):
+    """Export return data as PDF"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    inmate_return = get_object_or_404(InmateReturn, id=return_id)
+    
+    # Check permissions
+    if not is_super_admin_user:
+        if not (hasattr(request.user, 'prison_station') and request.user.prison_station):
+            raise PermissionDenied('You must be assigned to a prison station.')
+        if inmate_return.station != request.user.prison_station:
+            raise PermissionDenied('You can only export returns from your station.')
+    
+    # Check if there's data to export
+    if not inmate_return.data_rows.exists():
+        messages.warning(request, 'No data to export for this return.')
+        return redirect('return_detail', return_id=inmate_return.id)
+    
+    # Get data
+    data_rows = inmate_return.data_rows.all().order_by('serial_no', 'row_number')
+    
+    # Get template
+    template = None
+    try:
+        template = ReturnTemplate.objects.get(return_type=inmate_return.return_type)
+    except ReturnTemplate.DoesNotExist:
+        pass
+    
+    # Get columns
+    columns = []
+    if template:
+        columns = template.columns
+    elif data_rows.exists():
+        first_row = data_rows.first()
+        for field in InmateReturnData._meta.fields:
+            field_name = field.name
+            if hasattr(first_row, field_name):
+                value = getattr(first_row, field_name)
+                if value:
+                    columns.append({
+                        'key': field_name,
+                        'header': field_name.replace('_', ' ').title()
+                    })
+    
+    # Generate PDF
+    from xhtml2pdf import pisa
+    from django.template.loader import render_to_string
+    
+    context = {
+        'inmate_return': inmate_return,
+        'data_rows': data_rows,
+        'columns': columns,
+        'summary': inmate_return.get_summary(),
+        'today': timezone.now().date(),
+        'station': inmate_return.station,
+        'user': request.user,
+    }
+    
+    html_string = render_to_string('prison/return_pdf.html', context)
+    
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{inmate_return.title.replace(" ", "_")}.pdf"'
+    
+    pisa_status = pisa.CreatePDF(html_string, dest=response, encoding='utf-8')
+    
+    if pisa_status.err:
+        messages.error(request, 'Error generating PDF. Please try again.')
+        return redirect('return_detail', return_id=inmate_return.id)
+    
+    return response
+
+
+# ============ RETURN WORKFLOW ACTIONS ============
+
+@login_required
+@require_POST
+def return_submit(request, return_id):
+    """Submit a return for approval"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    inmate_return = get_object_or_404(InmateReturn, id=return_id)
+    
+    # Check permissions
+    if not is_super_admin_user:
+        if not (hasattr(request.user, 'prison_station') and request.user.prison_station):
+            raise PermissionDenied('You must be assigned to a prison station.')
+        if inmate_return.station != request.user.prison_station:
+            raise PermissionDenied('You can only submit returns from your station.')
+    
+    # Check if return can be submitted
+    if inmate_return.status != 'draft':
+        messages.warning(request, f'This return is already in {inmate_return.get_status_display()} status.')
+        return redirect('return_detail', return_id=inmate_return.id)
+    
+    # Check if return has data
+    if not inmate_return.data_rows.exists() and not inmate_return.file:
+        messages.error(request, 'Cannot submit a return with no data. Please add data first.')
+        return redirect('return_detail', return_id=inmate_return.id)
+    
+    # Submit the return
+    inmate_return.submit(request.user)
+    
+    messages.success(request, f'Return "{inmate_return.title}" has been submitted for approval.')
+    
+    return redirect('return_detail', return_id=inmate_return.id)
+
+
+@login_required
+@require_POST
+def return_approve(request, return_id):
+    """Approve a submitted return"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    inmate_return = get_object_or_404(InmateReturn, id=return_id)
+    
+    # Check permissions (approvers can be super admin, officer in charge, or station officer)
+    can_approve = (
+        is_super_admin_user or 
+        hasattr(request.user, 'is_officer_in_charge') or 
+        hasattr(request.user, 'is_station_officer')
+    )
+    
+    if not can_approve:
+        raise PermissionDenied('You do not have permission to approve returns.')
+    
+    # Check if return is from user's station (unless super admin)
+    if not is_super_admin_user:
+        if not (hasattr(request.user, 'prison_station') and request.user.prison_station):
+            raise PermissionDenied('You must be assigned to a prison station.')
+        if inmate_return.station != request.user.prison_station:
+            raise PermissionDenied('You can only approve returns from your station.')
+    
+    # Check if return can be approved
+    if inmate_return.status != 'submitted':
+        messages.warning(request, f'This return is in {inmate_return.get_status_display()} status and cannot be approved.')
+        return redirect('return_detail', return_id=inmate_return.id)
+    
+    # Add notes if provided
+    notes = request.POST.get('approval_notes', '')
+    
+    # Approve the return
+    inmate_return.approve(request.user)
+    if notes:
+        inmate_return.remarks = f"{inmate_return.remarks}\n\nApproval Notes: {notes}" if inmate_return.remarks else f"Approval Notes: {notes}"
+        inmate_return.save(update_fields=['remarks'])
+    
+    messages.success(request, f'Return "{inmate_return.title}" has been approved.')
+    
+    return redirect('return_detail', return_id=inmate_return.id)
+
+
+@login_required
+@require_POST
+def return_reject(request, return_id):
+    """Reject a submitted return"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    inmate_return = get_object_or_404(InmateReturn, id=return_id)
+    
+    # Check permissions (rejecters can be super admin, officer in charge, or station officer)
+    can_reject = (
+        is_super_admin_user or 
+        hasattr(request.user, 'is_officer_in_charge') or 
+        hasattr(request.user, 'is_station_officer')
+    )
+    
+    if not can_reject:
+        raise PermissionDenied('You do not have permission to reject returns.')
+    
+    # Check if return is from user's station (unless super admin)
+    if not is_super_admin_user:
+        if not (hasattr(request.user, 'prison_station') and request.user.prison_station):
+            raise PermissionDenied('You must be assigned to a prison station.')
+        if inmate_return.station != request.user.prison_station:
+            raise PermissionDenied('You can only reject returns from your station.')
+    
+    # Check if return can be rejected
+    if inmate_return.status != 'submitted':
+        messages.warning(request, f'This return is in {inmate_return.get_status_display()} status and cannot be rejected.')
+        return redirect('return_detail', return_id=inmate_return.id)
+    
+    # Get rejection reason
+    reason = request.POST.get('rejection_reason', '')
+    if not reason:
+        messages.error(request, 'Please provide a reason for rejection.')
+        return redirect('return_detail', return_id=inmate_return.id)
+    
+    # Reject the return
+    inmate_return.reject(request.user, reason)
+    
+    messages.info(request, f'Return "{inmate_return.title}" has been rejected. Reason: {reason}')
+    
+    return redirect('return_detail', return_id=inmate_return.id)
+
+
+@login_required
+@require_POST
+def return_complete(request, return_id):
+    """Mark a return as completed"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    inmate_return = get_object_or_404(InmateReturn, id=return_id)
+    
+    # Check permissions
+    if not is_super_admin_user:
+        if not (hasattr(request.user, 'prison_station') and request.user.prison_station):
+            raise PermissionDenied('You must be assigned to a prison station.')
+        if inmate_return.station != request.user.prison_station:
+            raise PermissionDenied('You can only complete returns from your station.')
+    
+    # Check if return can be completed
+    if inmate_return.status != 'approved':
+        messages.warning(request, f'This return is in {inmate_return.get_status_display()} status and cannot be completed.')
+        return redirect('return_detail', return_id=inmate_return.id)
+    
+    # Complete the return
+    inmate_return.complete()
+    
+    messages.success(request, f'Return "{inmate_return.title}" has been marked as completed.')
+    
+    return redirect('return_detail', return_id=inmate_return.id)
+
+
+# ============ BULK ACTIONS ============
+
+@login_required
+@require_POST
+def return_bulk_action(request):
+    """Perform bulk actions on multiple returns"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    form = ReturnBulkActionForm(request.POST, user=request.user)
+    
+    if form.is_valid():
+        result = form.execute_action()
+        
+        messages.success(request, f'Successfully processed {len(result["success"])} returns.')
+        if result['failed']:
+            for failed in result['failed']:
+                messages.error(request, f'Failed to process return ID {failed["id"]}: {failed["reason"]}')
+        
+        return redirect('returns_hub')
+    else:
+        messages.error(request, 'Please select an action and returns to process.')
+        return redirect('returns_hub')
+
+
+# ============ TEMPLATE MANAGEMENT ============
+
+@login_required
+def template_list(request):
+    """List all return templates"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    if not is_super_admin_user:
+        raise PermissionDenied('Only super administrators can manage templates.')
+    
+    templates = ReturnTemplate.objects.all().order_by('name')
+    
+    context = {
+        'page_title': 'Return Templates',
+        'templates': templates,
+    }
+    
+    return render(request, 'prison/template_list.html', context)
+
+
+@login_required
+def template_create(request):
+    """Create a new return template"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    if not is_super_admin_user:
+        raise PermissionDenied('Only super administrators can create templates.')
+    
+    if request.method == 'POST':
+        form = ReturnTemplateForm(request.POST, user=request.user)
+        
+        if form.is_valid():
+            template = form.save()
+            messages.success(request, f'Template "{template.name}" created successfully.')
+            return redirect('template_list')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = ReturnTemplateForm(user=request.user)
+    
+    context = {
+        'page_title': 'Create Template',
+        'form': form,
+        'is_edit': False,
+    }
+    
+    return render(request, 'prison/template_form.html', context)
+
+
+@login_required
+def template_edit(request, template_id):
+    """Edit an existing return template"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    if not is_super_admin_user:
+        raise PermissionDenied('Only super administrators can edit templates.')
+    
+    template = get_object_or_404(ReturnTemplate, id=template_id)
+    
+    if request.method == 'POST':
+        form = ReturnTemplateForm(request.POST, instance=template, user=request.user)
+        
+        if form.is_valid():
+            updated_template = form.save()
+            messages.success(request, f'Template "{updated_template.name}" updated successfully.')
+            return redirect('template_list')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = ReturnTemplateForm(instance=template, user=request.user)
+    
+    context = {
+        'page_title': f'Edit Template: {template.name}',
+        'form': form,
+        'template': template,
+        'is_edit': True,
+    }
+    
+    return render(request, 'prison/template_form.html', context)
+
+
+@login_required
+@require_POST
+def template_delete(request, template_id):
+    """Delete a return template"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    if not is_super_admin_user:
+        raise PermissionDenied('Only super administrators can delete templates.')
+    
+    template = get_object_or_404(ReturnTemplate, id=template_id)
+    template_name = template.name
+    template.delete()
+    
+    messages.success(request, f'Template "{template_name}" deleted successfully.')
+    
+    return redirect('template_list')
+
+
+# ============ SEARCH AND FILTER ============
+
+@login_required
+def return_search(request):
+    """Advanced search across return data"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    if not is_super_admin_user and not (hasattr(request.user, 'prison_station') and request.user.prison_station):
+        raise PermissionDenied('You must be assigned to a prison station to search returns.')
+    
+    form = ReturnSearchForm(request.GET or None)
+    results = None
+    total_results = 0
+    
+    if form.is_valid() and any(form.cleaned_data.values()):
+        # Base queryset for data rows
+        data_qs = InmateReturnData.objects.all().select_related('inmate_return', 'inmate_return__station')
+        
+        # Filter by station if not super admin
+        if not is_super_admin_user:
+            data_qs = data_qs.filter(inmate_return__station=request.user.prison_station)
+        
+        # Apply search filters
+        results = form.search(data_qs)
+        total_results = results.count()
+        
+        # Limit results for display
+        results = results[:200]
+    
+    context = {
+        'page_title': 'Search Returns',
+        'form': form,
+        'results': results,
+        'total_results': total_results,
+        'has_search': form.is_valid() and any(form.cleaned_data.values()),
+    }
+    
+    return render(request, 'prison/return_search.html', context)
+
+
+# ============ DOWNLOAD AND VIEW FILE ============
+
+@login_required
+def return_download_file(request, return_id):
+    """Download the attached file for a return"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    inmate_return = get_object_or_404(InmateReturn, id=return_id)
+    
+    # Check permissions
+    if not is_super_admin_user:
+        if not (hasattr(request.user, 'prison_station') and request.user.prison_station):
+            raise PermissionDenied('You must be assigned to a prison station.')
+        if inmate_return.station != request.user.prison_station:
+            raise PermissionDenied('You can only download files from your station.')
+    
+    if not inmate_return.file:
+        messages.error(request, 'No file attached to this return.')
+        return redirect('return_detail', return_id=inmate_return.id)
+    
+    try:
+        file_path = inmate_return.file.path
+        if os.path.exists(file_path):
+            response = FileResponse(open(file_path, 'rb'), as_attachment=True)
+            response['Content-Disposition'] = f'attachment; filename="{inmate_return.file_name}"'
+            return response
+        else:
+            messages.error(request, 'File not found.')
+            return redirect('return_detail', return_id=inmate_return.id)
+    except Exception as e:
+        messages.error(request, f'Error downloading file: {str(e)}')
+        return redirect('return_detail', return_id=inmate_return.id)
+
+
+# ============ AJAX ENDPOINTS ============
+
+@login_required
+@csrf_exempt
+def return_ajax_get_template(request):
+    """AJAX endpoint to get template info for a return type"""
+    return_type = request.GET.get('return_type')
+    download = request.GET.get('download', 'false') == 'true'
+    
+    if not return_type:
+        return JsonResponse({'error': 'Return type required'}, status=400)
+    
+    try:
+        template = ReturnTemplate.objects.get(return_type=return_type)
+        
+        # If download is requested, return CSV file
+        if download:
+            sample_csv = generate_sample_csv(template)
+            response = HttpResponse(sample_csv, content_type='text/csv')
+            filename = f'template_{return_type}_sample.csv'
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+        
+        return JsonResponse({
+            'success': True,
+            'template': template.to_dict(),
+            'sample_csv': generate_sample_csv(template),
+        })
+        
+    except ReturnTemplate.DoesNotExist:
+        # Create a default template structure
+        default_template = {
+            'name': f'{return_type.replace("_", " ").title()} Template',
+            'return_type': return_type,
+            'description': f'Template for {return_type.replace("_", " ").title()} returns',
+            'columns': [
+                {'key': 'serial_no', 'header': 'Ser. No.', 'type': 'number', 'required': True},
+                {'key': 'prisoner_number', 'header': 'Prisoner No.', 'type': 'string', 'required': True},
+                {'key': 'full_name', 'header': 'Full Name', 'type': 'string', 'required': True},
+                {'key': 'sex', 'header': 'Sex', 'type': 'string'},
+                {'key': 'age', 'header': 'Age', 'type': 'number'},
+                {'key': 'offense', 'header': 'Offense', 'type': 'string'},
+                {'key': 'court', 'header': 'Court', 'type': 'string'},
+                {'key': 'sentence_months', 'header': 'Sentence (months)', 'type': 'number'},
+                {'key': 'date_of_committal', 'header': 'Date of Committal', 'type': 'date'},
+                {'key': 'remarks', 'header': 'Remarks', 'type': 'string'},
+            ],
+            'is_active': True,
+        }
+        
+        # If download is requested, generate CSV from default template
+        if download:
+            # Create a template-like object for CSV generation
+            class TempTemplate:
+                def __init__(self, data):
+                    for key, value in data.items():
+                        setattr(self, key, value)
+            
+            temp = TempTemplate(default_template)
+            sample_csv = generate_sample_csv(temp)
+            response = HttpResponse(sample_csv, content_type='text/csv')
+            filename = f'template_{return_type}_sample.csv'
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+        
+        return JsonResponse({
+            'success': True,
+            'template': default_template,
+            'sample_csv': generate_sample_csv(None),  # Will use defaults
+        })
+
+
+@login_required
+@csrf_exempt
+def return_ajax_preview_csv(request):
+    """AJAX endpoint to preview CSV data before import"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST method required'}, status=405)
+    
+    csv_file = request.FILES.get('csv_file')
+    if not csv_file:
+        return JsonResponse({'error': 'No CSV file provided'}, status=400)
+    
+    try:
+        # Read CSV
+        content = csv_file.read().decode('utf-8')
+        csv_reader = csv.reader(io.StringIO(content))
+        rows = list(csv_reader)
+        
+        if not rows:
+            return JsonResponse({'error': 'CSV file is empty'}, status=400)
+        
+        # Get headers
+        headers = rows[0] if rows else []
+        
+        # Get preview rows (first 5)
+        preview_rows = []
+        for row in rows[1:6]:  # First 5 data rows
+            if row:
+                preview_rows.append(dict(zip(headers, row)))
+        
+        return JsonResponse({
+            'success': True,
+            'headers': headers,
+            'preview_rows': preview_rows,
+            'total_rows': len(rows) - 1,
+            'preview_count': len(preview_rows),
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def return_ajax_get_stats(request):
+    """AJAX endpoint to get return statistics"""
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    
+    # Base queryset
+    returns_qs = InmateReturn.objects.all()
+    
+    # Filter by station if not super admin
+    if not is_super_admin_user:
+        if hasattr(request.user, 'prison_station') and request.user.prison_station:
+            returns_qs = returns_qs.filter(station=request.user.prison_station)
+        else:
+            return JsonResponse({'error': 'No station assigned'}, status=403)
+    
+    # Get statistics
+    stats = {
+        'total': returns_qs.count(),
+        'by_status': {
+            'draft': returns_qs.filter(status='draft').count(),
+            'submitted': returns_qs.filter(status='submitted').count(),
+            'approved': returns_qs.filter(status='approved').count(),
+            'rejected': returns_qs.filter(status='rejected').count(),
+            'completed': returns_qs.filter(status='completed').count(),
+        },
+        'by_type': list(returns_qs.values('return_type').annotate(count=Count('id')).order_by('-count')),
+        'with_data': returns_qs.filter(has_csv_data=True).count(),
+        'without_data': returns_qs.filter(has_csv_data=False).count(),
+    }
+    
+    return JsonResponse(stats)
+
+
+# ============ HELPER FUNCTIONS ============
+
+def generate_sample_csv(template):
+    """Generate sample CSV content for a template"""
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write headers
+    headers = [col['header'] for col in template.columns]
+    writer.writerow(headers)
+    
+    # Write sample data
+    if template.sample_data:
+        for sample_row in template.sample_data[:3]:
+            row = []
+            for col in template.columns:
+                key = col['key']
+                value = sample_row.get(key, '')
+                row.append(value)
+            writer.writerow(row)
+    else:
+        # Write empty row as example
+        writer.writerow([''] * len(headers))
+    
+    return output.getvalue()
+
+
+def get_return_workflow_actions(user, inmate_return):
+    """Get available workflow actions for a return based on user and status"""
+    actions = []
+    
+    if inmate_return.status == 'draft':
+        if inmate_return.can_edit(user):
+            actions.append({
+                'action': 'edit',
+                'label': 'Edit',
+                'icon': 'bi-pencil',
+                'url': reverse_lazy('return_edit', args=[inmate_return.id]),
+                'method': 'get'
+            })
+            actions.append({
+                'action': 'submit',
+                'label': 'Submit for Approval',
+                'icon': 'bi-send',
+                'url': reverse_lazy('return_submit', args=[inmate_return.id]),
+                'method': 'post',
+                'confirm': 'Are you sure you want to submit this return for approval?'
+            })
+        if inmate_return.can_delete(user):
+            actions.append({
+                'action': 'delete',
+                'label': 'Delete',
+                'icon': 'bi-trash',
+                'url': reverse_lazy('return_delete', args=[inmate_return.id]),
+                'method': 'post',
+                'confirm': 'Are you sure you want to delete this return?'
+            })
+    
+    elif inmate_return.status == 'submitted':
+        can_approve = (
+            user.is_superuser or 
+            hasattr(user, 'is_super_admin') and user.is_super_admin() or
+            hasattr(user, 'is_officer_in_charge') or 
+            hasattr(user, 'is_station_officer')
+        )
+        if can_approve:
+            actions.append({
+                'action': 'approve',
+                'label': 'Approve',
+                'icon': 'bi-check-circle',
+                'url': reverse_lazy('return_approve', args=[inmate_return.id]),
+                'method': 'post',
+                'confirm': 'Are you sure you want to approve this return?'
+            })
+            actions.append({
+                'action': 'reject',
+                'label': 'Reject',
+                'icon': 'bi-x-circle',
+                'url': reverse_lazy('return_reject', args=[inmate_return.id]),
+                'method': 'post',
+                'confirm': 'Are you sure you want to reject this return?',
+                'requires_reason': True
+            })
+    
+    elif inmate_return.status == 'approved':
+        if inmate_return.can_edit(user):
+            actions.append({
+                'action': 'complete',
+                'label': 'Mark as Completed',
+                'icon': 'bi-check2-all',
+                'url': reverse_lazy('return_complete', args=[inmate_return.id]),
+                'method': 'post',
+                'confirm': 'Are you sure you want to mark this return as completed?'
+            })
+    
+    # Always add view/export actions
+    actions.append({
+        'action': 'view',
+        'label': 'View Details',
+        'icon': 'bi-eye',
+        'url': reverse_lazy('return_detail', args=[inmate_return.id]),
+        'method': 'get'
+    })
+    
+    if inmate_return.has_csv_data:
+        actions.append({
+            'action': 'export_csv',
+            'label': 'Export CSV',
+            'icon': 'bi-filetype-csv',
+            'url': reverse_lazy('return_export_csv', args=[inmate_return.id]),
+            'method': 'get'
+        })
+        actions.append({
+            'action': 'export_pdf',
+            'label': 'Export PDF',
+            'icon': 'bi-file-pdf',
+            'url': reverse_lazy('return_export_pdf', args=[inmate_return.id]),
+            'method': 'get'
+        })
+    
+    if inmate_return.file:
+        actions.append({
+            'action': 'download',
+            'label': 'Download File',
+            'icon': 'bi-download',
+            'url': reverse_lazy('return_download_file', args=[inmate_return.id]),
+            'method': 'get'
+        })
+    
+    return actions
+
+
+def get_return_activity_log(inmate_return, limit=20):
+    """Get activity log for a return"""
+    # This would integrate with your ActivityLog model
+    # For now, return an empty list
+    return []
 
 # ============ INCIDENT REPORT VIEWS ============
 
