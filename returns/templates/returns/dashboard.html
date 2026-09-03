@@ -1,0 +1,519 @@
+<!-- returns/dashboard.html -->
+{% extends "prison/base.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block page_title %}Returns Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 24px 28px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(226, 232, 240, 0.6);
+        transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card:hover {
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        transform: translateY(-4px);
+    }
+
+    .stat-card .stat-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .stat-card .stat-icon.blue { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; }
+    .stat-card .stat-icon.green { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: #fff; }
+    .stat-card .stat-icon.orange { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: #fff; }
+    .stat-card .stat-icon.purple { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: #fff; }
+    .stat-card .stat-icon.red { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); color: #fff; }
+
+    .stat-card .stat-label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #64748b;
+        margin-bottom: 6px;
+    }
+
+    .stat-card .stat-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.1;
+    }
+
+    .stat-card .stat-change {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 4px 12px;
+        border-radius: 20px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .stat-card .stat-change.up { background: rgba(17, 153, 142, 0.1); color: #11998e; }
+    .stat-card .stat-change.down { background: rgba(255, 107, 107, 0.1); color: #ff6b6b; }
+
+    .dashboard-card {
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(226, 232, 240, 0.6);
+        transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .dashboard-card:hover {
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        transform: translateY(-2px);
+    }
+
+    .dashboard-card .card-header {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-bottom: 1px solid #e2e8f0;
+        padding: 18px 24px;
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .dashboard-card .card-header i {
+        color: #667eea;
+        margin-right: 8px;
+    }
+
+    .dashboard-card .card-body {
+        padding: 24px;
+    }
+
+    .status-badge {
+        font-size: 0.7rem;
+        font-weight: 600;
+        padding: 4px 12px;
+        border-radius: 20px;
+    }
+    .status-badge.submitted { background: #dbeafe; color: #1e40af; }
+    .status-badge.approved { background: #dcfce7; color: #166534; }
+    .status-badge.rejected { background: #fee2e2; color: #991b1b; }
+    .status-badge.pending { background: #fef3c7; color: #92400e; }
+    .status-badge.imported { background: #e0e7ff; color: #3730a3; }
+    .status-badge.not_submitted { background: #f1f5f9; color: #64748b; }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #f1f5f9;
+    }
+
+    .section-header h3 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .section-header h3 i {
+        color: #667eea;
+    }
+
+    .section-header .btn-link {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #667eea;
+        text-decoration: none;
+        padding: 8px 16px;
+        border-radius: 8px;
+        background: rgba(102, 126, 234, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .section-header .btn-link:hover {
+        background: rgba(102, 126, 234, 0.2);
+    }
+
+    .table-dashboard {
+        font-size: 0.85rem;
+        margin-bottom: 0;
+    }
+
+    .table-dashboard thead th {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        color: #475569;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #e2e8f0;
+        padding: 14px 16px;
+    }
+
+    .table-dashboard tbody td {
+        padding: 14px 16px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        color: #334155;
+    }
+
+    .table-dashboard tbody tr:hover {
+        background: rgba(102, 126, 234, 0.05);
+    }
+
+    .missing-station-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .missing-station-item:last-child {
+        border-bottom: none;
+    }
+
+    .month-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 14px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    .month-pill.current {
+        background: rgba(102, 126, 234, 0.15);
+        color: #667eea;
+    }
+
+    .month-pill .count {
+        background: #e2e8f0;
+        padding: 0 8px;
+        border-radius: 10px;
+        font-size: 0.65rem;
+    }
+
+    .month-pill.current .count {
+        background: rgba(102, 126, 234, 0.2);
+    }
+
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .stat-card, .dashboard-card {
+        animation: fadeInUp 0.6s ease forwards;
+    }
+
+    .stat-card:nth-child(1) { animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { animation-delay: 0.2s; }
+    .stat-card:nth-child(3) { animation-delay: 0.3s; }
+    .stat-card:nth-child(4) { animation-delay: 0.4s; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h1 class="h3 fw-bold mb-1">Returns Dashboard</h1>
+            <p class="text-muted small mb-0">
+                <i class="bi bi-calendar3 me-1"></i>
+                {{ period }} | {{ month_name }} {{ year }}
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'returns:submission_create' %}" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-circle me-1"></i> Submit Return
+            </a>
+            <a href="{% url 'returns:station_status' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-eye me-1"></i> Station Status
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="stat-card">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="stat-label">Total Templates</div>
+                        <div class="stat-value">{{ total_templates|default:0 }}</div>
+                        <div class="stat-change up">
+                            <i class="bi bi-layout-text-window-reverse"></i> Active
+                        </div>
+                    </div>
+                    <div class="stat-icon blue"><i class="bi bi-file-earmark-text"></i></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="stat-card">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="stat-label">Total Submissions</div>
+                        <div class="stat-value">{{ total_submissions|default:0 }}</div>
+                        <div class="stat-change">
+                            <i class="bi bi-clock-history"></i> All Time
+                        </div>
+                    </div>
+                    <div class="stat-icon green"><i class="bi bi-upload"></i></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="stat-card">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="stat-label">This Month</div>
+                        <div class="stat-value">{{ current_month_submissions|default:0 }}</div>
+                        <div class="stat-change up">
+                            <i class="bi bi-calendar-check"></i> {{ month_name }}
+                        </div>
+                    </div>
+                    <div class="stat-icon orange"><i class="bi bi-calendar-month"></i></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6">
+            <div class="stat-card">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="stat-label">Pending Review</div>
+                        <div class="stat-value">{{ pending_submissions|default:0 }}</div>
+                        <div class="stat-change down">
+                            <i class="bi bi-exclamation-circle"></i> Needs Attention
+                        </div>
+                    </div>
+                    <div class="stat-icon red"><i class="bi bi-clock"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Submissions & Missing Stations -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-7">
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <span><i class="bi bi-clock-history"></i> Recent Submissions</span>
+                    <a href="{% url 'returns:submission_list' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_submissions %}
+                    <div class="table-responsive">
+                        <table class="table table-dashboard">
+                            <thead>
+                                <tr>
+                                    <th>Template</th>
+                                    <th>Station</th>
+                                    <th>Period</th>
+                                    <th>Status</th>
+                                    <th>Submitted</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sub in recent_submissions %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'returns:submission_detail' sub.id %}" class="text-decoration-none fw-semibold text-dark">
+                                            {{ sub.template.name|truncatechars:20 }}
+                                        </a>
+                                    </td>
+                                    <td>{{ sub.prison_station.name|truncatechars:15 }}</td>
+                                    <td>
+                                        <span class="month-pill">{{ sub.period_display }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge {{ sub.status }}">
+                                            {{ sub.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td class="text-muted small">{{ sub.submitted_at|timesince }} ago</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-inbox" style="font-size: 2rem; color: #cbd5e1;"></i>
+                        <p class="text-muted mt-2 mb-0">No submissions yet</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <span><i class="bi bi-exclamation-triangle"></i> Missing Submissions</span>
+                    <a href="{% url 'returns:station_status' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if missing_stations %}
+                    {% for status in missing_stations %}
+                    <div class="missing-station-item">
+                        <div>
+                            <div class="fw-semibold">{{ status.prison_station.name }}</div>
+                            <div class="text-muted small">{{ status.template.name|truncatechars:30 }}</div>
+                        </div>
+                        <span class="status-badge not_submitted">Missing</span>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-check-circle" style="font-size: 2rem; color: #11998e;"></i>
+                        <p class="text-muted mt-2 mb-0">All submissions are complete!</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monthly Tracker & Status Overview -->
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <span><i class="bi bi-list-check"></i> Monthly Submission Status</span>
+                    <span class="badge bg-secondary">{{ period }}</span>
+                </div>
+                <div class="card-body">
+                    {% if station_statuses %}
+                    <div class="table-responsive">
+                        <table class="table table-dashboard">
+                            <thead>
+                                <tr>
+                                    <th>Station</th>
+                                    <th>Template</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for status in station_statuses %}
+                                <tr>
+                                    <td>{{ status.prison_station.name|truncatechars:15 }}</td>
+                                    <td>{{ status.template.name|truncatechars:20 }}</td>
+                                    <td>
+                                        <span class="status-badge {{ status.status }}">
+                                            {{ status.get_status_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-inbox" style="font-size: 2rem; color: #cbd5e1;"></i>
+                        <p class="text-muted mt-2 mb-0">No status records for this period</p>
+                        <a href="{% url 'returns:initialize_tracking' %}" class="btn btn-sm btn-primary mt-3">
+                            <i class="bi bi-plus-circle me-1"></i> Initialize Tracking
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <span><i class="bi bi-calendar-range"></i> Monthly Overview</span>
+                    <span class="badge bg-secondary">{{ year }}</span>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for m in months %}
+                        <span class="month-pill {% if m.is_current %}current{% endif %}">
+                            {{ m.name|slice:":3" }}
+                            <span class="count">{{ m.count }}</span>
+                        </span>
+                        {% endfor %}
+                    </div>
+                    <div class="mt-3 pt-3 border-top">
+                        <div class="row g-2 text-center">
+                            <div class="col-4">
+                                <div class="small text-muted">Approved</div>
+                                <div class="fw-bold text-success">{{ approved_submissions|default:0 }}</div>
+                            </div>
+                            <div class="col-4">
+                                <div class="small text-muted">Pending</div>
+                                <div class="fw-bold text-warning">{{ pending_submissions|default:0 }}</div>
+                            </div>
+                            <div class="col-4">
+                                <div class="small text-muted">Rejected</div>
+                                <div class="fw-bold text-danger">{{ rejected_submissions|default:0 }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row g-4 mt-2">
+        <div class="col-12">
+            <div class="dashboard-card">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-3 align-items-center">
+                        <span class="fw-semibold me-2">Quick Actions:</span>
+                        <a href="{% url 'returns:submission_create' %}" class="btn btn-primary btn-sm">
+                            <i class="bi bi-upload me-1"></i> Submit Return
+                        </a>
+                        <a href="{% url 'returns:template_list' %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-layout-text-window-reverse me-1"></i> Templates
+                        </a>
+                        <a href="{% url 'returns:station_status' %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-check2-circle me-1"></i> Station Status
+                        </a>
+                        <a href="{% url 'returns:regional_summary' %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-bar-chart-fill me-1"></i> Regional Summary
+                        </a>
+                        {% if user.is_superuser %}
+                        <a href="{% url 'returns:initialize_tracking' %}" class="btn btn-outline-warning btn-sm">
+                            <i class="bi bi-gear me-1"></i> Initialize Tracking
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,180 @@
+<!-- returns/template_form.html -->
+{% extends "prison/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 24px 28px;
+        margin-bottom: 24px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        transition: box-shadow 0.2s ease;
+    }
+
+    .form-section:hover {
+        box-shadow: var(--card-hover-shadow);
+    }
+
+    .form-section-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .form-section-title i {
+        font-size: 1.1rem;
+        color: #1a73e8;
+    }
+
+    .btn-save {
+        padding: 10px 32px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #1a73e8;
+        border: none;
+        transition: all 0.2s ease;
+    }
+
+    .btn-save:hover {
+        background: #1557b0;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+    }
+
+    .btn-cancel {
+        padding: 10px 28px;
+        font-weight: 600;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        background: #fff;
+        transition: all 0.2s ease;
+    }
+
+    .btn-cancel:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+
+    .form-control, .form-select {
+        border-radius: 8px;
+        border-color: #e2e8f0;
+        padding: 8px 14px;
+        font-size: 0.875rem;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #1a73e8;
+        box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+    }
+
+    .form-label {
+        font-weight: 500;
+        font-size: 0.8rem;
+        color: #334155;
+    }
+
+    .help-text {
+        font-size: 0.75rem;
+        color: #94a3b8;
+        margin-top: 4px;
+    }
+
+    @media (max-width: 768px) {
+        .form-section {
+            padding: 16px 18px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h1 class="h3 fw-bold mb-1">{{ page_title }}</h1>
+            <p class="text-muted small mb-0">
+                <i class="bi bi-layout-text-window-reverse me-1"></i>
+                Define the structure and columns for a return template
+            </p>
+        </div>
+        <a href="{% url 'returns:template_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Templates
+        </a>
+    </div>
+
+    {% if form.errors %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <div class="d-flex align-items-start gap-2">
+            <i class="bi bi-exclamation-circle-fill mt-1"></i>
+            <div>
+                <strong>Please correct the errors below.</strong>
+                <ul class="mb-0 mt-1 ps-3 small">
+                    {% for field in form %}
+                        {% for error in field.errors %}
+                            <li>{{ field.label }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                    {% for error in form.non_field_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-info-circle"></i> Template Information
+                <span class="badge-section">Required</span>
+            </div>
+            {{ form.name|as_crispy_field }}
+            {{ form.category|as_crispy_field }}
+            {{ form.description|as_crispy_field }}
+        </div>
+
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-table"></i> Template Structure
+                <span class="badge-section">Required</span>
+            </div>
+            {{ form.template_file|as_crispy_field }}
+            <div class="help-text">
+                <i class="bi bi-info-circle me-1"></i>
+                Upload a CSV or Excel file with column headers and example data.
+            </div>
+            {{ form.required_columns|as_crispy_field }}
+            <div class="help-text">
+                <i class="bi bi-info-circle me-1"></i>
+                Enter column names separated by commas (e.g., Name, Age, Sex, Offense, Court, Case No)
+            </div>
+            {{ form.is_active|as_crispy_field }}
+        </div>
+
+        <div class="d-flex gap-3 flex-wrap">
+            <button type="submit" class="btn btn-save">
+                <i class="bi bi-check-lg me-2"></i> Save Template
+            </button>
+            <a href="{% url 'returns:template_list' %}" class="btn-cancel">
+                <i class="bi bi-x-lg me-1"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

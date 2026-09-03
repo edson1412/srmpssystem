@@ -1,0 +1,249 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}Export Returns - MPS Management System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Export Returns</h1>
+        <a href="{% url 'returns:dashboard' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Export by Station -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="bi bi-building me-2"></i>Export by Station
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">Download PDF for a specific station's return.</p>
+                    
+                    <form id="stationExportForm" method="get" action="" class="row g-3">
+                        <div class="col-12">
+                            <label for="station_id" class="form-label">Prison Station</label>
+                            <select class="form-select" id="station_id" name="station_id" required>
+                                <option value="">Select Station</option>
+                                {% for station in stations %}
+                                <option value="{{ station.id }}">{{ station.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label for="template_id" class="form-label">Return Type</label>
+                            <select class="form-select" id="template_id" name="template_id" required>
+                                <option value="">Select Return Type</option>
+                                {% for template in templates %}
+                                <option value="{{ template.id }}">{{ template.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label for="station_period" class="form-label">Period</label>
+                            <input type="month" class="form-control" id="station_period" name="period" value="{{ period }}">
+                        </div>
+                        <div class="col-12">
+                            <button type="button" class="btn btn-success w-100" onclick="exportStationPDF()">
+                                <i class="bi bi-file-earmark-pdf me-1"></i> Export Station PDF
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export by Region -->
+        {% if user.is_super_admin or user.is_prison_admin %}
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="bi bi-map me-2"></i>Export by Region
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">Download PDF for all returns in a specific region.</p>
+                    
+                    <form id="regionExportForm" method="get" action="" class="row g-3">
+                        <div class="col-12">
+                            <label for="region" class="form-label">Region</label>
+                            <select class="form-select" id="region" name="region" required>
+                                <option value="">Select Region</option>
+                                {% for code, display in regions %}
+                                <option value="{{ code }}">{{ display }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label for="region_template_id" class="form-label">Return Type</label>
+                            <select class="form-select" id="region_template_id" name="template_id" required>
+                                <option value="">Select Return Type</option>
+                                {% for template in templates %}
+                                <option value="{{ template.id }}">{{ template.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label for="region_period" class="form-label">Period</label>
+                            <input type="month" class="form-control" id="region_period" name="period" value="{{ period }}">
+                        </div>
+                        <div class="col-12">
+                            <button type="button" class="btn btn-success w-100" onclick="exportRegionPDF()">
+                                <i class="bi bi-file-earmark-pdf me-1"></i> Export Region PDF
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Export All Stations -->
+        {% if user.is_super_admin %}
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="bi bi-globe me-2"></i>Export All Stations
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">Download PDF for all stations' returns.</p>
+                    
+                    <form id="allExportForm" method="get" action="" class="row g-3">
+                        <div class="col-12">
+                            <label for="all_template_id" class="form-label">Return Type</label>
+                            <select class="form-select" id="all_template_id" name="template_id" required>
+                                <option value="">Select Return Type</option>
+                                {% for template in templates %}
+                                <option value="{{ template.id }}">{{ template.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label for="all_period" class="form-label">Period</label>
+                            <input type="month" class="form-control" id="all_period" name="period" value="{{ period }}">
+                        </div>
+                        <div class="col-12">
+                            <button type="button" class="btn btn-success w-100" onclick="exportAllPDF()">
+                                <i class="bi bi-file-earmark-pdf me-1"></i> Export All PDF
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Recent Exports -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="bi bi-clock-history me-2"></i>Recent Submissions Available for Export
+            </h6>
+        </div>
+        <div class="card-body">
+            {% if recent_submissions %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Station</th>
+                            <th>Return Type</th>
+                            <th>Period</th>
+                            <th>Submitted By</th>
+                            <th>Submitted At</th>
+                            <th>Records</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for submission in recent_submissions %}
+                        <tr>
+                            <td>{{ submission.prison_station.name }}</td>
+                            <td>{{ submission.template.name }}</td>
+                            <td>{{ submission.period_display }}</td>
+                            <td>{{ submission.submitted_by.get_full_name|default:submission.submitted_by.username }}</td>
+                            <td>{{ submission.submitted_at|date:"d-m-Y H:i" }}</td>
+                            <td>{{ submission.row_count }}</td>
+                            <td>
+                                <span class="badge bg-{% if submission.status == 'approved' %}success{% elif submission.status == 'rejected' %}danger{% elif submission.status == 'pending' %}warning{% else %}info{% endif %}">
+                                    {{ submission.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{% url 'returns:export_submission_pdf' submission.id %}" class="btn btn-sm btn-outline-success" title="Download PDF">
+                                    <i class="bi bi-file-earmark-pdf"></i>
+                                </a>
+                                <a href="{% url 'returns:submission_download' submission.id %}" class="btn btn-sm btn-outline-primary" title="Download CSV">
+                                    <i class="bi bi-file-earmark-spreadsheet"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center text-muted py-4">
+                <i class="bi bi-inbox me-2"></i>
+                <p class="mb-0">No submissions available for export for period {{ period }}.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function exportStationPDF() {
+        const stationId = document.getElementById('station_id').value;
+        const templateId = document.getElementById('template_id').value;
+        const period = document.getElementById('station_period').value;
+        
+        if (!stationId || !templateId) {
+            alert('Please select both station and return type.');
+            return;
+        }
+        
+        const url = `/returns/export/station/${stationId}/${templateId}/?period=${period}`;
+        window.open(url, '_blank');
+    }
+    
+    function exportRegionPDF() {
+        const region = document.getElementById('region').value;
+        const templateId = document.getElementById('region_template_id').value;
+        const period = document.getElementById('region_period').value;
+        
+        if (!region || !templateId) {
+            alert('Please select both region and return type.');
+            return;
+        }
+        
+        const url = `/returns/export/region/${region}/${templateId}/?period=${period}`;
+        window.open(url, '_blank');
+    }
+    
+    function exportAllPDF() {
+        const templateId = document.getElementById('all_template_id').value;
+        const period = document.getElementById('all_period').value;
+        
+        if (!templateId) {
+            alert('Please select a return type.');
+            return;
+        }
+        
+        const url = `/returns/export/all/${templateId}/?period=${period}`;
+        window.open(url, '_blank');
+    }
+</script>
+{% endblock %}

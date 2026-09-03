@@ -1,0 +1,170 @@
+<!-- returns/initialize_tracking.html -->
+{% extends "prison/base.html" %}
+
+{% block page_title %}Initialize Monthly Tracking{% endblock %}
+
+{% block extra_css %}
+<style>
+    .init-card {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 32px 40px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(226, 232, 240, 0.6);
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .init-card .icon {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        background: rgba(102, 126, 234, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+    }
+
+    .init-card .icon i {
+        font-size: 2.5rem;
+        color: #667eea;
+    }
+
+    .init-card h4 {
+        text-align: center;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .init-card p {
+        text-align: center;
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+
+    .info-box {
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin: 16px 0;
+    }
+
+    .info-box .label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #94a3b8;
+        text-transform: uppercase;
+    }
+
+    .info-box .value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .btn-init {
+        padding: 10px 32px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #1a73e8;
+        border: none;
+        transition: all 0.2s ease;
+        width: 100%;
+    }
+
+    .btn-init:hover {
+        background: #1557b0;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="init-card">
+                <div class="icon">
+                    <i class="bi bi-gear"></i>
+                </div>
+                <h4>Initialize Monthly Tracking</h4>
+                <p>
+                    This will create status records for all prison stations and templates for the selected period.
+                    <br>
+                    <span class="text-warning"><i class="bi bi-exclamation-triangle"></i> This action may take a few moments.</span>
+                </p>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="year" class="form-label fw-semibold">Year</label>
+                            <select name="year" id="year" class="form-select">
+                                {% for y in "2020,2021,2022,2023,2024,2025,2026,2027,2028,2029,2030"|split:"," %}
+                                <option value="{{ y }}" {% if y|add:"0" == year %}selected{% endif %}>{{ y }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="month" class="form-label fw-semibold">Month</label>
+                            <select name="month" id="month" class="form-select">
+                                {% for m in "January,February,March,April,May,June,July,August,September,October,November,December"|split:"," %}
+                                <option value="{{ forloop.counter }}" {% if forloop.counter == month %}selected{% endif %}>{{ m }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="info-box mt-3">
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div class="label">Stations</div>
+                                <div class="value">{{ station_count|default:"—" }}</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="label">Templates</div>
+                                <div class="value">{{ template_count|default:"—" }}</div>
+                            </div>
+                        </div>
+                        <div class="row text-center mt-2 pt-2 border-top">
+                            <div class="col-12">
+                                <div class="label">Expected Records</div>
+                                <div class="value">{{ expected_records|default:"—" }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-init">
+                            <i class="bi bi-check-circle me-2"></i> Initialize Tracking
+                        </button>
+                    </div>
+                </form>
+
+                <div class="mt-3 text-center">
+                    <a href="{% url 'returns:station_status' %}" class="text-muted text-decoration-none small">
+                        <i class="bi bi-arrow-left me-1"></i> Back to Station Status
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Add split filter for template
+    document.addEventListener('DOMContentLoaded', function() {
+        // Calculate expected records dynamically if needed
+        const form = document.querySelector('form');
+        form.addEventListener('submit', function() {
+            const btn = this.querySelector('.btn-init');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Initializing...';
+        });
+    });
+</script>
+{% endblock %}

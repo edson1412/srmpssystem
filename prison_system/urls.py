@@ -21,10 +21,9 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('prison.urls')),  # Root path for the inmates (prison) module
-    path('hr/', include('hrms.urls')),  # Officers (HRMS) module
+    path('', include('prison.urls')),  # Root path for prison app
     path('accounts/', include('accounts.urls')),
-    path('audit/', include('audit.urls')),
+    path('returns/', include('returns.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:

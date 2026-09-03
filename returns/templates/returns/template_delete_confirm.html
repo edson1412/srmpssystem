@@ -1,0 +1,59 @@
+<!-- returns/template_delete_confirm.html -->
+{% extends "prison/base.html" %}
+
+{% block page_title %}Delete Template{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-6 col-md-8">
+            <div class="card border-0 shadow-sm" style="border-radius: 16px;">
+                <div class="card-body p-4 text-center">
+                    <div class="mb-4">
+                        <div class="bg-danger bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" 
+                             style="width: 72px; height: 72px;">
+                            <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 2rem;"></i>
+                        </div>
+                    </div>
+                    
+                    <h4 class="fw-bold mb-2">Delete Template</h4>
+                    <p class="text-muted mb-4">
+                        Are you sure you want to delete the template <strong>"{{ template.name }}"</strong>?
+                        <br>
+                        <span class="text-danger">This action cannot be undone.</span>
+                    </p>
+
+                    <div class="bg-light p-3 rounded-3 mb-4 text-start">
+                        <div class="row g-2">
+                            <div class="col-6"><span class="text-muted">Category:</span></div>
+                            <div class="col-6">{{ template.get_category_display }}</div>
+                            <div class="col-6"><span class="text-muted">Status:</span></div>
+                            <div class="col-6">
+                                {% if template.is_active %}
+                                <span class="badge bg-success">Active</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Inactive</span>
+                                {% endif %}
+                            </div>
+                            <div class="col-6"><span class="text-muted">Columns:</span></div>
+                            <div class="col-6">{{ template.column_headers|length }}</div>
+                        </div>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex gap-3 justify-content-center">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash me-2"></i> Confirm Delete
+                            </button>
+                            <a href="{% url 'returns:template_list' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-lg me-1"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

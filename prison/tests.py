@@ -5,25 +5,16 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from prison.models import (
-    ConvictedPrisoner,
-    Prisoner,
-    PrisonerReleaseReview,
-    PrisonStation,
-    Region,
-)
+from prison.models import ConvictedPrisoner, Prisoner, PrisonerReleaseReview, PrisonStation
 
 
 class ReleaseHubTests(TestCase):
     def setUp(self):
-        self.region, _ = Region.objects.get_or_create(
-            code='southern', defaults={'name': 'Southern Region'}
-        )
         self.station = PrisonStation.objects.create(
             name='Main Station',
             code='MAIN',
             location='Blantyre',
-            region=self.region,
+            region='southern',
             capacity=100,
             date_established=timezone.now().date(),
             created_by=None,

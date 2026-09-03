@@ -39,7 +39,7 @@
 
             <div class="sidebar-nav">
                 <!-- Dashboard -->
-                <a href="{% url 'dashboard' %}" class="nav-link {% if request.path == '/' %}active{% endif %}">
+                <a href="{% url 'dashboard' %}" class="nav-link {% if request.path == '/' or request.path == '/ration_dashboard/' %}active{% endif %}">
                     <i class="bi bi-speedometer2"></i> Dashboard
                 </a>
 
@@ -73,12 +73,14 @@
                 {% if request.user.can_access_prison %}
                 <div class="nav-section-title">Inmates Management</div>
                 
+                <!-- Release Hub -->
                 {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_officer_in_charge or request.user.is_station_officer %}
                 <a href="{% url 'release_hub' %}" class="nav-link prison-link {% if 'release_hub' in request.path %}active{% endif %}">
                     <i class="bi bi-box-arrow-right"></i> Release Hub
                 </a>
                 {% endif %}
 
+                <!-- Prisoners -->
                 <div class="nav-item">
                     <a class="nav-link prison-link {% if 'prisoner' in request.path and 'fingerprint' not in request.path %}active{% endif %}" data-bs-toggle="collapse" href="#prisonersMenu" role="button" aria-expanded="{% if 'prisoner' in request.path and 'fingerprint' not in request.path %}true{% else %}false{% endif %}">
                         <i class="bi bi-people"></i> Prisoners
@@ -99,6 +101,7 @@
                     </div>
                 </div>
 
+                <!-- Visitors -->
                 {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_visitor_attendant %}
                 <div class="nav-item">
                     <a class="nav-link prison-link {% if 'visitor' in request.path %}active{% endif %}" data-bs-toggle="collapse" href="#visitorsMenu" role="button" aria-expanded="{% if 'visitor' in request.path %}true{% else %}false{% endif %}">
@@ -118,6 +121,7 @@
                 </div>
                 {% endif %}
 
+                <!-- Medical -->
                 {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_medical_officer %}
                 <div class="nav-item">
                     <a class="nav-link prison-link {% if 'medical' in request.path %}active{% endif %}" data-bs-toggle="collapse" href="#medicalMenu" role="button" aria-expanded="{% if 'medical' in request.path %}true{% else %}false{% endif %}">
@@ -137,6 +141,43 @@
                 </div>
                 {% endif %}
 
+                <!-- Money & Property -->
+                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_station_officer %}
+                <div class="nav-item">
+                    <a class="nav-link prison-link {% if 'items' in request.path %}active{% endif %}" data-bs-toggle="collapse" href="#itemsMenu" role="button" aria-expanded="{% if 'items' in request.path %}true{% else %}false{% endif %}">
+                        <i class="bi bi-wallet2"></i> Money & Property
+                        <span class="nav-arrow"><i class="bi bi-chevron-down"></i></span>
+                    </a>
+                    <div class="submenu collapse {% if 'items' in request.path %}show{% endif %}" id="itemsMenu">
+                        <a href="{% url 'prisoner_item_list' %}" class="nav-link {% if 'items' in request.path and 'add' not in request.path %}active{% endif %}">
+                            <i class="bi bi-list-ul"></i> All Items
+                        </a>
+                        <a href="{% url 'add_prisoner_item' %}" class="nav-link {% if 'items/add' in request.path %}active{% endif %}">
+                            <i class="bi bi-plus-circle"></i> Add Item
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Incidents -->
+                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_station_officer %}
+                <div class="nav-item">
+                    <a class="nav-link prison-link {% if 'incident' in request.path %}active{% endif %}" data-bs-toggle="collapse" href="#incidentsMenu" role="button" aria-expanded="{% if 'incident' in request.path %}true{% else %}false{% endif %}">
+                        <i class="bi bi-exclamation-triangle"></i> Incidents
+                        <span class="nav-arrow"><i class="bi bi-chevron-down"></i></span>
+                    </a>
+                    <div class="submenu collapse {% if 'incident' in request.path %}show{% endif %}" id="incidentsMenu">
+                        <a href="{% url 'incident_report_list' %}" class="nav-link {% if 'incident' in request.path and 'add' not in request.path %}active{% endif %}">
+                            <i class="bi bi-list-ul"></i> All Incidents
+                        </a>
+                        <a href="{% url 'incident_report_add' %}" class="nav-link {% if 'incident/add' in request.path %}active{% endif %}">
+                            <i class="bi bi-plus-circle"></i> Add Incident
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Rations -->
                 {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_station_officer %}
                 <div class="nav-item">
                     <a class="nav-link prison-link {% if 'ration' in request.path %}active{% endif %}" data-bs-toggle="collapse" href="#rationMenu" role="button" aria-expanded="{% if 'ration' in request.path %}true{% else %}false{% endif %}">
@@ -144,15 +185,47 @@
                         <span class="nav-arrow"><i class="bi bi-chevron-down"></i></span>
                     </a>
                     <div class="submenu collapse {% if 'ration' in request.path %}show{% endif %}" id="rationMenu">
-                        <a href="{% url 'ration_item_list' %}" class="nav-link {% if 'ration_item_list' in request.path %}active{% endif %}">
+                        <a href="{% url 'ration_item_list' %}" class="nav-link {% if 'rations' in request.path and 'edit' not in request.path and 'delete' not in request.path %}active{% endif %}">
                             <i class="bi bi-list-ul"></i> Manage Items
                         </a>
-                        <a href="{% url 'record_consumption' %}" class="nav-link {% if 'record_consumption' in request.path %}active{% endif %}">
+                        <a href="{% url 'record_consumption' %}" class="nav-link {% if 'consume' in request.path %}active{% endif %}">
                             <i class="bi bi-arrow-down-circle"></i> Record Consumption
                         </a>
-                        <a href="{% url 'record_procurement' %}" class="nav-link {% if 'record_procurement' in request.path %}active{% endif %}">
+                        <a href="{% url 'record_procurement' %}" class="nav-link {% if 'procure' in request.path %}active{% endif %}">
                             <i class="bi bi-arrow-up-circle"></i> Record Procurement
                         </a>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Returns Module -->
+                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_officer_in_charge or request.user.is_station_officer or request.user.is_warden %}
+                <div class="nav-item">
+                    <a class="nav-link prison-link {% if '/returns/' in request.path %}active{% endif %}" data-bs-toggle="collapse" href="#returnsMenu" role="button" aria-expanded="{% if '/returns/' in request.path %}true{% else %}false{% endif %}">
+                        <i class="bi bi-file-earmark-text"></i> Returns
+                        <span class="nav-arrow"><i class="bi bi-chevron-down"></i></span>
+                    </a>
+                    <div class="submenu collapse {% if '/returns/' in request.path %}show{% endif %}" id="returnsMenu">
+                        <a href="{% url 'returns:dashboard' %}" class="nav-link {% if '/returns/' in request.path and 'dashboard' in request.path %}active{% endif %}">
+                            <i class="bi bi-speedometer2"></i> Dashboard
+                        </a>
+                        <a href="{% url 'returns:template_list' %}" class="nav-link {% if 'templates' in request.path %}active{% endif %}">
+                            <i class="bi bi-file-earmark-arrow-down"></i> Templates
+                        </a>
+                        <a href="{% url 'returns:submission_list' %}" class="nav-link {% if 'submissions' in request.path and 'create' not in request.path %}active{% endif %}">
+                            <i class="bi bi-list-ul"></i> All Submissions
+                        </a>
+                        <a href="{% url 'returns:submission_create' %}" class="nav-link {% if 'submissions/create' in request.path %}active{% endif %}">
+                            <i class="bi bi-upload"></i> Submit Return
+                        </a>
+                        <a href="{% url 'returns:station_status' %}" class="nav-link {% if 'station-status' in request.path %}active{% endif %}">
+                            <i class="bi bi-check-square"></i> Station Status
+                        </a>
+                        {% if request.user.is_super_admin or request.user.is_prison_admin %}
+                        <a href="{% url 'returns:regional_summary' %}" class="nav-link {% if 'regional-summary' in request.path %}active{% endif %}">
+                            <i class="bi bi-map"></i> Regional Summary
+                        </a>
+                        {% endif %}
                     </div>
                 </div>
                 {% endif %}
@@ -186,7 +259,6 @@
                 {% endif %}
 
                 <!-- Reports -->
-                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_station_officer %}
                 <div class="nav-section-title">Reports</div>
                 <a href="{% url 'lockup_summary' %}" class="nav-link {% if 'lockup_summary' in request.path %}active{% endif %}">
                     <i class="bi bi-lock-fill"></i> Lockup Summary
@@ -194,20 +266,16 @@
                 <a href="{% url 'upcoming_releases_report' %}" class="nav-link {% if 'upcoming_releases_report' in request.path %}active{% endif %}">
                     <i class="bi bi-calendar-check"></i> Upcoming Releases
                 </a>
-                <a href="{% url 'returns_hub' %}" class="nav-link {% if 'returns_hub' in request.path %}active{% endif %}">
-                    <i class="bi bi-file-earmark"></i> Returns Hub
-                </a>
                 {% if request.user.is_super_admin or request.user.is_prison_admin %}
                 <a href="{% url 'activity_log_list' %}" class="nav-link {% if 'activity_log_list' in request.path %}active{% endif %}">
                     <i class="bi bi-clock-history"></i> Activity Log
                 </a>
                 {% endif %}
-                {% endif %}
 
                 <!-- Administration -->
                 {% if request.user.is_super_admin %}
                 <div class="nav-section-title">Administration</div>
-                <a href="{% url 'manage_prison_stations' %}" class="nav-link {% if 'manage_prison_stations' in request.path %}active{% endif %}">
+                <a href="{% url 'manage_prison_stations' %}" class="nav-link {% if 'manage_prison_stations' in request.path or 'stations' in request.path %}active{% endif %}">
                     <i class="bi bi-building"></i> Prison Stations
                 </a>
                 <a href="{% url 'user_list' %}" class="nav-link {% if 'users' in request.path %}active{% endif %}">
@@ -275,7 +343,6 @@
                         <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 mt-2" style="min-width: 200px; border-radius: 10px; padding: 6px;">
                             <li><span class="dropdown-item-text text-muted small">{{ request.user.get_full_name|default:request.user.username }}</span></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{% url 'user_profile' %}"><i class="bi bi-person me-2"></i>Profile</a></li>
                             <li><a class="dropdown-item" href="{% url 'change_password' %}"><i class="bi bi-key me-2"></i>Change Password</a></li>
                             <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
                         </ul>
