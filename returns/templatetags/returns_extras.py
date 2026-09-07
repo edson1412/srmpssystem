@@ -138,3 +138,116 @@ def default_if_none(value, default=''):
     if value is None or value == '':
         return default
     return value
+
+
+# ============ NEW FILTERS ============
+
+@register.filter(name='split')
+def split(value, separator=','):
+    """
+    Split a string by the given separator.
+
+    Usage:
+    {% for item in "a,b,c"|split:"," %}
+        {{ item }}
+    {% endfor %}
+
+    Or with default comma separator:
+    {% for item in "a,b,c"|split %}
+        {{ item }}
+    {% endfor %}
+    """
+    if value is None:
+        return []
+    try:
+        if isinstance(value, (list, tuple)):
+            return value
+        return str(value).split(separator)
+    except (AttributeError, TypeError):
+        return []
+
+
+@register.filter(name='join')
+def join(value, separator=', '):
+    """
+    Join a list with the given separator.
+
+    Usage:
+    {{ my_list|join:", " }}
+    """
+    if value is None:
+        return ''
+    try:
+        if isinstance(value, (list, tuple)):
+            return separator.join(str(item) for item in value)
+        return str(value)
+    except (AttributeError, TypeError):
+        return ''
+
+
+@register.filter(name='add')
+def add(value, arg):
+    """
+    Add a value to a number.
+
+    Usage:
+    {{ 5|add:3 }}  # Returns 8
+    """
+    try:
+        return int(value) + int(arg)
+    except (ValueError, TypeError):
+        try:
+            return float(value) + float(arg)
+        except (ValueError, TypeError):
+            return value
+
+
+@register.filter(name='subtract')
+def subtract(value, arg):
+    """
+    Subtract a value from a number.
+
+    Usage:
+    {{ 10|subtract:3 }}  # Returns 7
+    """
+    try:
+        return int(value) - int(arg)
+    except (ValueError, TypeError):
+        try:
+            return float(value) - float(arg)
+        except (ValueError, TypeError):
+            return value
+
+
+@register.filter(name='mul')
+def mul(value, arg):
+    """
+    Multiply a number by a value.
+
+    Usage:
+    {{ 5|mul:3 }}  # Returns 15
+    """
+    try:
+        return int(value) * int(arg)
+    except (ValueError, TypeError):
+        try:
+            return float(value) * float(arg)
+        except (ValueError, TypeError):
+            return value
+
+
+@register.filter(name='div')
+def div(value, arg):
+    """
+    Divide a number by a value.
+
+    Usage:
+    {{ 10|div:2 }}  # Returns 5
+    """
+    try:
+        return int(value) / int(arg)
+    except (ValueError, TypeError, ZeroDivisionError):
+        try:
+            return float(value) / float(arg)
+        except (ValueError, TypeError, ZeroDivisionError):
+            return ''

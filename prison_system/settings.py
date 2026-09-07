@@ -24,9 +24,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-*r+)h4=zf4d%kl)ye5nls)=s3%fia(kvj#-rgw6$**mmia@32f'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['srhqmanagementsystem.pythonanywhere.com', '127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['mpssystem.pythonanywhere.com', '127.0.0.1', 'localhost']
 
 
 # Application definition
@@ -185,3 +185,25 @@ SESSION_COOKIE_AGE = 30 * 60  # 30 minutes in seconds
 
 # Optional: Update the session with each request
 SESSION_SAVE_EVERY_REQUEST = True
+
+CSRF_FAILURE_VIEW = 'prison.views.csrf_failure_view'
+
+# settings.py
+
+# Maximum file size for uploads (in bytes)
+MAX_UPLOAD_SIZE = 10485760  # 10MB
+
+# File upload handlers
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
+FILE_UPLOAD_PERMISSIONS = 0o644
+FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o755
+
+# For larger files, use temporary file storage
+FILE_UPLOAD_TEMP_DIR = '/tmp'
+
+# Media files configuration
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Ensure the media directory exists
+os.makedirs(MEDIA_ROOT, exist_ok=True)

@@ -1,3 +1,4 @@
+# views.py
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -6,9 +7,9 @@ from django.template.loader import get_template
 from django.urls import reverse_lazy
 from django.utils import timezone
 import os
+from django.core.exceptions import ObjectDoesNotExist
 from django.template.loader import render_to_string
 from xhtml2pdf import pisa
-from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -18,12 +19,7 @@ from collections import defaultdict
 from django.core.exceptions import PermissionDenied, ValidationError
 import json
 import logging
-
-from django.views.generic import ListView, CreateView, UpdateView, DetailView, DeleteView, View
-import time
-# Mixins for Class-Based Views
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from accounts.mixins import RoleRequiredMixin
+import re
 
 # Database and Querying
 from django.db.models import Count, Q, Sum, F
@@ -32,6 +28,9 @@ from django.db.models import Count, Q, Sum, F
 from xhtml2pdf import pisa
 import io
 import csv
+
+# Pagination
+from django.core.paginator import Paginator
 
 # Date and Time utilities
 from datetime import datetime, timedelta
@@ -64,11 +63,14 @@ from .models import (
     FingerprintMatch,
     FingerprintAuditLog,
     PrisonerReleaseReview,
+    AuditTrail,
+    PrisonerAuditHistory,
+    ReleaseAuditLog,
+    SentryAlert,
+    PrisonerNumberCounter,
 )
-from django.contrib.auth.views import LoginView
-from django.shortcuts import redirect
-from .models import *
-from .forms import *
+
+# Forms
 from .forms import (
     PrisonerForm,
     ConvictedPrisonerForm,
@@ -81,6 +83,7 @@ from .forms import (
     SearchForm,
     PrisonStationForm,
     VisitorForm,
+    VisitorItemForm,
     MedicalRecordForm,
     IncidentReportForm,
     PrisonerItemForm,
@@ -95,12 +98,42 @@ from .forms import (
     FingerprintDeviceForm,
     FingerprintMatchConfirmForm,
     RiskAssessmentForm,
+    AuditFilterForm,
+    SentryAlertFilterForm,
+    ResolveAlertForm,
 )
-from .biometric_service import BiometricService, FingerprintProcessor, FingerprintDeviceManager
-from accounts.models import CustomUser
-from django.contrib.auth import get_user_model
 
+# Biometric Service
+from .biometric_service import BiometricService, FingerprintProcessor, FingerprintDeviceManager
+
+# Audit Service
+from .audit_service import AuditService
+
+# Custom User Model
+from django.contrib.auth import get_user_model
 User = get_user_model()
+
+# Mixins
+from accounts.mixins import RoleRequiredMixin, ICTAccessMixin
+
+# Utils
+from .utils import (
+    create_medical_checkup_notifications,
+    create_near_release_notifications,
+    create_new_admission_notification,
+    create_release_review_notification,
+    create_release_approved_notification,
+    create_release_rejected_notification,
+    create_return_submission_notification,
+    create_return_approved_notification,
+    create_return_rejected_notification,
+    create_prisoner_transfer_notification,
+    create_incident_report_notification,
+    create_visitor_notification,
+    create_system_alert_notification,
+    generate_all_notifications,
+    log_activity,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -145,7 +178,6 @@ NATIONALITY_TO_COUNTRY = {
     'burundi': 'Burundi',
     'rwandan': 'Rwanda',
     'botswana': 'Botswana',
-    'other': 'Other',
 }
 
 
@@ -397,44 +429,183 @@ def lockup_summary_view(request):
 
 @login_required
 def release_hub(request):
+    """Release Hub - Central hub for prisoner release management"""
     is_reception_user = hasattr(request.user, 'is_reception') and request.user.is_reception()
     is_officer_in_charge_user = hasattr(request.user, 'is_officer_in_charge') and request.user.is_officer_in_charge()
     is_station_officer_user = hasattr(request.user, 'is_station_officer') and request.user.is_station_officer()
+    is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+    is_prison_admin_user = hasattr(request.user, 'is_prison_admin') and request.user.is_prison_admin()
 
-    if not (is_reception_user or is_officer_in_charge_user or is_station_officer_user):
+    if not (is_reception_user or is_officer_in_charge_user or is_station_officer_user or is_super_admin_user or is_prison_admin_user):
         raise PermissionDenied("You do not have permission to access the release hub.")
 
     today = timezone.now().date()
+    release_window_end = today + timedelta(days=5)
+
+    # Get release candidates (active prisoners due for release in next 5 days)
     release_candidates = _get_release_candidates(today)
 
-    pending_reviews = []
-    if is_officer_in_charge_user:
-        pending_reviews = (
-            PrisonerReleaseReview.objects.filter(
-                station=request.user.prison_station,
-                review_role='officer_in_charge',
-                status='pending',
-            )
-            .select_related('prisoner', 'requested_by', 'station')
-            .order_by('release_date', 'requested_at')
-        )
-    elif is_station_officer_user:
-        pending_reviews = (
-            PrisonerReleaseReview.objects.filter(
-                station=request.user.prison_station,
-                review_role='station_officer',
-                status='pending',
-            )
-            .select_related('prisoner', 'requested_by', 'station')
-            .order_by('release_date', 'requested_at')
-        )
+    # Filter by station if not super admin
+    if not is_super_admin_user and hasattr(request.user, 'prison_station') and request.user.prison_station:
+        release_candidates = release_candidates.filter(prison_station=request.user.prison_station)
 
-    context = {
-        'release_candidates': release_candidates,
-        'pending_reviews': pending_reviews,
-        'today': today,
-    }
-    return render(request, 'prison/release_hub.html', context)
+    # ===== RECEPTION OFFICER VIEW =====
+    if is_reception_user:
+        pending_oc_confirmation = release_candidates.filter(
+            Q(release_reviews__isnull=True) |
+            Q(release_reviews__status='pending')
+        ).distinct()
+
+        approved_for_release = PrisonerReleaseReview.objects.filter(
+            status='approved',
+            release_date__gte=today,
+            release_date__lte=release_window_end
+        ).select_related('prisoner', 'reviewed_by', 'station')
+
+        rejected_by_oc = PrisonerReleaseReview.objects.filter(
+            status='rejected'
+        ).select_related('prisoner', 'reviewed_by', 'station')
+
+        if hasattr(request.user, 'prison_station') and request.user.prison_station:
+            pending_oc_confirmation = pending_oc_confirmation.filter(prison_station=request.user.prison_station)
+            approved_for_release = approved_for_release.filter(station=request.user.prison_station)
+            rejected_by_oc = rejected_by_oc.filter(station=request.user.prison_station)
+
+        stats = {
+            'total_candidates': release_candidates.count(),
+            'pending_oc_confirmation': pending_oc_confirmation.count(),
+            'approved_for_release': approved_for_release.count(),
+            'rejected_by_oc': rejected_by_oc.count(),
+            'released_this_month': Prisoner.objects.filter(
+                is_active=False,
+                date_released__year=today.year,
+                date_released__month=today.month
+            ).count(),
+        }
+
+        context = {
+            'release_candidates': release_candidates,
+            'pending_oc_confirmation': pending_oc_confirmation,
+            'approved_for_release': approved_for_release,
+            'rejected_by_oc': rejected_by_oc,
+            'today': today,
+            'stats': stats,
+            'is_reception': True,
+            'is_officer_in_charge': False,
+            'is_station_officer': False,
+            'is_super_admin': False,
+            'is_prison_admin': False,
+            'user_role': 'reception',
+        }
+        return render(request, 'prison/release_hub.html', context)
+
+    # ===== OFFICER IN CHARGE VIEW =====
+    if is_officer_in_charge_user or is_station_officer_user:
+        pending_confirmation = PrisonerReleaseReview.objects.filter(
+            status='pending'
+        ).select_related('prisoner', 'requested_by', 'station')
+
+        if is_officer_in_charge_user:
+            pending_confirmation = pending_confirmation.filter(review_role='officer_in_charge')
+        elif is_station_officer_user:
+            pending_confirmation = pending_confirmation.filter(review_role='station_officer')
+
+        if hasattr(request.user, 'prison_station') and request.user.prison_station:
+            pending_confirmation = pending_confirmation.filter(station=request.user.prison_station)
+
+        approved_by_oc = PrisonerReleaseReview.objects.filter(
+            status='approved'
+        ).select_related('prisoner', 'reviewed_by', 'station')
+
+        if is_officer_in_charge_user:
+            approved_by_oc = approved_by_oc.filter(review_role='officer_in_charge')
+        elif is_station_officer_user:
+            approved_by_oc = approved_by_oc.filter(review_role='station_officer')
+
+        if hasattr(request.user, 'prison_station') and request.user.prison_station:
+            approved_by_oc = approved_by_oc.filter(station=request.user.prison_station)
+
+        rejected_by_oc = PrisonerReleaseReview.objects.filter(
+            status='rejected'
+        ).select_related('prisoner', 'reviewed_by', 'station')
+
+        if is_officer_in_charge_user:
+            rejected_by_oc = rejected_by_oc.filter(review_role='officer_in_charge')
+        elif is_station_officer_user:
+            rejected_by_oc = rejected_by_oc.filter(review_role='station_officer')
+
+        if hasattr(request.user, 'prison_station') and request.user.prison_station:
+            rejected_by_oc = rejected_by_oc.filter(station=request.user.prison_station)
+
+        stats = {
+            'total_candidates': release_candidates.count(),
+            'pending_confirmation': pending_confirmation.count(),
+            'approved_by_oc': approved_by_oc.count(),
+            'rejected_by_oc': rejected_by_oc.count(),
+            'released_this_month': Prisoner.objects.filter(
+                is_active=False,
+                date_released__year=today.year,
+                date_released__month=today.month
+            ).count(),
+        }
+
+        context = {
+            'release_candidates': release_candidates,
+            'pending_confirmation': pending_confirmation,
+            'approved_by_oc': approved_by_oc,
+            'rejected_by_oc': rejected_by_oc,
+            'today': today,
+            'stats': stats,
+            'is_reception': False,
+            'is_officer_in_charge': is_officer_in_charge_user,
+            'is_station_officer': is_station_officer_user,
+            'is_super_admin': False,
+            'is_prison_admin': False,
+            'user_role': 'officer_in_charge' if is_officer_in_charge_user else 'station_officer',
+        }
+        return render(request, 'prison/release_hub.html', context)
+
+    # ===== ADMIN VIEW =====
+    if is_super_admin_user or is_prison_admin_user:
+        pending_confirmation = PrisonerReleaseReview.objects.filter(
+            status='pending'
+        ).select_related('prisoner', 'requested_by', 'station').order_by('release_date', 'requested_at')
+
+        approved_by_oc = PrisonerReleaseReview.objects.filter(
+            status='approved'
+        ).select_related('prisoner', 'reviewed_by', 'station').order_by('-reviewed_at')
+
+        rejected_by_oc = PrisonerReleaseReview.objects.filter(
+            status='rejected'
+        ).select_related('prisoner', 'reviewed_by', 'station').order_by('-reviewed_at')
+
+        stats = {
+            'total_candidates': release_candidates.count(),
+            'pending_confirmation': pending_confirmation.count(),
+            'approved_by_oc': approved_by_oc.count(),
+            'rejected_by_oc': rejected_by_oc.count(),
+            'released_this_month': Prisoner.objects.filter(
+                is_active=False,
+                date_released__year=today.year,
+                date_released__month=today.month
+            ).count(),
+        }
+
+        context = {
+            'release_candidates': release_candidates,
+            'pending_confirmation': pending_confirmation,
+            'approved_by_oc': approved_by_oc,
+            'rejected_by_oc': rejected_by_oc,
+            'today': today,
+            'stats': stats,
+            'is_reception': False,
+            'is_officer_in_charge': False,
+            'is_station_officer': False,
+            'is_super_admin': is_super_admin_user,
+            'is_prison_admin': is_prison_admin_user,
+            'user_role': 'admin',
+        }
+        return render(request, 'prison/release_hub.html', context)
 
 
 @login_required
@@ -466,6 +637,21 @@ def forward_release_for_review(request, prisoner_id):
         review.notes = ''
         review.save(update_fields=['requested_by', 'release_date', 'status', 'notes'])
 
+    # Create notification for the reviewer
+    create_release_review_notification(review)
+
+    # Log audit
+    AuditService.log_action(
+        user=request.user,
+        action='FORWARD',
+        model_name='PrisonerReleaseReview',
+        object_id=review.id,
+        object_repr=f"{prisoner.prisoner_number} - {prisoner.full_name}",
+        request=request,
+        severity='warning',
+        description=f"Forwarded prisoner {prisoner.prisoner_number} for {review.get_review_role_display()} review"
+    )
+
     messages.success(request, f"{prisoner.full_name} was forwarded for {review.get_review_role_display()} review.")
     return redirect('release_hub')
 
@@ -475,7 +661,7 @@ def forward_release_for_review(request, prisoner_id):
 def approve_release_review(request, review_id):
     review = get_object_or_404(PrisonerReleaseReview, pk=review_id)
 
-    if review.station != request.user.prison_station:
+    if review.station != request.user.prison_station and not request.user.is_super_admin():
         raise PermissionDenied("You can only review prisoners from your station.")
 
     if review.review_role == 'officer_in_charge' and not (
@@ -491,7 +677,26 @@ def approve_release_review(request, review_id):
     review.reviewed_at = timezone.now()
     review.save(update_fields=['status', 'reviewed_by', 'reviewed_at'])
 
+    # Create notification for approval
+    create_release_approved_notification(review)
+
+    # Log release audit
     prisoner = review.prisoner
+    original_release_date = prisoner.convicted_details.date_of_release_on_remission if prisoner.convicted_details else None
+
+    AuditService.log_release_action(
+        prisoner=prisoner,
+        action='APPROVE',
+        performed_by=request.user,
+        request=request,
+        original_release_date=original_release_date,
+        modified_release_date=review.release_date,
+        review_role=review.review_role,
+        approval_status='approved',
+        change_reason=review.notes or ''
+    )
+
+    # Release the prisoner
     prisoner.is_active = False
     prisoner.date_released = review.release_date or timezone.now().date()
     prisoner.save(update_fields=['is_active', 'date_released'])
@@ -505,7 +710,7 @@ def approve_release_review(request, review_id):
 def reject_release_review(request, review_id):
     review = get_object_or_404(PrisonerReleaseReview, pk=review_id)
 
-    if review.station != request.user.prison_station:
+    if review.station != request.user.prison_station and not request.user.is_super_admin():
         raise PermissionDenied("You can only review prisoners from your station.")
 
     if review.review_role == 'officer_in_charge' and not (
@@ -519,47 +724,287 @@ def reject_release_review(request, review_id):
     review.status = 'rejected'
     review.reviewed_by = request.user
     review.reviewed_at = timezone.now()
-    review.save(update_fields=['status', 'reviewed_by', 'reviewed_at'])
+    if request.POST.get('reason'):
+        review.notes = request.POST.get('reason')
+    review.save(update_fields=['status', 'reviewed_by', 'reviewed_at', 'notes'])
+
+    # Create notification for rejection
+    create_release_rejected_notification(review)
+
+    # Log release audit
+    AuditService.log_release_action(
+        prisoner=review.prisoner,
+        action='REJECT',
+        performed_by=request.user,
+        request=request,
+        review_role=review.review_role,
+        approval_status='rejected',
+        change_reason=review.notes or ''
+    )
 
     messages.info(request, f"{review.prisoner.full_name} was rejected for release.")
     return redirect('release_hub')
 
 
+# ============ RELEASE HUB API ENDPOINTS ============
+
+@login_required
+@csrf_exempt
+def release_forward_api(request):
+    """API endpoint to forward prisoner for release review"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST method required'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        prisoner_id = data.get('prisoner_id')
+        review_role = data.get('review_role', 'officer_in_charge')
+
+        if not prisoner_id:
+            return JsonResponse({'success': False, 'error': 'Prisoner ID required'}, status=400)
+
+        if review_role not in dict(PrisonerReleaseReview.REVIEW_ROLE_CHOICES):
+            return JsonResponse({'success': False, 'error': 'Invalid review role'}, status=400)
+
+        # Only reception can forward
+        if not (hasattr(request.user, 'is_reception') and request.user.is_reception()):
+            return JsonResponse({'success': False, 'error': 'Only reception officers can forward prisoners'}, status=403)
+
+        prisoner = get_object_or_404(Prisoner, pk=prisoner_id, is_active=True)
+
+        # Check station access
+        if not request.user.is_super_admin():
+            if hasattr(request.user, 'prison_station') and request.user.prison_station:
+                if prisoner.prison_station != request.user.prison_station:
+                    return JsonResponse({'success': False, 'error': 'Cannot forward prisoner from another station'}, status=403)
+
+        release_date = _get_prisoner_release_date(prisoner) or timezone.now().date()
+
+        review, created = PrisonerReleaseReview.objects.get_or_create(
+            prisoner=prisoner,
+            review_role=review_role,
+            station=prisoner.prison_station,
+            defaults={
+                'requested_by': request.user,
+                'release_date': release_date,
+                'status': 'pending',
+            },
+        )
+
+        if not created:
+            review.requested_by = request.user
+            review.release_date = release_date
+            review.status = 'pending'
+            review.notes = ''
+            review.save(update_fields=['requested_by', 'release_date', 'status', 'notes'])
+
+        # Create notification for the reviewer
+        create_release_review_notification(review)
+
+        # Log audit
+        AuditService.log_action(
+            user=request.user,
+            action='FORWARD',
+            model_name='PrisonerReleaseReview',
+            object_id=review.id,
+            object_repr=f"{prisoner.prisoner_number} - {prisoner.full_name}",
+            request=request,
+            severity='warning',
+            description=f"Forwarded prisoner {prisoner.prisoner_number} for {review.get_review_role_display()} review"
+        )
+
+        return JsonResponse({
+            'success': True,
+            'message': f'{prisoner.full_name} forwarded for {review.get_review_role_display()} review',
+            'review_id': review.id
+        })
+
+    except Exception as e:
+        logger.error(f"Forward API error: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@csrf_exempt
+def release_approve_api(request):
+    """API endpoint to approve a release review"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST method required'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        review_id = data.get('review_id')
+
+        if not review_id:
+            return JsonResponse({'success': False, 'error': 'Review ID required'}, status=400)
+
+        review = get_object_or_404(PrisonerReleaseReview, pk=review_id)
+
+        # Check permissions
+        if review.review_role == 'officer_in_charge':
+            if not (hasattr(request.user, 'is_officer_in_charge') and request.user.is_officer_in_charge()):
+                return JsonResponse({'success': False, 'error': 'Only officer in charge can approve this'}, status=403)
+        elif review.review_role == 'station_officer':
+            if not (hasattr(request.user, 'is_station_officer') and request.user.is_station_officer()):
+                return JsonResponse({'success': False, 'error': 'Only station officer can approve this'}, status=403)
+
+        # Check station access
+        if not request.user.is_super_admin():
+            if hasattr(request.user, 'prison_station') and request.user.prison_station:
+                if review.station != request.user.prison_station:
+                    return JsonResponse({'success': False, 'error': 'Cannot approve review from another station'}, status=403)
+
+        review.status = 'approved'
+        review.reviewed_by = request.user
+        review.reviewed_at = timezone.now()
+        review.save(update_fields=['status', 'reviewed_by', 'reviewed_at'])
+
+        # Create notification for approval
+        create_release_approved_notification(review)
+
+        # Log release audit
+        prisoner = review.prisoner
+        original_release_date = prisoner.convicted_details.date_of_release_on_remission if prisoner.convicted_details else None
+
+        AuditService.log_release_action(
+            prisoner=prisoner,
+            action='APPROVE',
+            performed_by=request.user,
+            request=request,
+            original_release_date=original_release_date,
+            modified_release_date=review.release_date,
+            review_role=review.review_role,
+            approval_status='approved',
+            change_reason=review.notes or ''
+        )
+
+        # Release the prisoner
+        prisoner.is_active = False
+        prisoner.date_released = review.release_date or timezone.now().date()
+        prisoner.save(update_fields=['is_active', 'date_released'])
+
+        return JsonResponse({
+            'success': True,
+            'message': f'{prisoner.full_name} approved for release',
+            'release_date': str(review.release_date)
+        })
+
+    except Exception as e:
+        logger.error(f"Approve API error: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+@csrf_exempt
+def release_reject_api(request):
+    """API endpoint to reject a release review"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST method required'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        review_id = data.get('review_id')
+        reason = data.get('reason', '')
+
+        if not review_id:
+            return JsonResponse({'success': False, 'error': 'Review ID required'}, status=400)
+
+        review = get_object_or_404(PrisonerReleaseReview, pk=review_id)
+
+        # Check permissions
+        if review.review_role == 'officer_in_charge':
+            if not (hasattr(request.user, 'is_officer_in_charge') and request.user.is_officer_in_charge()):
+                return JsonResponse({'success': False, 'error': 'Only officer in charge can reject this'}, status=403)
+        elif review.review_role == 'station_officer':
+            if not (hasattr(request.user, 'is_station_officer') and request.user.is_station_officer()):
+                return JsonResponse({'success': False, 'error': 'Only station officer can reject this'}, status=403)
+
+        # Check station access
+        if not request.user.is_super_admin():
+            if hasattr(request.user, 'prison_station') and request.user.prison_station:
+                if review.station != request.user.prison_station:
+                    return JsonResponse({'success': False, 'error': 'Cannot reject review from another station'}, status=403)
+
+        review.status = 'rejected'
+        review.reviewed_by = request.user
+        review.reviewed_at = timezone.now()
+        if reason:
+            review.notes = reason
+        review.save(update_fields=['status', 'reviewed_by', 'reviewed_at', 'notes'])
+
+        # Create notification for rejection
+        create_release_rejected_notification(review)
+
+        # Log release audit
+        AuditService.log_release_action(
+            prisoner=review.prisoner,
+            action='REJECT',
+            performed_by=request.user,
+            request=request,
+            review_role=review.review_role,
+            approval_status='rejected',
+            change_reason=reason
+        )
+
+        return JsonResponse({
+            'success': True,
+            'message': f'{review.prisoner.full_name} release rejected'
+        })
+
+    except Exception as e:
+        logger.error(f"Reject API error: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
 @login_required
 def dashboard(request):
+    """Enhanced Dashboard for all roles including O/C and S/O"""
     is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
     is_prison_admin_user = hasattr(request.user, 'is_prison_admin') and request.user.is_prison_admin()
     is_reception_user = hasattr(request.user, 'is_reception') and request.user.is_reception()
     is_warden_user = hasattr(request.user, 'is_warden') and request.user.is_warden()
     is_visitor_attendant_user = hasattr(request.user, 'is_visitor_attendant') and request.user.is_visitor_attendant()
     is_medical_officer_user = hasattr(request.user, 'is_medical_officer') and request.user.is_medical_officer()
+    is_officer_in_charge_user = hasattr(request.user, 'is_officer_in_charge') and request.user.is_officer_in_charge()
+    is_station_officer_user = hasattr(request.user, 'is_station_officer') and request.user.is_station_officer()
+    is_ict_personnel_user = hasattr(request.user, 'is_ict_personnel') and request.user.is_ict_personnel()
 
-    show_prisoner_stats = is_super_admin_user or is_prison_admin_user or \
-                          is_reception_user or is_warden_user or is_visitor_attendant_user
+    # All roles that should see prisoner stats
+    show_prisoner_stats = (
+        is_super_admin_user or is_prison_admin_user or
+        is_reception_user or is_warden_user or is_visitor_attendant_user or
+        is_officer_in_charge_user or is_station_officer_user or is_ict_personnel_user
+    )
 
+    # Get prisoners based on user permissions
     prisoners = Prisoner.objects.filter(is_active=True) if show_prisoner_stats else Prisoner.objects.none()
 
+    # Filter by station for non-super users
     if not is_super_admin_user and hasattr(request.user, 'prison_station') and request.user.prison_station:
         prisoners = prisoners.filter(prison_station=request.user.prison_station)
     elif not is_super_admin_user and (not hasattr(request.user, 'prison_station') or not request.user.prison_station):
         prisoners = Prisoner.objects.none()
 
+    # ===== CORE STATISTICS =====
     total_prisoners = prisoners.count() if show_prisoner_stats else 0
     convicted_count = prisoners.filter(prisoner_class='convicted').count() if show_prisoner_stats else 0
     remand_count = prisoners.filter(prisoner_class='remand').count() if show_prisoner_stats else 0
 
+    # Children count
     children_count = 0
     if show_prisoner_stats:
         female_prisoners = prisoners.filter(sex='female')
         children_count = sum([p.physical.children_count for p in female_prisoners if
                               hasattr(p, 'physical') and p.physical and p.physical.children_count is not None]) if female_prisoners.exists() else 0
 
+    # Recidivism rate
     recidivism_rate = 0
     if show_prisoner_stats and total_prisoners > 0:
         risk_assessments = RiskAssessment.objects.filter(prisoner__in=prisoners)
         recidivism_count = risk_assessments.filter(previous_conviction=True).count()
-        recidivism_rate = (recidivism_count / total_prisoners * 100)
+        recidivism_rate = (recidivism_count / total_prisoners * 100) if total_prisoners > 0 else 0
 
+    # ===== POPULATION TREND DATA =====
     months = []
     prisoner_counts = []
     if show_prisoner_stats:
@@ -576,6 +1021,7 @@ def dashboard(request):
             months.append(month_name)
             prisoner_counts.append(count)
 
+    # ===== UPCOMING RELEASES =====
     upcoming_releases = []
     if show_prisoner_stats:
         today = datetime.now().date()
@@ -584,13 +1030,15 @@ def dashboard(request):
             prisoner__in=prisoners,
             date_of_release_on_remission__gte=today,
             date_of_release_on_remission__lte=next_month
-        )
+        ).select_related('prisoner', 'prisoner__prison_station')
         upcoming_releases = convicted_prisoners_query.order_by('date_of_release_on_remission')[:10]
 
+    # ===== RECENT ACTIVITY =====
     recent_activities = None
-    if is_super_admin_user:
+    if is_super_admin_user or is_ict_personnel_user:
         recent_activities = ActivityLog.objects.all().order_by('-timestamp')[:10]
 
+    # ===== LOCKUP SUMMARY =====
     lockup_summary = {}
     if show_prisoner_stats:
         lockup_summary = {
@@ -618,8 +1066,8 @@ def dashboard(request):
             'grand_total': total_prisoners,
         }
 
+    # ===== MEDICAL STATISTICS =====
     show_medical_stats = is_medical_officer_user or is_super_admin_user or is_prison_admin_user
-
     medical_stats = {}
     if show_medical_stats:
         medical_records_query = MedicalRecord.objects.all()
@@ -629,8 +1077,7 @@ def dashboard(request):
             medical_records_query = MedicalRecord.objects.none()
 
         medical_stats['categories'] = dict(MedicalRecord.MEDICAL_CATEGORIES)
-        medical_stats['count_by_category'] = medical_records_query.values('category').annotate(count=Count('id')).order_by(
-            'category')
+        medical_stats['count_by_category'] = medical_records_query.values('category').annotate(count=Count('id')).order_by('category')
         medical_stats['recent_records'] = medical_records_query.order_by('-record_date')[:5]
 
         prisoners_with_medical_conditions_query = prisoners.filter(medical_records__isnull=False).distinct()
@@ -643,7 +1090,8 @@ def dashboard(request):
         medical_stats['common_diagnosis'] = common_diagnosis
         medical_stats['total_records_count'] = medical_records_query.count()
 
-    show_ration_stats = is_super_admin_user or is_prison_admin_user or is_warden_user or is_reception_user
+    # ===== RATION MANAGEMENT =====
+    show_ration_stats = is_super_admin_user or is_prison_admin_user or is_warden_user or is_reception_user or is_officer_in_charge_user or is_station_officer_user
     ration_alerts = []
     daily_ration_needs = {}
     total_people_requiring_ration = 0
@@ -700,6 +1148,31 @@ def dashboard(request):
             'message': "You are not assigned to a prison station. Ration management details are not available."
         })
 
+    # ===== RELEASE HUB STATS =====
+    release_stats = {}
+    if show_prisoner_stats:
+        today = timezone.now().date()
+        release_candidates = _get_release_candidates(today)
+        if not is_super_admin_user and hasattr(request.user, 'prison_station') and request.user.prison_station:
+            release_candidates = release_candidates.filter(prison_station=request.user.prison_station)
+
+        pending_reviews_count = PrisonerReleaseReview.objects.filter(status='pending').count()
+        if not is_super_admin_user and hasattr(request.user, 'prison_station') and request.user.prison_station:
+            pending_reviews_count = PrisonerReleaseReview.objects.filter(
+                status='pending',
+                station=request.user.prison_station
+            ).count()
+
+        release_stats = {
+            'release_candidates': release_candidates.count(),
+            'pending_reviews': pending_reviews_count,
+            'released_this_month': Prisoner.objects.filter(
+                is_active=False,
+                date_released__year=today.year,
+                date_released__month=today.month
+            ).count(),
+        }
+
     context = {
         'show_prisoner_stats': show_prisoner_stats,
         'total_prisoners': total_prisoners,
@@ -718,10 +1191,70 @@ def dashboard(request):
         'ration_alerts': ration_alerts,
         'daily_ration_needs': daily_ration_needs,
         'total_people_requiring_ration': total_people_requiring_ration,
+        'release_stats': release_stats,
         'today_date': timezone.localdate(),
+        'is_officer_in_charge': is_officer_in_charge_user,
+        'is_station_officer': is_station_officer_user,
+        'is_super_admin': is_super_admin_user,
+        'is_prison_admin': is_prison_admin_user,
+        'is_reception': is_reception_user,
+        'is_ict_personnel': is_ict_personnel_user,
     }
 
     return render(request, 'prison/dashboard.html', context)
+
+
+# ============ PRISONER RELEASE DETAILS API ============
+
+@login_required
+def prisoner_release_details_api(request, prisoner_id):
+    """API endpoint to get prisoner release details"""
+    prisoner = get_object_or_404(
+        Prisoner.objects.select_related('prison_station', 'convicted_details', 'physical', 'particulars'),
+        id=prisoner_id
+    )
+
+    # Check permissions
+    if not request.user.is_super_admin():
+        if hasattr(request.user, 'prison_station') and request.user.prison_station:
+            if prisoner.prison_station != request.user.prison_station:
+                raise PermissionDenied("You do not have permission to view this prisoner.")
+        else:
+            raise PermissionDenied("You do not have permission to view this prisoner.")
+
+    # Prepare documents HTML
+    documents_html = ''
+    if prisoner.document:
+        documents_html = f'''
+        <div class="document-preview">
+            <div class="file-name">
+                <i class="bi bi-file-earmark-pdf"></i>
+                <a href="{prisoner.document.url}" target="_blank">View Document</a>
+            </div>
+            <div class="file-size">{prisoner.document.name}</div>
+        </div>
+        '''
+
+    data = {
+        'id': prisoner.id,
+        'prisoner_number': prisoner.prisoner_number,
+        'full_name': prisoner.full_name,
+        'sex': prisoner.get_sex_display(),
+        'age': prisoner.age,
+        'prisoner_class': prisoner.get_prisoner_class_display(),
+        'prison_station': prisoner.prison_station.name,
+        'date_admitted': prisoner.date_admitted.strftime('%d %b %Y') if prisoner.date_admitted else None,
+        'block_number': prisoner.block_number,
+        'cell_number': prisoner.cell_number,
+        'image_url': prisoner.image.url if prisoner.image else None,
+        'offense': prisoner.convicted_details.offense if prisoner.convicted_details else None,
+        'court': prisoner.convicted_details.court if prisoner.convicted_details else None,
+        'sentence': prisoner.convicted_details.sentence if prisoner.convicted_details else None,
+        'release_date': prisoner.convicted_details.date_of_release.strftime('%d %b %Y') if prisoner.convicted_details and prisoner.convicted_details.date_of_release else None,
+        'release_on_remission': prisoner.convicted_details.date_of_release_on_remission.strftime('%d %b %Y') if prisoner.convicted_details and prisoner.convicted_details.date_of_release_on_remission else None,
+        'documents': documents_html,
+    }
+    return JsonResponse(data)
 
 
 # ============ PRISONER MANAGEMENT VIEWS ============
@@ -733,9 +1266,13 @@ def prisoner_list(request):
     is_reception_user = hasattr(request.user, 'is_reception') and request.user.is_reception()
     is_visitor_attendant_user = hasattr(request.user, 'is_visitor_attendant') and request.user.is_visitor_attendant()
     is_warden_user = hasattr(request.user, 'is_warden') and request.user.is_warden()
+    is_officer_in_charge_user = hasattr(request.user, 'is_officer_in_charge') and request.user.is_officer_in_charge()
+    is_station_officer_user = hasattr(request.user, 'is_station_officer') and request.user.is_station_officer()
+    is_ict_personnel_user = hasattr(request.user, 'is_ict_personnel') and request.user.is_ict_personnel()
 
     if not (is_super_admin_user or is_prison_admin_user or
-            is_reception_user or is_visitor_attendant_user or is_warden_user):
+            is_reception_user or is_visitor_attendant_user or is_warden_user or
+            is_officer_in_charge_user or is_station_officer_user or is_ict_personnel_user):
         raise PermissionDenied("You do not have permission to view the prisoner list.")
 
     form = SearchForm(request.GET or None, user=request.user)
@@ -780,6 +1317,7 @@ def prisoner_list(request):
 
 @login_required
 def add_prisoner(request):
+    """Add a new prisoner with auto-generated number"""
     is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
     is_prison_admin_user = hasattr(request.user, 'is_prison_admin') and request.user.is_prison_admin()
     is_reception_user = hasattr(request.user, 'is_reception') and request.user.is_reception()
@@ -794,25 +1332,54 @@ def add_prisoner(request):
             prisoner = prisoner_form.save(commit=False)
             prisoner.created_by = request.user
 
-            if not prisoner.prison_station and hasattr(request.user, 'prison_station') and request.user.prison_station:
-                prisoner.prison_station = request.user.prison_station
-            elif not prisoner.prison_station and is_super_admin_user:
-                messages.error(request, "Superuser must select a prison station for the new prisoner.")
-                context = {'prisoner_form': prisoner_form}
-                return render(request, 'prison/add_prisoner.html', context)
+            # Auto-set prison station for non-superusers
+            station_name = ""
+            if not is_super_admin_user:
+                if hasattr(request.user, 'prison_station') and request.user.prison_station:
+                    prisoner.prison_station = request.user.prison_station
+                    station_name = prisoner.prison_station.name
+                else:
+                    messages.error(request, "You are not assigned to a prison station. Cannot add prisoners.")
+                    return redirect('prisoner_list')
+            else:
+                # Superuser must select a station
+                if not prisoner.prison_station:
+                    messages.error(request, "Superuser must select a prison station for the new prisoner.")
+                    context = {'prisoner_form': prisoner_form}
+                    return render(request, 'prison/add_prisoner.html', context)
+                station_name = prisoner.prison_station.name
 
+            # The prisoner number will be auto-generated in the save() method
             prisoner.save()
 
+            # Log activity
             ActivityLog.objects.create(
                 user=request.user,
                 action='create',
                 model='Prisoner',
                 object_id=prisoner.id,
-                details=f'Added prisoner {prisoner.prisoner_number} to station {prisoner.prison_station.name if prisoner.prison_station else "N/A"}'
+                details=f'Added prisoner {prisoner.prisoner_number} to station {station_name}'
             )
 
-            from .utils import create_new_admission_notification
+            # Audit trail
+            AuditService.log_action(
+                user=request.user,
+                action='CREATE',
+                model_name='Prisoner',
+                object_id=prisoner.id,
+                object_repr=f"{prisoner.prisoner_number} - {prisoner.full_name}",
+                request=request,
+                severity='info',
+                description=f"Created prisoner {prisoner.prisoner_number} (Auto-generated)"
+            )
+
+            # Create notification for new admission
             create_new_admission_notification(prisoner)
+
+            messages.success(
+                request,
+                f'Prisoner {prisoner.prisoner_number} created successfully!'
+            )
 
             if prisoner.prisoner_class == 'convicted':
                 return redirect('add_convicted_details', prisoner_id=prisoner.id)
@@ -827,8 +1394,14 @@ def add_prisoner(request):
 
     prisoner_form = PrisonerForm(user=request.user)
 
+    # Get the station code for preview
+    station_code = None
+    if hasattr(request.user, 'prison_station') and request.user.prison_station:
+        station_code = request.user.prison_station.code
+
     context = {
         'prisoner_form': prisoner_form,
+        'station_code': station_code,
     }
     return render(request, 'prison/add_prisoner.html', context)
 
@@ -887,6 +1460,18 @@ def add_convicted_details(request, prisoner_id):
                 model='ConvictedPrisoner',
                 object_id=prisoner.id,
                 details=f'Added full details for convicted prisoner {prisoner.prisoner_number}'
+            )
+
+            # Audit trail
+            AuditService.log_action(
+                user=request.user,
+                action='CREATE',
+                model_name='ConvictedPrisoner',
+                object_id=prisoner.id,
+                object_repr=f"{prisoner.prisoner_number} - {prisoner.full_name}",
+                request=request,
+                severity='info',
+                description=f"Added convicted details for prisoner {prisoner.prisoner_number}"
             )
 
             messages.success(request, 'Convicted prisoner details added successfully.')
@@ -960,6 +1545,18 @@ def add_remand_details(request, prisoner_id):
                 details=f'Added details for remand prisoner {prisoner.prisoner_number}'
             )
 
+            # Audit trail
+            AuditService.log_action(
+                user=request.user,
+                action='CREATE',
+                model_name='RemandPrisoner',
+                object_id=prisoner.id,
+                object_repr=f"{prisoner.prisoner_number} - {prisoner.full_name}",
+                request=request,
+                severity='info',
+                description=f"Added remand details for prisoner {prisoner.prisoner_number}"
+            )
+
             messages.success(request, 'Remand prisoner details added successfully.')
             return redirect('prisoner_detail', prisoner_id=prisoner.id)
         else:
@@ -988,9 +1585,13 @@ def prisoner_detail(request, prisoner_id):
     is_reception_user = hasattr(request.user, 'is_reception') and request.user.is_reception()
     is_warden_user = hasattr(request.user, 'is_warden') and request.user.is_warden()
     is_medical_officer_user = hasattr(request.user, 'is_medical_officer') and request.user.is_medical_officer()
+    is_officer_in_charge_user = hasattr(request.user, 'is_officer_in_charge') and request.user.is_officer_in_charge()
+    is_station_officer_user = hasattr(request.user, 'is_station_officer') and request.user.is_station_officer()
+    is_ict_personnel_user = hasattr(request.user, 'is_ict_personnel') and request.user.is_ict_personnel()
 
     if not (is_super_admin_user or is_prison_admin_user or
-            is_reception_user or is_warden_user or is_medical_officer_user):
+            is_reception_user or is_warden_user or is_medical_officer_user or
+            is_officer_in_charge_user or is_station_officer_user or is_ict_personnel_user):
         raise PermissionDenied("You do not have permission to view prisoner details.")
 
     prisoner = get_object_or_404(Prisoner, id=prisoner_id)
@@ -1028,6 +1629,12 @@ def prisoner_detail(request, prisoner_id):
         except ObjectDoesNotExist:
             messages.warning(request, f"Remand prisoner specific details are missing.")
 
+    # Add audit history for ICT personnel
+    if is_ict_personnel_user:
+        context['audit_history'] = PrisonerAuditHistory.objects.filter(prisoner=prisoner).order_by('-changed_at')[:20]
+        context['release_audit_logs'] = ReleaseAuditLog.objects.filter(prisoner=prisoner).order_by('-performed_at')[:20]
+        context['sentry_alerts'] = SentryAlert.objects.filter(prisoner=prisoner).order_by('-detected_at')[:20]
+
     return render(request, 'prison/prisoner_detail.html', context)
 
 
@@ -1047,11 +1654,52 @@ def edit_prisoner(request, prisoner_id):
         raise PermissionDenied('You do not have permission to edit this prisoner.')
 
     if request.method == 'POST':
+        old_values = {
+            'first_name': prisoner.first_name,
+            'middle_name': prisoner.middle_name,
+            'surname': prisoner.surname,
+            'sex': prisoner.sex,
+            'age': prisoner.age,
+            'prisoner_class': prisoner.prisoner_class,
+            'block_number': prisoner.block_number,
+            'cell_number': prisoner.cell_number,
+        }
+
         form = PrisonerForm(request.POST, request.FILES, instance=prisoner, user=request.user)
 
         if form.is_valid():
             original_class = prisoner.prisoner_class
-            updated_prisoner = form.save()
+            updated_prisoner = form.save(commit=False)
+
+            # Keep the existing prison station for non-superusers
+            if not is_super_admin_user:
+                updated_prisoner.prison_station = prisoner.prison_station
+
+            updated_prisoner.save()
+
+            new_values = {
+                'first_name': updated_prisoner.first_name,
+                'middle_name': updated_prisoner.middle_name,
+                'surname': updated_prisoner.surname,
+                'sex': updated_prisoner.sex,
+                'age': updated_prisoner.age,
+                'prisoner_class': updated_prisoner.prisoner_class,
+                'block_number': updated_prisoner.block_number,
+                'cell_number': updated_prisoner.cell_number,
+            }
+
+            # Log each field change
+            for field in old_values:
+                if str(old_values[field]) != str(new_values[field]):
+                    AuditService.log_prisoner_change(
+                        prisoner=prisoner,
+                        user=request.user,
+                        field_name=field,
+                        old_value=old_values[field],
+                        new_value=new_values[field],
+                        request=request,
+                        change_reason="Edited prisoner details"
+                    )
 
             ActivityLog.objects.create(
                 user=request.user,
@@ -1059,6 +1707,18 @@ def edit_prisoner(request, prisoner_id):
                 model='Prisoner',
                 object_id=updated_prisoner.id,
                 details=f'Updated core details for prisoner {updated_prisoner.prisoner_number}'
+            )
+
+            # Audit trail for overall update
+            AuditService.log_action(
+                user=request.user,
+                action='UPDATE',
+                model_name='Prisoner',
+                object_id=updated_prisoner.id,
+                object_repr=f"{updated_prisoner.prisoner_number} - {updated_prisoner.full_name}",
+                request=request,
+                severity='warning',
+                description=f"Updated core details for prisoner {updated_prisoner.prisoner_number}"
             )
 
             messages.success(request, 'Prisoner core details updated successfully.')
@@ -1118,11 +1778,40 @@ def edit_convicted_details(request, prisoner_id):
             risk_form.is_valid(),
             rehab_form.is_valid()
         ]):
+            old_sentence = convicted.sentence
+            old_release_date = convicted.date_of_release_on_remission
+
             convicted_form.save()
             particulars_form.save()
             physical_form.save()
             risk_form.save()
             rehab_form.save()
+
+            # Log sensitive changes
+            new_sentence = convicted.sentence
+            new_release_date = convicted.date_of_release_on_remission
+
+            if old_sentence != new_sentence:
+                AuditService.log_prisoner_change(
+                    prisoner=prisoner,
+                    user=request.user,
+                    field_name='sentence',
+                    old_value=old_sentence,
+                    new_value=new_sentence,
+                    request=request,
+                    change_reason="Edited convicted details"
+                )
+
+            if old_release_date != new_release_date:
+                AuditService.log_prisoner_change(
+                    prisoner=prisoner,
+                    user=request.user,
+                    field_name='date_of_release_on_remission',
+                    old_value=old_release_date,
+                    new_value=new_release_date,
+                    request=request,
+                    change_reason="Edited convicted details"
+                )
 
             ActivityLog.objects.create(
                 user=request.user,
@@ -1130,6 +1819,18 @@ def edit_convicted_details(request, prisoner_id):
                 model='ConvictedPrisoner',
                 object_id=prisoner.id,
                 details=f'Updated details for convicted prisoner {prisoner.prisoner_number}'
+            )
+
+            # Audit trail for convicted details update
+            AuditService.log_action(
+                user=request.user,
+                action='UPDATE',
+                model_name='ConvictedPrisoner',
+                object_id=prisoner.id,
+                object_repr=f"{prisoner.prisoner_number} - {prisoner.full_name}",
+                request=request,
+                severity='warning',
+                description=f"Updated convicted details for prisoner {prisoner.prisoner_number}"
             )
 
             messages.success(request, 'Convicted prisoner details updated successfully.')
@@ -1194,6 +1895,18 @@ def edit_remand_details(request, prisoner_id):
                 details=f'Updated details for remand prisoner {prisoner.prisoner_number}'
             )
 
+            # Audit trail for remand details update
+            AuditService.log_action(
+                user=request.user,
+                action='UPDATE',
+                model_name='RemandPrisoner',
+                object_id=prisoner.id,
+                object_repr=f"{prisoner.prisoner_number} - {prisoner.full_name}",
+                request=request,
+                severity='warning',
+                description=f"Updated remand details for prisoner {prisoner.prisoner_number}"
+            )
+
             messages.success(request, 'Remand prisoner details updated successfully.')
             return redirect('prisoner_detail', prisoner_id=prisoner.id)
         else:
@@ -1240,6 +1953,18 @@ def delete_prisoner(request, prisoner_id):
             details=f'Soft-deleted prisoner {prisoner.prisoner_number}'
         )
 
+        # Audit trail
+        AuditService.log_action(
+            user=request.user,
+            action='DELETE',
+            model_name='Prisoner',
+            object_id=prisoner.id,
+            object_repr=f"{prisoner.prisoner_number} - {prisoner.full_name}",
+            request=request,
+            severity='critical',
+            description=f"Soft-deleted prisoner {prisoner.prisoner_number}"
+        )
+
         messages.success(request, f'Prisoner {prisoner.prisoner_number} deactivated successfully.')
         return redirect('prisoner_list')
 
@@ -1271,6 +1996,21 @@ def transfer_prisoner(request, prisoner_id):
 
             prisoner.prison_station = transfer.to_prison
             prisoner.save()
+
+            # Create notification for transfer
+            create_prisoner_transfer_notification(transfer)
+
+            # Audit trail
+            AuditService.log_action(
+                user=request.user,
+                action='TRANSFER',
+                model_name='PrisonerTransfer',
+                object_id=transfer.id,
+                object_repr=f"{prisoner.prisoner_number} - {prisoner.full_name}",
+                request=request,
+                severity='warning',
+                description=f"Transferred prisoner {prisoner.prisoner_number} from {transfer.from_prison.name} to {transfer.to_prison.name}"
+            )
 
             ActivityLog.objects.create(
                 user=request.user,
@@ -1316,10 +2056,52 @@ def apply_sentence_reduction(request, prisoner_id):
         return redirect('prisoner_detail', prisoner_id=prisoner.id)
 
     if request.method == 'POST':
+        old_sentence = convicted.sentence
+        old_release_date = convicted.date_of_release_on_remission
+        old_reduction_months = convicted.reduction_months
+
         form = SentenceReductionForm(request.POST, instance=convicted)
 
         if form.is_valid():
             updated_convicted_details = form.save()
+
+            new_sentence = updated_convicted_details.sentence
+            new_release_date = updated_convicted_details.date_of_release_on_remission
+            new_reduction_months = updated_convicted_details.reduction_months
+
+            # Log sensitive change
+            AuditService.log_action(
+                user=request.user,
+                action='SENTENCE_CHANGE',
+                model_name='ConvictedPrisoner',
+                object_id=prisoner.id,
+                object_repr=f"{prisoner.prisoner_number} - {prisoner.full_name}",
+                changes={
+                    'old_sentence': old_sentence,
+                    'new_sentence': new_sentence,
+                    'old_release_date': str(old_release_date),
+                    'new_release_date': str(new_release_date),
+                    'reduction_months': new_reduction_months,
+                },
+                old_values={'sentence': old_sentence, 'release_date': str(old_release_date)},
+                new_values={'sentence': new_sentence, 'release_date': str(new_release_date)},
+                request=request,
+                severity='critical',
+                description=f"Sentence changed for {prisoner.prisoner_number}. Old sentence: {old_sentence}, New sentence: {new_sentence}"
+            )
+
+            # Create release audit log
+            AuditService.log_release_action(
+                prisoner=prisoner,
+                action='SENTENCE_CHANGE',
+                performed_by=request.user,
+                request=request,
+                original_release_date=old_release_date,
+                modified_release_date=new_release_date,
+                original_sentence=old_sentence,
+                modified_sentence=new_sentence,
+                change_reason=updated_convicted_details.reduction_notes or ''
+            )
 
             release_record, created = ReleaseOnRemission.objects.update_or_create(
                 prisoner=prisoner,
@@ -1374,6 +2156,18 @@ def generate_prisoner_report(request, prisoner_id):
     if not is_super_admin_user and (
             not prisoner.prison_station or prisoner.prison_station != request.user.prison_station):
         raise PermissionDenied('You do not have permission to generate a report for this prisoner.')
+
+    # Log the report generation
+    AuditService.log_action(
+        user=request.user,
+        action='EXPORT',
+        model_name='PrisonerReport',
+        object_id=prisoner.id,
+        object_repr=f"{prisoner.prisoner_number} - {prisoner.full_name}",
+        request=request,
+        severity='info',
+        description=f"Generated report for prisoner {prisoner.prisoner_number}"
+    )
 
     template_path = 'prison/prisoner_report_pdf.html'
 
@@ -1437,6 +2231,18 @@ def upcoming_releases_report(request):
     upcoming_convicted_releases = base_query.order_by('date_of_release_on_remission')
 
     report_format = request.GET.get('format', 'html')
+
+    # Log the report generation
+    AuditService.log_action(
+        user=request.user,
+        action='EXPORT',
+        model_name='UpcomingReleasesReport',
+        object_id=None,
+        object_repr=f"Upcoming Releases Report ({report_format})",
+        request=request,
+        severity='info',
+        description=f"Generated upcoming releases report in {report_format} format"
+    )
 
     if report_format == 'pdf':
         template_path = 'prison/upcoming_releases_report_pdf.html'
@@ -1503,6 +2309,19 @@ def create_prison_station(request):
             if hasattr(request.user, 'id') and request.user.id is not None:
                 station.created_by = request.user
             station.save()
+
+            # Audit trail
+            AuditService.log_action(
+                user=request.user,
+                action='CREATE',
+                model_name='PrisonStation',
+                object_id=station.id,
+                object_repr=station.name,
+                request=request,
+                severity='info',
+                description=f"Created prison station {station.name}"
+            )
+
             messages.success(request, f'Prison station "{station.name}" created successfully!')
             return redirect('manage_prison_stations')
         else:
@@ -1529,6 +2348,19 @@ def manage_prison_stations(request):
             if hasattr(request.user, 'id') and request.user.id is not None:
                 station.created_by = request.user
             station.save()
+
+            # Audit trail
+            AuditService.log_action(
+                user=request.user,
+                action='CREATE',
+                model_name='PrisonStation',
+                object_id=station.id,
+                object_repr=station.name,
+                request=request,
+                severity='info',
+                description=f"Created prison station {station.name}"
+            )
+
             messages.success(request, 'Prison station added successfully.')
             return redirect('manage_prison_stations')
         else:
@@ -1557,6 +2389,19 @@ def edit_prison_station(request, station_id):
 
         if form.is_valid():
             form.save()
+
+            # Audit trail
+            AuditService.log_action(
+                user=request.user,
+                action='UPDATE',
+                model_name='PrisonStation',
+                object_id=station.id,
+                object_repr=station.name,
+                request=request,
+                severity='warning',
+                description=f"Updated prison station {station.name}"
+            )
+
             messages.success(request, 'Prison station updated successfully.')
             return redirect('manage_prison_stations')
         else:
@@ -1588,6 +2433,19 @@ def delete_prison_station(request, station_id):
 
         station_name = station.name
         station.delete()
+
+        # Audit trail
+        AuditService.log_action(
+            user=request.user,
+            action='DELETE',
+            model_name='PrisonStation',
+            object_id=station.id,
+            object_repr=station_name,
+            request=request,
+            severity='critical',
+            description=f"Deleted prison station {station_name}"
+        )
+
         messages.success(request, f'Prison station "{station_name}" deleted successfully.')
         return redirect('manage_prison_stations')
 
@@ -1661,7 +2519,7 @@ class VisitorListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         queryset = super().get_queryset().select_related('prisoner', 'approved_by', 'created_by')
-        is_super_user_request = hasattr(self.request.user, 'is_superuser') and self.request.user.is_superuser
+        is_super_user_request = hasattr(self.request.user, 'is_super_admin') and self.request.user.is_super_admin()
 
         if not is_super_user_request:
             if hasattr(self.request.user, 'prison_station') and self.request.user.prison_station:
@@ -1733,18 +2591,136 @@ class VisitorCreateView(RoleRequiredMixin, CreateView):
         visitor.save()
         form.save_m2m()
 
-        messages.success(self.request,
-                         f"Visit request for {visitor.full_name} to see {visitor.prisoner.full_name} has been submitted and is pending approval.")
+        # Get items description from form
+        items_description = form.cleaned_data.get('items_description', '')
+
+        # Process visitor items if any
+        if items_description:
+            self._add_visitor_items(visitor, items_description)
+
+        # Create notification for new visitor request
+        create_visitor_notification(visitor)
+
+        # Audit trail
+        AuditService.log_action(
+            user=self.request.user,
+            action='CREATE',
+            model_name='Visitor',
+            object_id=visitor.id,
+            object_repr=visitor.full_name,
+            request=self.request,
+            severity='info',
+            description=f"Created visitor request for {visitor.full_name}"
+        )
+
         ActivityLog.objects.create(
             user=self.request.user, action='create_visitor_request', model='Visitor',
             object_id=visitor.id,
             details=f'Created visitor request for {visitor.full_name} for prisoner {visitor.prisoner.prisoner_number}'
         )
+        messages.success(self.request, f"Visit request for {visitor.full_name} has been submitted.")
         return redirect(self.success_url)
+
+    def _add_visitor_items(self, visitor, items_description):
+        """Add items described by visitor to prisoner's items"""
+        try:
+            items_list = items_description.split(',')
+            for item_desc in items_list:
+                item_desc = item_desc.strip()
+                if not item_desc:
+                    continue
+
+                # Detect if it's money
+                if 'money' in item_desc.lower() or 'cash' in item_desc.lower():
+                    amount_match = re.search(r'(\d+(?:\.\d+)?)', item_desc)
+                    amount = float(amount_match.group(1)) if amount_match else 0
+
+                    PrisonerItem.objects.create(
+                        prisoner=visitor.prisoner,
+                        item_type='money',
+                        description='Money brought by visitor',
+                        initial_amount=amount,
+                        current_amount=amount,
+                        currency='MWK',
+                        received_by=self.request.user,
+                        notes=f'Brought by visitor: {visitor.full_name} on {visitor.visit_date}'
+                    )
+                else:
+                    PrisonerItem.objects.create(
+                        prisoner=visitor.prisoner,
+                        item_type='personal_belonging',
+                        description=item_desc,
+                        quantity=1,
+                        received_by=self.request.user,
+                        notes=f'Brought by visitor: {visitor.full_name} on {visitor.visit_date}'
+                    )
+
+            ActivityLog.objects.create(
+                user=self.request.user, action='add_item', model='PrisonerItem',
+                object_id=visitor.prisoner.id,
+                details=f'Added visitor items for prisoner {visitor.prisoner.prisoner_number}'
+            )
+
+        except Exception as e:
+            logger.error(f"Error adding visitor items: {str(e)}")
+            messages.warning(self.request, f"Could not process all visitor items: {str(e)}")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['form_title'] = "Request New Visit"
+        context['form_title'] = "Register New Visitor"
+        return context
+
+
+class VisitorItemCreateView(RoleRequiredMixin, CreateView):
+    """View to add items directly to a prisoner during a visit"""
+    model = PrisonerItem
+    form_class = VisitorItemForm
+    template_name = 'prison/add_visitor_item.html'
+    roles_required = ['reception', 'visitor_attendant', 'warden', 'prison_admin', 'superuser']
+
+    def dispatch(self, request, *args, **kwargs):
+        self.visitor = get_object_or_404(Visitor, id=self.kwargs['visitor_id'])
+        is_super_user_request = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
+        if not is_super_user_request and (
+                not self.visitor.prisoner.prison_station or self.visitor.prisoner.prison_station != request.user.prison_station):
+            raise PermissionDenied("You do not have permission to add items for this visitor.")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_success_url(self):
+        return reverse_lazy('visitor_detail', kwargs={'pk': self.visitor.id})
+
+    def form_valid(self, form):
+        item = form.save(commit=False)
+        item.prisoner = self.visitor.prisoner
+        item.received_by = self.request.user
+        item.notes = f"Brought by visitor: {self.visitor.full_name}. " + (item.notes or '')
+        item.save()
+
+        # Audit trail
+        AuditService.log_action(
+            user=self.request.user,
+            action='CREATE',
+            model_name='PrisonerItem',
+            object_id=item.id,
+            object_repr=f"{item.description} for {item.prisoner.prisoner_number}",
+            request=self.request,
+            severity='info',
+            description=f"Added item '{item.description}' for prisoner {item.prisoner.prisoner_number} from visitor {self.visitor.full_name}"
+        )
+
+        ActivityLog.objects.create(
+            user=self.request.user, action='add_item', model='PrisonerItem',
+            object_id=item.id,
+            details=f'Added item "{item.description}" for prisoner {self.visitor.prisoner.prisoner_number}'
+        )
+        messages.success(self.request, f"Item added successfully.")
+        return super().form_valid(form)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['visitor'] = self.visitor
+        context['prisoner'] = self.visitor.prisoner
+        context['form_title'] = f"Add Item for {self.visitor.prisoner.full_name}"
         return context
 
 
@@ -1757,7 +2733,7 @@ class VisitorUpdateView(RoleRequiredMixin, UpdateView):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        is_super_user_request = hasattr(self.request.user, 'is_superuser') and self.request.user.is_superuser
+        is_super_user_request = hasattr(self.request.user, 'is_super_admin') and self.request.user.is_super_admin()
         if not is_super_user_request:
             if hasattr(self.request.user, 'prison_station') and self.request.user.prison_station:
                 return queryset.filter(prisoner__prison_station=self.request.user.prison_station)
@@ -1774,11 +2750,23 @@ class VisitorUpdateView(RoleRequiredMixin, UpdateView):
         visitor.save()
         form.save_m2m()
 
-        messages.success(self.request, f"Visit request for {visitor.full_name} updated.")
+        # Audit trail
+        AuditService.log_action(
+            user=self.request.user,
+            action='UPDATE',
+            model_name='Visitor',
+            object_id=visitor.id,
+            object_repr=visitor.full_name,
+            request=self.request,
+            severity='warning',
+            description=f"Updated visitor request for {visitor.full_name}"
+        )
+
         ActivityLog.objects.create(
             user=self.request.user, action='update_visitor_request', model='Visitor',
             object_id=visitor.id, details=f'Updated visitor request for {visitor.full_name}'
         )
+        messages.success(self.request, f"Visit request updated successfully.")
         return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
@@ -1794,7 +2782,7 @@ class VisitorDetailView(LoginRequiredMixin, DetailView):
 
     def get_queryset(self):
         queryset = super().get_queryset().select_related('prisoner', 'approved_by', 'created_by')
-        is_super_user_request = hasattr(self.request.user, 'is_superuser') and self.request.user.is_superuser
+        is_super_user_request = hasattr(self.request.user, 'is_super_admin') and self.request.user.is_super_admin()
         if not is_super_user_request:
             if hasattr(self.request.user, 'prison_station') and self.request.user.prison_station:
                 return queryset.filter(prisoner__prison_station=self.request.user.prison_station)
@@ -1803,7 +2791,14 @@ class VisitorDetailView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['page_title'] = f"Visitor Details: {self.object.full_name}"
+        visitor = self.object
+        context['page_title'] = f"Visitor Details: {visitor.full_name}"
+        context['visitor_item_form'] = VisitorItemForm()
+        context['prisoner_items'] = visitor.prisoner.items.all().order_by('-date_received')
+        context['items_summary'] = {
+            'total_money': sum(item.current_amount for item in visitor.prisoner.items.filter(item_type='money')),
+            'total_items': visitor.prisoner.items.exclude(item_type='money').count()
+        }
         return context
 
 
@@ -1816,7 +2811,7 @@ class VisitorApproveView(RoleRequiredMixin, UpdateView):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        is_super_user_request = hasattr(self.request.user, 'is_superuser') and self.request.user.is_superuser
+        is_super_user_request = hasattr(self.request.user, 'is_super_admin') and self.request.user.is_super_admin()
         if not is_super_user_request:
             if hasattr(self.request.user, 'prison_station') and self.request.user.prison_station:
                 return queryset.filter(prisoner__prison_station=self.request.user.prison_station)
@@ -1831,12 +2826,24 @@ class VisitorApproveView(RoleRequiredMixin, UpdateView):
             visitor.is_approved = True
             visitor.approved_by = self.request.user
             visitor.save()
-            messages.success(self.request,
-                             f"Visit for {visitor.full_name} to see {visitor.prisoner.full_name} has been APPROVED.")
+
+            # Audit trail
+            AuditService.log_action(
+                user=self.request.user,
+                action='APPROVE',
+                model_name='Visitor',
+                object_id=visitor.id,
+                object_repr=visitor.full_name,
+                request=self.request,
+                severity='info',
+                description=f"Approved visitor request for {visitor.full_name}"
+            )
+
             ActivityLog.objects.create(
                 user=self.request.user, action='approve_visitor_request', model='Visitor',
                 object_id=visitor.id, details=f'Approved visitor request for {visitor.full_name}'
             )
+            messages.success(self.request, f"Visit for {visitor.full_name} has been APPROVED.")
         return redirect(self.success_url)
 
     def get_context_data(self, **kwargs):
@@ -1921,11 +2928,24 @@ class MedicalRecordCreateView(RoleRequiredMixin, CreateView):
         record = form.save(commit=False)
         record.recorded_by = self.request.user
         record.save()
-        messages.success(self.request, f"Medical record for prisoner {record.prisoner.full_name} created successfully.")
+
+        # Audit trail
+        AuditService.log_action(
+            user=self.request.user,
+            action='CREATE',
+            model_name='MedicalRecord',
+            object_id=record.id,
+            object_repr=f"Medical record for {record.prisoner.prisoner_number}",
+            request=self.request,
+            severity='info',
+            description=f"Created medical record for {record.prisoner.prisoner_number}"
+        )
+
         ActivityLog.objects.create(
             user=self.request.user, action='create_medical_record', model='MedicalRecord',
             object_id=record.id, details=f'Created medical record for {record.prisoner.prisoner_number}'
         )
+        messages.success(self.request, f"Medical record created successfully.")
         return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
@@ -1960,11 +2980,24 @@ class MedicalRecordUpdateView(RoleRequiredMixin, UpdateView):
 
     def form_valid(self, form):
         record = form.save()
-        messages.success(self.request, f"Medical record for prisoner {record.prisoner.full_name} updated successfully.")
+
+        # Audit trail
+        AuditService.log_action(
+            user=self.request.user,
+            action='UPDATE',
+            model_name='MedicalRecord',
+            object_id=record.id,
+            object_repr=f"Medical record for {record.prisoner.prisoner_number}",
+            request=self.request,
+            severity='warning',
+            description=f"Updated medical record for {record.prisoner.prisoner_number}"
+        )
+
         ActivityLog.objects.create(
             user=self.request.user, action='update_medical_record', model='MedicalRecord',
             object_id=record.id, details=f'Updated medical record for {record.prisoner.prisoner_number}'
         )
+        messages.success(self.request, f"Medical record updated successfully.")
         return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
@@ -2019,18 +3052,28 @@ class MedicalRecordDeleteView(RoleRequiredMixin, DeleteView):
     def form_valid(self, form):
         record = self.get_object()
         prisoner_name = record.prisoner.full_name
-        record_date = record.record_date
         record_id = record.id
 
         response = super().form_valid(form)
 
-        messages.success(self.request,
-                         f"Medical record for prisoner {prisoner_name} (dated {record_date}) deleted successfully.")
+        # Audit trail
+        AuditService.log_action(
+            user=self.request.user,
+            action='DELETE',
+            model_name='MedicalRecord',
+            object_id=record_id,
+            object_repr=f"Medical record for {prisoner_name}",
+            request=self.request,
+            severity='critical',
+            description=f"Deleted medical record (ID: {record_id}) for prisoner {prisoner_name}"
+        )
+
         ActivityLog.objects.create(
             user=self.request.user, action='delete_medical_record', model='MedicalRecord',
             object_id=str(record_id),
             details=f'Deleted medical record (ID: {record_id}) for prisoner {prisoner_name}'
         )
+        messages.success(self.request, f"Medical record deleted successfully.")
         return response
 
     def get_context_data(self, **kwargs):
@@ -2116,11 +3159,27 @@ class IncidentReportCreateView(LoginRequiredMixin, CreateView):
         incident.reported_by = self.request.user
         incident.save()
         form.save_m2m()
-        messages.success(self.request, f"Incident report '{incident.title}' created successfully.")
+
+        # Create notification for incident report
+        create_incident_report_notification(incident)
+
+        # Audit trail
+        AuditService.log_action(
+            user=self.request.user,
+            action='CREATE',
+            model_name='IncidentReport',
+            object_id=incident.id,
+            object_repr=incident.title,
+            request=self.request,
+            severity='warning',
+            description=f"Created incident report: {incident.title}"
+        )
+
         ActivityLog.objects.create(
             user=self.request.user, action='create_incident_report', model='IncidentReport',
             object_id=incident.id, details=f'Created incident report: {incident.title}'
         )
+        messages.success(self.request, f"Incident report '{incident.title}' created successfully.")
         return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
@@ -2168,9 +3227,10 @@ class ActivityLogListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     paginate_by = 30
 
     def test_func(self):
-        is_super_user_request = hasattr(self.request.user, 'is_superuser') and self.request.user.is_superuser
+        is_super_user_request = hasattr(self.request.user, 'is_super_admin') and self.request.user.is_super_admin()
         is_prison_admin_request = hasattr(self.request.user, 'is_prison_admin') and self.request.user.is_prison_admin()
-        return is_super_user_request or is_prison_admin_request
+        is_ict_personnel_request = hasattr(self.request.user, 'is_ict_personnel') and self.request.user.is_ict_personnel()
+        return is_super_user_request or is_prison_admin_request or is_ict_personnel_request
 
     def handle_no_permission(self):
         messages.error(self.request, "You do not have permission to view the activity log.")
@@ -2264,7 +3324,7 @@ class AddPrisonerItemView(RoleRequiredMixin, CreateView):
 
     def dispatch(self, request, *args, **kwargs):
         self.prisoner = get_object_or_404(Prisoner, id=self.kwargs['prisoner_id'])
-        is_super_user_request = hasattr(request.user, 'is_superuser') and request.user.is_superuser
+        is_super_user_request = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
         if not is_super_user_request and (
                 not self.prisoner.prison_station or self.prisoner.prison_station != request.user.prison_station):
             raise PermissionDenied("You do not have permission to add items for this prisoner's station.")
@@ -2279,12 +3339,24 @@ class AddPrisonerItemView(RoleRequiredMixin, CreateView):
         item.received_by = self.request.user
         item.save()
 
+        # Audit trail
+        AuditService.log_action(
+            user=self.request.user,
+            action='CREATE',
+            model_name='PrisonerItem',
+            object_id=item.id,
+            object_repr=f"{item.description} for {item.prisoner.prisoner_number}",
+            request=self.request,
+            severity='info',
+            description=f"Added item '{item.description}' ({item.get_item_type_display()}) for prisoner {self.prisoner.prisoner_number}"
+        )
+
         ActivityLog.objects.create(
             user=self.request.user, action='add_item', model='PrisonerItem',
             object_id=item.id,
             details=f'Added item "{item.description}" ({item.get_item_type_display()}) for prisoner {self.prisoner.prisoner_number}'
         )
-        messages.success(self.request, f"Item '{item.description}' added successfully for {self.prisoner.full_name}.")
+        messages.success(self.request, f"Item added successfully.")
         return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
@@ -2302,7 +3374,7 @@ class WithdrawPrisonerMoneyView(RoleRequiredMixin, CreateView):
 
     def dispatch(self, request, *args, **kwargs):
         self.money_item = get_object_or_404(PrisonerItem, id=self.kwargs['pk'], item_type='money')
-        is_super_user_request = hasattr(request.user, 'is_superuser') and request.user.is_superuser
+        is_super_user_request = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
         if not is_super_user_request and (
                 not self.money_item.prisoner.prison_station or self.money_item.prisoner.prison_station != request.user.prison_station):
             raise PermissionDenied("You do not have permission to manage items for this prisoner's station.")
@@ -2324,13 +3396,25 @@ class WithdrawPrisonerMoneyView(RoleRequiredMixin, CreateView):
 
         try:
             transaction.save()
+
+            # Audit trail
+            AuditService.log_action(
+                user=self.request.user,
+                action='UPDATE',
+                model_name='PrisonerItem',
+                object_id=self.money_item.id,
+                object_repr=f"Money withdrawal for {self.money_item.prisoner.prisoner_number}",
+                request=self.request,
+                severity='warning',
+                description=f"Withdrew {transaction.amount} {self.money_item.currency} from {self.money_item.prisoner.full_name}'s money item"
+            )
+
             ActivityLog.objects.create(
                 user=self.request.user, action='withdraw_money', model='PrisonerItemTransaction',
                 object_id=transaction.id,
                 details=f'Withdrew {transaction.amount} {self.money_item.currency} from {self.money_item.prisoner.full_name}\'s money item {self.money_item.id}'
             )
-            messages.success(self.request,
-                             f"Successfully withdrew {transaction.amount} {self.money_item.currency} from {self.money_item.prisoner.full_name}'s account.")
+            messages.success(self.request, f"Withdrawal successful.")
             return super().form_valid(form)
         except ValidationError as e:
             for field, errors in e.message_dict.items():
@@ -2383,7 +3467,7 @@ class CollectPrisonerItemView(RoleRequiredMixin, View):
     def post(self, request, *args, **kwargs):
         item = get_object_or_404(PrisonerItem, id=self.kwargs['pk'])
 
-        is_super_user_request = hasattr(request.user, 'is_superuser') and request.user.is_superuser
+        is_super_user_request = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
         if not is_super_user_request and (
                 not item.prisoner.prison_station or item.prisoner.prison_station != request.user.prison_station):
             raise PermissionDenied("You do not have permission to collect items for this prisoner's station.")
@@ -2397,13 +3481,25 @@ class CollectPrisonerItemView(RoleRequiredMixin, View):
         else:
             item.is_collected = True
             item.save()
+
+            # Audit trail
+            AuditService.log_action(
+                user=self.request.user,
+                action='UPDATE',
+                model_name='PrisonerItem',
+                object_id=item.id,
+                object_repr=f"{item.description} for {item.prisoner.prisoner_number}",
+                request=self.request,
+                severity='info',
+                description=f"Collected item '{item.description}' for prisoner {item.prisoner.prisoner_number}"
+            )
+
             ActivityLog.objects.create(
-                user=request.user, action='collect_item', model='PrisonerItem',
+                user=self.request.user, action='collect_item', model='PrisonerItem',
                 object_id=item.id,
                 details=f'Collected item "{item.description}" (ID: {item.id}) for prisoner {item.prisoner.prisoner_number}'
             )
-            messages.success(request, f"Item '{item.description}' for {item.prisoner.full_name} has been marked as collected.")
-
+            messages.success(self.request, f"Item collected successfully.")
         return redirect('prisoner_item_list', prisoner_id=item.prisoner.id)
 
 
@@ -2415,7 +3511,7 @@ def extended_prisoner_search(request):
     prisoners = Prisoner.objects.filter(is_active=True).select_related('prison_station').prefetch_related(
         'convicted_details', 'risk_assessment')
 
-    is_super_user_request = hasattr(request.user, 'is_superuser') and request.user.is_superuser
+    is_super_user_request = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
 
     if not is_super_user_request:
         if hasattr(request.user, 'prison_station') and request.user.prison_station:
@@ -2622,11 +3718,24 @@ class RationItemListView(RoleRequiredMixin, ListView):
                 return render(request, self.template_name, context)
 
             ration_item.save()
-            messages.success(request, f"Ration item '{ration_item.name}' added successfully.")
+
+            # Audit trail
+            AuditService.log_action(
+                user=request.user,
+                action='CREATE',
+                model_name='RationItem',
+                object_id=ration_item.id,
+                object_repr=ration_item.name,
+                request=request,
+                severity='info',
+                description=f"Added ration item: {ration_item.name} for {ration_item.prison_station.name}"
+            )
+
             ActivityLog.objects.create(
                 user=request.user, action='create', model='RationItem',
                 object_id=ration_item.id, details=f'Added ration item: {ration_item.name} for {ration_item.prison_station.name}'
             )
+            messages.success(request, f"Ration item '{ration_item.name}' added successfully.")
             return redirect('ration_item_list')
         else:
             messages.error(request, "Error adding ration item. Please correct the errors.")
@@ -2669,12 +3778,25 @@ class RationItemUpdateView(RoleRequiredMixin, UpdateView):
             ration_item.prison_station = self.request.user.prison_station
 
         ration_item.save()
-        messages.success(self.request, f"Ration item '{self.object.name}' updated successfully.")
+
+        # Audit trail
+        AuditService.log_action(
+            user=self.request.user,
+            action='UPDATE',
+            model_name='RationItem',
+            object_id=self.object.id,
+            object_repr=self.object.name,
+            request=request,
+            severity='warning',
+            description=f"Updated ration item: {self.object.name} for {self.object.prison_station.name}"
+        )
+
         ActivityLog.objects.create(
             user=self.request.user, action='update', model='RationItem',
             object_id=self.object.id,
             details=f'Updated ration item: {self.object.name} for {self.object.prison_station.name}'
         )
+        messages.success(self.request, f"Ration item updated successfully.")
         return redirect('ration_item_list')
 
     def get_context_data(self, **kwargs):
@@ -2709,11 +3831,23 @@ class RationItemDeleteView(RoleRequiredMixin, DeleteView):
 
         response = super().form_valid(form)
 
-        messages.success(self.request, f"Ration item '{item_name}' deleted successfully.")
+        # Audit trail
+        AuditService.log_action(
+            user=self.request.user,
+            action='DELETE',
+            model_name='RationItem',
+            object_id=item_id,
+            object_repr=item_name,
+            request=request,
+            severity='critical',
+            description=f"Deleted ration item: {item_name} from {item_station_name}"
+        )
+
         ActivityLog.objects.create(
             user=self.request.user, action='delete', model='RationItem',
             object_id=str(item_id), details=f'Deleted ration item: {item_name} from {item_station_name}'
         )
+        messages.success(self.request, f"Ration item deleted successfully.")
         return response
 
 
@@ -2735,8 +3869,19 @@ class RationConsumptionCreateView(RoleRequiredMixin, CreateView):
 
         try:
             response = super().form_valid(form)
-            messages.success(self.request,
-                             f"Recorded {form.instance.quantity_used_kg}kg of {form.instance.item.name} for {form.instance.num_prisoners_fed} people.")
+
+            # Audit trail
+            AuditService.log_action(
+                user=self.request.user,
+                action='CREATE',
+                model_name='RationConsumption',
+                object_id=form.instance.id,
+                object_repr=f"{form.instance.quantity_used_kg}kg of {form.instance.item.name}",
+                request=request,
+                severity='info',
+                description=f"Recorded consumption of {form.instance.quantity_used_kg}kg of {form.instance.item.name}"
+            )
+
             ActivityLog.objects.create(
                 user=self.request.user,
                 action='record_consumption',
@@ -2744,6 +3889,7 @@ class RationConsumptionCreateView(RoleRequiredMixin, CreateView):
                 object_id=form.instance.id,
                 details=f'Recorded {form.instance.quantity_used_kg}kg of {form.instance.item.name}'
             )
+            messages.success(self.request, f"Consumption recorded successfully.")
             return response
         except Exception as e:
             messages.error(self.request, f"Error recording consumption: {str(e)}")
@@ -2785,13 +3931,25 @@ class RationProcurementCreateView(RoleRequiredMixin, CreateView):
         procurement = form.save(commit=False)
         procurement.procured_by = self.request.user
         procurement.save()
-        messages.success(self.request,
-                         f"Procurement of {procurement.quantity_procured_kg}kg of {procurement.item.name} recorded successfully.")
+
+        # Audit trail
+        AuditService.log_action(
+            user=self.request.user,
+            action='CREATE',
+            model_name='RationProcurement',
+            object_id=procurement.id,
+            object_repr=f"{procurement.quantity_procured_kg}kg of {procurement.item.name}",
+            request=request,
+            severity='info',
+            description=f"Recorded procurement of {procurement.quantity_procured_kg}kg of {procurement.item.name} from {procurement.supplier or 'N/A'}"
+        )
+
         ActivityLog.objects.create(
             user=self.request.user, action='record_procurement', model='RationProcurement',
             object_id=procurement.id,
             details=f'Recorded procurement of {procurement.quantity_procured_kg}kg of {procurement.item.name} from {procurement.supplier or "N/A"}.'
         )
+        messages.success(self.request, f"Procurement recorded successfully.")
         return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
@@ -2845,11 +4003,6 @@ def capture_fingerprint(request, prisoner_id):
 
                 prisoner.save()
 
-                messages.success(
-                    request,
-                    f"✅ Recidivism confirmed for {prisoner.full_name}. This person has been flagged as a recidivist."
-                )
-
                 ActivityLog.objects.create(
                     user=request.user,
                     action='confirm_recidivism',
@@ -2861,6 +4014,7 @@ def capture_fingerprint(request, prisoner_id):
                 request.session.pop('recidivism_data', None)
                 request.session.pop('recidivism_matched_prisoner_id', None)
 
+                messages.success(request, f"Recidivism confirmed for {prisoner.full_name}.")
                 return redirect('prisoner_detail', prisoner_id=prisoner.id)
             else:
                 messages.warning(request, "Recidivism not confirmed. Please review the data.")
@@ -2949,9 +4103,11 @@ def capture_fingerprint(request, prisoner_id):
 @login_required
 @csrf_exempt
 def fingerprint_search_api(request):
+    """API endpoint for fingerprint search"""
     if request.method != 'POST':
         return JsonResponse({'error': 'POST method required'}, status=405)
 
+    # Check permissions
     is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
     is_prison_admin_user = hasattr(request.user, 'is_prison_admin') and request.user.is_prison_admin()
     is_reception_user = hasattr(request.user, 'is_reception') and request.user.is_reception()
@@ -2969,10 +4125,12 @@ def fingerprint_search_api(request):
 
         threshold = data.get('threshold', BiometricService.MATCH_THRESHOLD)
 
+        # Search for matching fingerprints
         matches = BiometricService.search_fingerprint(fingerprint_data, threshold)
 
         results = []
         for prisoner in matches:
+            # Filter by station if not super admin
             if not is_super_admin_user:
                 if not prisoner.prison_station or prisoner.prison_station != request.user.prison_station:
                     continue
@@ -2982,11 +4140,14 @@ def fingerprint_search_api(request):
                 'prisoner_number': prisoner.prisoner_number,
                 'full_name': prisoner.full_name,
                 'prison_station': prisoner.prison_station.name if prisoner.prison_station else None,
-                'date_admitted': prisoner.date_admitted.isoformat(),
+                'date_admitted': prisoner.date_admitted.isoformat() if prisoner.date_admitted else None,
                 'is_active': prisoner.is_active,
                 'has_fingerprint': prisoner.has_fingerprint,
                 'is_identity_verified': prisoner.is_identity_verified,
                 'prisoner_class': prisoner.prisoner_class,
+                'age': prisoner.age,
+                'sex': prisoner.get_sex_display() if prisoner.sex else None,
+                'match_score': getattr(prisoner, '_match_score', 0),
             })
 
         return JsonResponse({
@@ -3004,6 +4165,7 @@ def fingerprint_search_api(request):
 
 @login_required
 def fingerprint_identify(request):
+    """Identify a prisoner by fingerprint"""
     is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
     is_prison_admin_user = hasattr(request.user, 'is_prison_admin') and request.user.is_prison_admin()
     is_reception_user = hasattr(request.user, 'is_reception') and request.user.is_reception()
@@ -3096,11 +4258,6 @@ def verify_prisoner_identity(request, prisoner_id):
                 prisoner.identity_verified_by = request.user
                 prisoner.save()
 
-                messages.success(
-                    request,
-                    f"Identity verified for {prisoner.full_name} (Confidence: {score:.1f}%)"
-                )
-
                 ActivityLog.objects.create(
                     user=request.user,
                     action='verify_identity',
@@ -3108,6 +4265,7 @@ def verify_prisoner_identity(request, prisoner_id):
                     object_id=prisoner.id,
                     details=f'Verified identity for prisoner {prisoner.prisoner_number} (Confidence: {score:.1f}%)'
                 )
+                messages.success(request, f"Identity verified for {prisoner.full_name}.")
             else:
                 messages.error(
                     request,
@@ -3296,3 +4454,407 @@ def fingerprint_dashboard(request):
         'today': timezone.now().date(),
     }
     return render(request, 'prison/fingerprint_dashboard.html', context)
+
+
+# ============ ICT SECURITY DASHBOARD VIEWS ============
+
+@login_required
+def ict_dashboard(request):
+    """ICT Security Monitoring Dashboard"""
+    if not (hasattr(request.user, 'is_ict_personnel') and request.user.is_ict_personnel()):
+        if not (request.user.is_super_admin() or request.user.is_prison_admin()):
+            raise PermissionDenied("Only ICT Personnel can access this dashboard.")
+
+    today = timezone.now().date()
+    seven_days_ago = today - timedelta(days=7)
+
+    # Get active alerts
+    active_alerts = SentryAlert.objects.filter(is_resolved=False).order_by('-detected_at')
+
+    # Get recent audit trails
+    audit_trails = AuditTrail.objects.filter(timestamp__date__gte=seven_days_ago).order_by('-timestamp')[:100]
+
+    # User activity stats - Flattened for template compatibility
+    user_activities = []
+    users = User.objects.filter(is_active=True)
+    for user in users:
+        audit_count = AuditTrail.objects.filter(user=user, timestamp__date__gte=seven_days_ago).count()
+        sensitive_count = AuditTrail.objects.filter(
+            user=user,
+            timestamp__date__gte=seven_days_ago,
+            action__in=['DATE_CHANGE', 'SENTENCE_CHANGE', 'RELEASE', 'DELETE']
+        ).count()
+        # Only include users with activity
+        if audit_count > 0 or sensitive_count > 0:
+            user_activities.append({
+                'id': user.id,
+                'username': user.username,
+                'full_name': user.get_full_name(),
+                'email': user.email,
+                'role': user.get_role_display(),
+                'is_suspicious': user.is_suspicious if hasattr(user, 'is_suspicious') else False,
+                'last_login': user.last_login,
+                'audit_count': audit_count,
+                'sensitive_count': sensitive_count,
+            })
+
+    # Stats
+    stats = {
+        'critical_alerts': SentryAlert.objects.filter(is_resolved=False, severity='critical').count(),
+        'high_alerts': SentryAlert.objects.filter(is_resolved=False, severity='high').count(),
+        'total_audit_actions': AuditTrail.objects.filter(timestamp__date__gte=seven_days_ago).count(),
+        'suspicious_users': User.objects.filter(is_suspicious=True).count(),
+        'resolved_alerts': SentryAlert.objects.filter(is_resolved=True).count(),
+    }
+
+    # Activity trend for chart
+    activity_trend = []
+    for i in range(6, -1, -1):
+        day = today - timedelta(days=i)
+        activity_trend.append({
+            'label': day.strftime('%A'),
+            'critical': AuditTrail.objects.filter(timestamp__date=day, severity='critical').count(),
+            'warning': AuditTrail.objects.filter(timestamp__date=day, severity='warning').count(),
+            'info': AuditTrail.objects.filter(timestamp__date=day, severity='info').count(),
+        })
+
+    context = {
+        'stats': stats,
+        'active_alerts': active_alerts,
+        'audit_trails': audit_trails,
+        'user_activities': user_activities,
+        'activity_trend': activity_trend,
+        'today': today,
+    }
+    return render(request, 'prison/ict_dashboard.html', context)
+
+
+@login_required
+def audit_trail_list(request):
+    """View all audit trail entries"""
+    if not (hasattr(request.user, 'is_ict_personnel') and request.user.is_ict_personnel()):
+        if not (request.user.is_super_admin() or request.user.is_prison_admin()):
+            raise PermissionDenied("Only ICT Personnel can access audit trails.")
+
+    audit_trails = AuditTrail.objects.all().select_related('user').order_by('-timestamp')
+
+    # Apply filters
+    user_id = request.GET.get('user')
+    action = request.GET.get('action')
+    severity = request.GET.get('severity')
+
+    if user_id:
+        audit_trails = audit_trails.filter(user_id=user_id)
+    if action:
+        audit_trails = audit_trails.filter(action=action)
+    if severity:
+        audit_trails = audit_trails.filter(severity=severity)
+
+    # Pagination
+    paginator = Paginator(audit_trails, 50)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'audit_trails': page_obj,
+        'all_users': User.objects.filter(audit_trails__isnull=False).distinct(),
+        'all_actions': AuditTrail.objects.values_list('action', flat=True).distinct(),
+        'selected_user': user_id,
+        'selected_action': action,
+        'selected_severity': severity,
+        'page_obj': page_obj,
+    }
+    return render(request, 'prison/audit_trail_list.html', context)
+
+
+@login_required
+def prisoner_audit_view(request, prisoner_id):
+    """View audit history for a specific prisoner"""
+    if not (hasattr(request.user, 'is_ict_personnel') and request.user.is_ict_personnel()):
+        if not (request.user.is_super_admin() or request.user.is_prison_admin()):
+            raise PermissionDenied("Only ICT Personnel can view prisoner audits.")
+
+    prisoner = get_object_or_404(Prisoner, id=prisoner_id)
+
+    audit_report = {
+        'prisoner': prisoner,
+        'changes': PrisonerAuditHistory.objects.filter(prisoner=prisoner).order_by('-changed_at'),
+        'release_logs': ReleaseAuditLog.objects.filter(prisoner=prisoner).order_by('-performed_at'),
+        'sentry_alerts': SentryAlert.objects.filter(prisoner=prisoner).order_by('-detected_at'),
+    }
+
+    return render(request, 'prison/prisoner_audit_view.html', audit_report)
+
+
+@login_required
+def sentry_alerts_view(request):
+    """View all sentry alerts"""
+    if not (hasattr(request.user, 'is_ict_personnel') and request.user.is_ict_personnel()):
+        if not (request.user.is_super_admin() or request.user.is_prison_admin()):
+            raise PermissionDenied("Only ICT Personnel can view alerts.")
+
+    alerts = SentryAlert.objects.all().order_by('-detected_at')
+
+    # Filter by status
+    status = request.GET.get('status')
+    if status == 'active':
+        alerts = alerts.filter(is_resolved=False)
+    elif status == 'resolved':
+        alerts = alerts.filter(is_resolved=True)
+
+    context = {
+        'alerts': alerts,
+        'status_filter': status,
+    }
+    return render(request, 'prison/sentry_alerts.html', context)
+
+
+@login_required
+@require_POST
+def resolve_sentry_alert(request, alert_id):
+    """Resolve a sentry alert"""
+    if not (hasattr(request.user, 'is_ict_personnel') and request.user.is_ict_personnel()):
+        if not (request.user.is_super_admin() or request.user.is_prison_admin()):
+            return JsonResponse({'success': False, 'error': 'Permission denied'}, status=403)
+
+    try:
+        data = json.loads(request.body) if request.body else {}
+        notes = data.get('notes', '')
+
+        alert = get_object_or_404(SentryAlert, id=alert_id)
+        alert.resolve(request.user, notes)
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Alert resolved successfully.'
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@login_required
+def export_audit_trail(request):
+    """Export audit trail as CSV"""
+    if not (hasattr(request.user, 'is_ict_personnel') and request.user.is_ict_personnel()):
+        if not (request.user.is_super_admin() or request.user.is_prison_admin()):
+            raise PermissionDenied("Only ICT Personnel can export audit trails.")
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="audit_trail_{timezone.now().strftime("%Y%m%d_%H%M%S")}.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow(['Timestamp', 'User', 'Action', 'Model', 'Object ID', 'Object', 'Severity', 'Description', 'IP Address'])
+
+    audits = AuditTrail.objects.all().order_by('-timestamp')
+    for audit in audits:
+        writer.writerow([
+            audit.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            audit.user.username if audit.user else 'System',
+            audit.action,
+            audit.model_name,
+            audit.object_id,
+            audit.object_repr,
+            audit.severity,
+            audit.description,
+            audit.ip_address or '',
+        ])
+
+    return response
+
+
+# ============ ERROR HANDLING VIEWS ============
+
+def error_403(request, exception=None):
+    """Permission Denied - 403 Forbidden"""
+    context = {
+        'error_code': '403',
+        'error_title': 'Permission Denied',
+        'error_message': 'You do not have permission to access this page. Please contact your administrator if you believe this is an error.',
+        'error_icon': 'fa-shield-halved',
+        'error_color': '#dc2626',
+        'suggestions': [
+            'Check if you have the correct role permissions',
+            'Contact your system administrator',
+            'Log out and log back in with different credentials',
+            'Verify that you are accessing the correct URL',
+        ]
+    }
+    return render(request, 'errors/error_page.html', context, status=403)
+
+
+def error_404(request, exception=None):
+    """Page Not Found - 404 Not Found"""
+    context = {
+        'error_code': '404',
+        'error_title': 'Page Not Found',
+        'error_message': 'The page you are looking for could not be found. The page may have been moved, deleted, or the URL may be incorrect.',
+        'error_icon': 'fa-compass',
+        'error_color': '#f59e0b',
+        'suggestions': [
+            'Check the URL for any typos',
+            'Go back to the previous page',
+            'Navigate using the sidebar menu',
+            'Contact support if the issue persists',
+        ]
+    }
+    return render(request, 'errors/error_page.html', context, status=404)
+
+
+def error_500(request, exception=None):
+    """Server Error - 500 Internal Server Error"""
+    context = {
+        'error_code': '500',
+        'error_title': 'Internal Server Error',
+        'error_message': 'An unexpected server error occurred. Our technical team has been notified and is working to resolve the issue.',
+        'error_icon': 'fa-server',
+        'error_color': '#ef4444',
+        'suggestions': [
+            'Try refreshing the page',
+            'Wait a few minutes and try again',
+            'Clear your browser cache',
+            'Contact support with the error details',
+        ]
+    }
+    return render(request, 'errors/error_page.html', context, status=500)
+
+
+def error_400(request, exception=None):
+    """Bad Request - 400 Bad Request"""
+    context = {
+        'error_code': '400',
+        'error_title': 'Bad Request',
+        'error_message': 'The server could not understand your request. This may be due to invalid syntax or corrupted data.',
+        'error_icon': 'fa-exclamation-circle',
+        'error_color': '#f59e0b',
+        'suggestions': [
+            'Go back and try again',
+            'Refresh the page',
+            'Clear your browser cookies and cache',
+            'Contact support if the issue persists',
+        ]
+    }
+    return render(request, 'errors/error_page.html', context, status=400)
+
+
+def error_405(request, exception=None):
+    """Method Not Allowed - 405 Method Not Allowed"""
+    context = {
+        'error_code': '405',
+        'error_title': 'Method Not Allowed',
+        'error_message': 'The HTTP method used is not allowed for this resource. This typically happens when trying to access a POST-only resource via GET or vice versa.',
+        'error_icon': 'fa-ban',
+        'error_color': '#f59e0b',
+        'suggestions': [
+            'Go back and use the appropriate button or link',
+            'Do not directly edit the URL',
+            'Use the proper form to submit data',
+            'Contact support if the issue persists',
+        ]
+    }
+    return render(request, 'errors/error_page.html', context, status=405)
+
+
+def error_413(request, exception=None):
+    """Request Entity Too Large - 413 Payload Too Large"""
+    context = {
+        'error_code': '413',
+        'error_title': 'Request Too Large',
+        'error_message': 'The request entity is too large for the server to process. This usually happens when uploading very large files.',
+        'error_icon': 'fa-file-arrow-up',
+        'error_color': '#f59e0b',
+        'suggestions': [
+            'Try uploading a smaller file',
+            'Compress the file before uploading',
+            'Check file size limits',
+            'Contact support if you need to upload larger files',
+        ]
+    }
+    return render(request, 'errors/error_page.html', context, status=413)
+
+
+def error_429(request, exception=None):
+    """Too Many Requests - 429 Rate Limited"""
+    context = {
+        'error_code': '429',
+        'error_title': 'Too Many Requests',
+        'error_message': 'You have made too many requests in a short period. Please wait and try again.',
+        'error_icon': 'fa-hourglass-half',
+        'error_color': '#f59e0b',
+        'suggestions': [
+            'Wait a few minutes before trying again',
+            'Do not refresh the page rapidly',
+            'Contact support if this persists',
+        ]
+    }
+    return render(request, 'errors/error_page.html', context, status=429)
+
+
+def error_502(request, exception=None):
+    """Bad Gateway - 502 Bad Gateway"""
+    context = {
+        'error_code': '502',
+        'error_title': 'Bad Gateway',
+        'error_message': 'The server received an invalid response from an upstream server. This is usually a temporary issue.',
+        'error_icon': 'fa-plug-circle-xmark',
+        'error_color': '#ef4444',
+        'suggestions': [
+            'Wait a few minutes and refresh',
+            'Contact the system administrator',
+            'Check if there are any maintenance notices',
+        ]
+    }
+    return render(request, 'errors/error_page.html', context, status=502)
+
+
+def error_503(request, exception=None):
+    """Service Unavailable - 503 Service Unavailable"""
+    context = {
+        'error_code': '503',
+        'error_title': 'Service Unavailable',
+        'error_message': 'The server is temporarily unable to handle the request. This is usually due to maintenance or overload.',
+        'error_icon': 'fa-plug-circle-exclamation',
+        'error_color': '#ef4444',
+        'suggestions': [
+            'Wait and try again shortly',
+            'Check if there are maintenance notices',
+            'Contact support if this persists',
+        ]
+    }
+    return render(request, 'errors/error_page.html', context, status=503)
+
+
+def error_504(request, exception=None):
+    """Gateway Timeout - 504 Gateway Timeout"""
+    context = {
+        'error_code': '504',
+        'error_title': 'Gateway Timeout',
+        'error_message': 'The server did not receive a timely response from an upstream server. This is usually a temporary issue.',
+        'error_icon': 'fa-hourglass-end',
+        'error_color': '#ef4444',
+        'suggestions': [
+            'Wait and try again',
+            'Refresh the page',
+            'Contact support if this persists',
+        ]
+    }
+    return render(request, 'errors/error_page.html', context, status=504)
+
+
+def csrf_failure_view(request, reason=""):
+    """CSRF Failure - Custom error page"""
+    context = {
+        'error_code': '403',
+        'error_title': 'CSRF Verification Failed',
+        'error_message': 'Your session has expired or the form was submitted from an invalid source. Please refresh the page and try again.',
+        'error_icon': 'fa-shield-halved',
+        'error_color': '#dc2626',
+        'error_details': reason,
+        'suggestions': [
+            'Refresh the page and try again',
+            'Clear your browser cookies and cache',
+            'Make sure cookies are enabled in your browser',
+            'Log out and log back in',
+            'If you were logged in on another tab, go back and refresh this page',
+        ]
+    }
+    return render(request, 'errors/error_page.html', context, status=403)

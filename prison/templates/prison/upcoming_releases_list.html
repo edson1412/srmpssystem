@@ -4,118 +4,458 @@
     <meta charset="UTF-8">
     <title>Upcoming Releases Report</title>
     <style>
+        @page {
+            size: A4 landscape;
+            margin: 20px;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 30px;
             color: #333;
-            background-color: #f8f9fa; /* Light gray background */
+            background-color: #fafafa;
         }
+
+        /* ===== HEADER ===== */
         .header {
             text-align: center;
             margin-bottom: 30px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #007bff; /* Primary color line */
+            padding: 30px 20px;
+            background: linear-gradient(135deg, #5c0000 0%, #800000 50%, #a52a2a 100%);
+            border-radius: 12px;
+            color: white;
+            position: relative;
+            overflow: hidden;
         }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        }
+
+        .header .logo-area {
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header .logo-area img {
+            height: 100px;
+            width: 100px;
+            object-fit: contain;
+            background: white;
+            border-radius: 50%;
+            padding: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
         .header h1 {
             margin-bottom: 5px;
-            color: #007bff; /* Primary color for main title */
             font-size: 28px;
-            font-weight: 600;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            position: relative;
+            z-index: 1;
         }
+
         .header .subtitle {
             font-size: 16px;
-            color: #555;
+            color: rgba(255,255,255,0.9);
             margin-top: 5px;
+            position: relative;
+            z-index: 1;
         }
+
+        .header .department-name {
+            font-size: 14px;
+            color: rgba(255,255,255,0.8);
+            margin-top: 5px;
+            font-weight: 500;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header .divider {
+            width: 100px;
+            height: 3px;
+            background: #ff6b6b;
+            margin: 15px auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ===== REPORT PERIOD ===== */
         .report-period {
             text-align: center;
-            margin-bottom: 25px;
-            font-weight: bold;
-            font-size: 16px;
-            color: #444;
-            padding: 10px;
-            background-color: #e9ecef; /* Slightly darker background for period */
-            border-radius: 5px;
+            margin-bottom: 30px;
+            font-weight: 600;
+            font-size: 15px;
+            color: #5c0000;
+            padding: 15px 20px;
+            background: #fdf2f2;
+            border: 1px solid #e8d5d5;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
         }
+
+        .report-period .period-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .report-period .period-label {
+            color: #888;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .report-period .period-value {
+            color: #800000;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .report-period .period-arrow {
+            color: #800000;
+            font-size: 20px;
+        }
+
+        /* ===== SUMMARY CARDS ===== */
+        .summary-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .summary-card {
+            flex: 1;
+            background: white;
+            border-radius: 10px;
+            padding: 15px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-left: 4px solid #800000;
+            text-align: center;
+        }
+
+        .summary-card .summary-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #800000;
+        }
+
+        .summary-card .summary-label {
+            font-size: 12px;
+            color: #777;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 5px;
+        }
+
+        /* ===== TABLE ===== */
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 30px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* Subtle shadow for table */
-            border-radius: 8px;
-            overflow: hidden; /* Ensures border-radius applies to children */
         }
-        table th, table td {
-            padding: 12px 15px;
-            border: 1px solid #dee2e6; /* Bootstrap-like border color */
-            text-align: left;
-        }
+
         table thead th {
-            background-color: #007bff; /* Primary color for header */
-            color: #ffffff; /* White text for header */
+            background: linear-gradient(135deg, #5c0000 0%, #800000 100%);
+            color: #ffffff;
             font-weight: 600;
             text-transform: uppercase;
-            font-size: 14px;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            padding: 15px 18px;
+            text-align: left;
+            border-bottom: 3px solid #5c0000;
         }
+
+        table thead th:first-child {
+            border-radius: 0;
+        }
+
+        table tbody tr {
+            border-bottom: 1px solid #f1f5f9;
+            transition: all 0.2s ease;
+        }
+
+        table tbody tr:last-child {
+            border-bottom: none;
+        }
+
         table tbody tr:nth-child(even) {
-            background-color: #f2f2f2; /* Zebra striping */
+            background-color: #fdf8f8;
         }
+
         table tbody tr:hover {
-            background-color: #e2f2ff; /* Light blue on hover */
-            cursor: pointer;
+            background-color: #fdf2f2;
         }
+
+        table tbody td {
+            padding: 14px 18px;
+            font-size: 14px;
+            color: #444;
+            vertical-align: middle;
+        }
+
+        table tbody td:first-child {
+            font-weight: 600;
+            color: #800000;
+        }
+
+        table tbody td.prisoner-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        table tbody td.prisoner-station {
+            color: #555;
+        }
+
+        table tbody td.release-date {
+            font-weight: 600;
+            color: #800000;
+            white-space: nowrap;
+        }
+
+        table tbody td.sentence {
+            color: #555;
+        }
+
+        table tbody td.offense {
+            color: #777;
+            font-size: 13px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: #999;
+        }
+
+        .empty-state i {
+            font-size: 40px;
+            display: block;
+            margin-bottom: 15px;
+            color: #ccc;
+        }
+
+        /* ===== FOOTER ===== */
         .footer {
-            margin-top: 40px;
+            margin-top: 30px;
             font-size: 13px;
             text-align: center;
             color: #777;
-            border-top: 1px solid #eee;
+            border-top: 2px solid #e8d5d5;
             padding-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .footer .footer-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .footer .footer-right {
+            text-align: right;
+        }
+
+        .footer .generated-by {
+            font-weight: 600;
+            color: #800000;
+        }
+
+        .footer .generated-date {
+            color: #999;
+        }
+
+        .footer .signature-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            text-align: center;
+        }
+
+        .footer .signature-line {
+            width: 200px;
+            border-top: 1px solid #333;
+            margin: 0 auto;
+            padding-top: 8px;
+        }
+
+        /* ===== PRINT STYLES ===== */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+                margin: 0;
+            }
+
+            .header {
+                background: #800000 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .table-container {
+                box-shadow: none;
+                border-radius: 0;
+            }
+
+            table thead th {
+                background: #800000 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .summary-card {
+                border-left: 4px solid #800000;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- ===== HEADER ===== -->
     <div class="header">
+        <div class="logo-area">
+            <img src="/static/images/logo.png" alt="Malawi Prison Service Logo">
+        </div>
         <h1>Malawi Prison Service</h1>
+        <div class="department-name">Republic of Malawi</div>
+        <div class="divider"></div>
         <div class="subtitle">Upcoming Releases Report</div>
     </div>
-    
+
+    <!-- ===== REPORT PERIOD ===== -->
     <div class="report-period">
-        Report Period: {{ today|date:"Y-m-d" }} to {{ next_month|date:"Y-m-d" }}
+        <div class="period-item">
+            <span class="period-label">From:</span>
+            <span class="period-value">{{ today|date:"F d, Y" }}</span>
+        </div>
+        <div class="period-arrow">→</div>
+        <div class="period-item">
+            <span class="period-label">To:</span>
+            <span class="period-value">{{ next_month|date:"F d, Y" }}</span>
+        </div>
     </div>
-    
-    <table>
-        <thead>
-            <tr>
-                <th>Prisoner No.</th>
-                <th>Name</th>
-                <th>Prison Station</th>
-                <th>Release Date</th>
-                <th>Original Sentence</th>
-                <th>Offense</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for release in releases %}
-            <tr>
-                <td>{{ release.prisoner.prisoner_number }}</td>
-                <td>{{ release.prisoner.full_name }}</td>
-                <td>{{ release.prisoner.prison_station.name }}</td>
-                <td>{{ release.date_of_release_on_remission|date:"Y-m-d" }}</td>
-                <td>{{ release.sentence }} months</td>
-                <td>{{ release.offense|truncatechars:50 }}</td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="6" style="text-align: center;">No upcoming releases found for this period.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    
+
+    <!-- ===== SUMMARY CARDS ===== -->
+    <div class="summary-row">
+        <div class="summary-card">
+            <div class="summary-value">{{ releases|length }}</div>
+            <div class="summary-label">Total Releases</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value">{{ station_name|default:"All Stations" }}</div>
+            <div class="summary-label">Station</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value">
+                {% with male_count=releases %}
+                    {% if male_count %}
+                        {{ releases|length }} Prisoners
+                    {% else %}
+                        0
+                    {% endif %}
+                {% endwith %}
+            </div>
+            <div class="summary-label">Prisoners Due</div>
+        </div>
+    </div>
+
+    <!-- ===== TABLE ===== -->
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Prisoner No.</th>
+                    <th>Name</th>
+                    <th>Prison Station</th>
+                    <th>Release Date</th>
+                    <th>Original Sentence</th>
+                    <th>Offense</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for release in releases %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ release.prisoner.prisoner_number }}</td>
+                    <td class="prisoner-name">{{ release.prisoner.full_name }}</td>
+                    <td class="prisoner-station">{{ release.prisoner.prison_station.name }}</td>
+                    <td class="release-date">{{ release.date_of_release_on_remission|date:"d M Y" }}</td>
+                    <td class="sentence">{{ release.sentence }} months</td>
+                    <td class="offense">{{ release.offense|truncatechars:60 }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="empty-state">
+                        No upcoming releases found for this period.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ===== FOOTER ===== -->
     <div class="footer">
-        Generated on {{ today|date:"Y-m-d" }} by {{ user.get_full_name }} ({{ user.get_rank_display }})
+        <div class="footer-left">
+            <span class="generated-by">
+                Generated by: {{ user.get_full_name|default:user.username }}
+            </span>
+            <span>|</span>
+            <span class="generated-date">{{ today|date:"F d, Y H:i" }}</span>
+        </div>
+        <div class="footer-right">
+            <span>Malawi Prison Service</span>
+        </div>
+    </div>
+
+    <!-- ===== SIGNATURE SECTION ===== -->
+    <div class="footer signature-section">
+        <table style="width: 100%; border: none; margin-top: 30px;">
+            <tr>
+                <td style="width: 33%; text-align: center; border: none; padding: 20px;">
+                    <div class="signature-line"></div>
+                    <div style="margin-top: 5px; font-weight: 600; color: #800000;">Officer in Charge</div>
+                </td>
+                <td style="width: 33%; text-align: center; border: none; padding: 20px;">
+                    <div class="signature-line"></div>
+                    <div style="margin-top: 5px; font-weight: 600; color: #800000;">Station Officer</div>
+                </td>
+                <td style="width: 33%; text-align: center; border: none; padding: 20px;">
+                    <div class="signature-line"></div>
+                    <div style="margin-top: 5px; font-weight: 600; color: #800000;">Reception Officer</div>
+                </td>
+            </tr>
+        </table>
     </div>
 </body>
 </html>

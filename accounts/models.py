@@ -11,7 +11,8 @@ class CustomUser(AbstractUser):
         ('station_officer', 'Station Officer'),
         ('visitor_attendant', 'Visitor Attendant'),
         ('medical', 'Medical Officer'),
-        
+        ('warden', 'Warden'),
+        ('ict_personnel', 'ICT Personnel'),
     ]
 
     RANK_CHOICES = [
@@ -19,22 +20,26 @@ class CustomUser(AbstractUser):
         ('sergeant', 'Sergeant'),
         ('gaoler', 'Gaoler'),
         ('inspector', 'Inspector'),
-        ( 'Supritendent', 'Supritendent'),
-        (  'ACP', 'ACP'),
-        (  'DCP', 'DCP'),
+        ('supritendent', 'Supritendent'),
+        ('acp', 'ACP'),
+        ('dcp', 'DCP'),
+        ('ict_officer', 'ICT Officer'),
+        ('systems_analyst', 'Systems Analyst'),
+        ('network_admin', 'Network Administrator'),
+        ('security_analyst', 'Security Analyst'),
     ]
 
     REGION_CHOICES = [
         ('southern', 'Southern Region'),
         ('northern', 'Northern Region'),
         ('eastern', 'Eastern Region'),
-        ('western', 'Western Region'),
+        ('central', 'Central Region'),
     ]
 
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='reception')
-    rank = models.CharField(max_length=20, choices=RANK_CHOICES)
+    rank = models.CharField(max_length=20, choices=RANK_CHOICES, blank=True, null=True)
     prison_station = models.ForeignKey(
-        'prison.PrisonStation', # Use string reference to avoid circular import
+        'prison.PrisonStation',
         on_delete=models.SET_NULL,
         null=True,
         blank=True
@@ -42,10 +47,17 @@ class CustomUser(AbstractUser):
     region = models.CharField(max_length=10, choices=REGION_CHOICES, blank=True, null=True, help_text="Region permission (for regional admins)")
     must_change_password = models.BooleanField(default=True)
 
+    # Security fields for ICT monitoring
+    failed_login_attempts = models.PositiveIntegerField(default=0)
+    last_login_ip = models.GenericIPAddressField(null=True, blank=True)
+    last_login_user_agent = models.TextField(blank=True)
+    is_suspicious = models.BooleanField(default=False)
+    suspicious_reason = models.TextField(blank=True)
+
     def __str__(self):
         station_name = self.prison_station.name if self.prison_station else 'No station'
         return f"{self.get_full_name()} ({station_name})"
-    
+
     def is_super_admin(self):
         return self.role == 'superuser' or self.is_superuser
 
@@ -66,6 +78,12 @@ class CustomUser(AbstractUser):
 
     def is_medical_officer(self):
         return self.role == 'medical'
+
+    def is_warden(self):
+        return self.role == 'warden'
+
+    def is_ict_personnel(self):
+        return self.role == 'ict_personnel'
 
     def has_region_permission(self):
         """Check if user has region-level permission"""

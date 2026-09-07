@@ -20,13 +20,24 @@ class ReturnSubmissionForm(forms.ModelForm):
 
         if self.user and not self.user.is_superuser:
             if hasattr(self.user, 'prison_station') and self.user.prison_station:
-                self.fields['prison_station'].queryset = PrisonStation.objects.filter(pk=self.user.prison_station.pk)
+                # Only allow selecting their own prison station - NOT readonly/disabled
+                self.fields['prison_station'].queryset = PrisonStation.objects.filter(
+                    pk=self.user.prison_station.pk
+                )
                 self.fields['prison_station'].initial = self.user.prison_station
-                self.fields['prison_station'].widget.attrs['readonly'] = True
-                self.fields['prison_station'].widget.attrs['disabled'] = True
+                # Remove readonly/disabled attributes
+                self.fields['prison_station'].widget.attrs.pop('readonly', None)
+                self.fields['prison_station'].widget.attrs.pop('disabled', None)
+                # Set empty_label to None so only their station is shown (no "---------" option)
+                self.fields['prison_station'].empty_label = None
+                # Add helpful text
+                self.fields['prison_station'].help_text = f"Your station: {self.user.prison_station.name}"
+            else:
+                # If user has no station, hide the field
+                self.fields['prison_station'].widget = forms.HiddenInput()
+                self.fields['prison_station'].required = False
 
         # Set default period to current month
-        from django.utils import timezone
         self.fields['period'].initial = timezone.now().strftime('%Y-%m')
 
 
@@ -111,10 +122,14 @@ class ReturnsFilterForm(forms.Form):
 
         if self.user and not self.user.is_superuser:
             if hasattr(self.user, 'prison_station') and self.user.prison_station:
-                self.fields['prison_station'].queryset = PrisonStation.objects.filter(pk=self.user.prison_station.pk)
+                self.fields['prison_station'].queryset = PrisonStation.objects.filter(
+                    pk=self.user.prison_station.pk
+                )
                 self.fields['prison_station'].initial = self.user.prison_station
-                self.fields['prison_station'].widget.attrs['readonly'] = True
-                self.fields['prison_station'].widget.attrs['disabled'] = True
+                # Remove readonly/disabled attributes - make it selectable
+                self.fields['prison_station'].widget.attrs.pop('readonly', None)
+                self.fields['prison_station'].widget.attrs.pop('disabled', None)
+                self.fields['prison_station'].empty_label = None
 
 
 class PeriodSelectionForm(forms.Form):

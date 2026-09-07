@@ -14,13 +14,21 @@
     {% block extra_css %}{% endblock %}
     <style>
         :root {
+            --maroon-primary: #800000;
+            --maroon-dark: #5c0000;
+            --maroon-light: #a52a2a;
+            --maroon-lighter: #c0392b;
+            --maroon-gradient: linear-gradient(135deg, #800000 0%, #a52a2a 100%);
+            --maroon-gradient-light: linear-gradient(135deg, #a52a2a 0%, #c0392b 100%);
+            --maroon-gradient-dark: linear-gradient(135deg, #5c0000 0%, #800000 100%);
+
             --sidebar-width: 260px;
             --sidebar-collapsed-width: 0px;
             --header-height: 70px;
-            --primary-color: #1a73e8;
-            --primary-dark: #1557b0;
-            --sidebar-bg: #0f172a;
-            --sidebar-hover: #1e293b;
+            --primary-color: #800000;
+            --primary-dark: #5c0000;
+            --sidebar-bg: #1a0a0a;
+            --sidebar-hover: #2d1515;
             --card-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
             --card-hover-shadow: 0 10px 40px rgba(0,0,0,0.08);
             --transition-speed: 0.3s;
@@ -28,6 +36,8 @@
             --biometric-hover: #7c3aed;
             --returns-color: #059669;
             --returns-hover: #047857;
+            --ict-color: #0ea5e9;
+            --ict-hover: #0284c7;
         }
 
         * {
@@ -100,7 +110,7 @@
             display: block;
             font-size: 0.65rem;
             font-weight: 400;
-            color: #94a3b8;
+            color: #b8a0a0;
             letter-spacing: 0.3px;
             text-transform: uppercase;
         }
@@ -119,7 +129,7 @@
 
         .sidebar-user .user-role {
             font-size: 0.7rem;
-            color: #94a3b8;
+            color: #b8a0a0;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
@@ -186,12 +196,30 @@
         }
 
         .nav-link.active {
-            background: rgba(26, 115, 232, 0.15);
-            color: #60a5fa;
+            background: rgba(128, 0, 0, 0.3);
+            color: #ff8a80;
         }
 
         .nav-link.active i {
-            color: #60a5fa;
+            color: #ff8a80;
+        }
+
+        /* ICT Security nav link special styling */
+        .nav-link.ict-link i {
+            color: var(--ict-color);
+        }
+
+        .nav-link.ict-link:hover i {
+            color: #7dd3fc;
+        }
+
+        .nav-link.ict-link.active {
+            background: rgba(14, 165, 233, 0.15);
+            color: #7dd3fc;
+        }
+
+        .nav-link.ict-link.active i {
+            color: #7dd3fc;
         }
 
         /* Biometric nav link special styling */
@@ -249,6 +277,11 @@
             color: #6ee7b7;
         }
 
+        .nav-link .nav-badge.ict-badge {
+            background: rgba(14, 165, 233, 0.2);
+            color: #7dd3fc;
+        }
+
         .nav-link .nav-arrow {
             margin-left: auto;
             font-size: 0.65rem;
@@ -284,12 +317,34 @@
         }
 
         .submenu .nav-link.active {
-            color: #60a5fa;
-            background: rgba(26, 115, 232, 0.08);
+            color: #ff8a80;
+            background: rgba(128, 0, 0, 0.2);
         }
 
         .submenu .nav-link.active i {
-            color: #60a5fa;
+            color: #ff8a80;
+        }
+
+        /* ICT submenu items */
+        .submenu .nav-link.ict-sub {
+            padding-left: 46px;
+        }
+
+        .submenu .nav-link.ict-sub i {
+            color: #0ea5e9;
+        }
+
+        .submenu .nav-link.ict-sub:hover {
+            color: #7dd3fc;
+        }
+
+        .submenu .nav-link.ict-sub.active {
+            color: #7dd3fc;
+            background: rgba(14, 165, 233, 0.08);
+        }
+
+        .submenu .nav-link.ict-sub.active i {
+            color: #7dd3fc;
         }
 
         /* Biometric submenu items */
@@ -333,56 +388,6 @@
         }
 
         .submenu .nav-link.returns-sub.active i {
-            color: #6ee7b7;
-        }
-
-        /* Nested sub-submenu for PDF downloads */
-        .submenu-sub {
-            padding-left: 20px;
-            margin-top: 4px;
-            margin-bottom: 4px;
-        }
-
-        .submenu-sub-title {
-            font-size: 0.7rem;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            padding: 6px 14px 4px 30px;
-            font-weight: 600;
-        }
-
-        .submenu-sub .nav-link {
-            padding: 6px 14px 6px 30px;
-            font-size: 0.75rem;
-            color: #7c8ba1;
-        }
-
-        .submenu-sub .nav-link i {
-            font-size: 0.7rem;
-            width: 16px;
-            color: #475569;
-        }
-
-        .submenu-sub .nav-link:hover {
-            color: #e2e8f0;
-        }
-
-        .submenu-sub .nav-link.active {
-            color: #6ee7b7;
-            background: rgba(5, 150, 105, 0.08);
-        }
-
-        .submenu-sub .nav-link.active i {
-            color: #6ee7b7;
-        }
-
-        /* Export links special styling */
-        .submenu-sub .nav-link.export-link i {
-            color: #059669;
-        }
-
-        .submenu-sub .nav-link.export-link:hover {
             color: #6ee7b7;
         }
 
@@ -530,7 +535,7 @@
             width: 34px;
             height: 34px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #1a73e8, #4f8cf7);
+            background: var(--maroon-gradient);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -649,11 +654,83 @@
             border-radius: 10px;
             border: none;
             font-size: 0.875rem;
+            animation: slideDown 0.4s ease;
         }
         .alert-success { background: #dcfce7; color: #166534; }
         .alert-danger { background: #fee2e2; color: #991b1b; }
         .alert-warning { background: #fef3c7; color: #92400e; }
         .alert-info { background: #dbeafe; color: #1e40af; }
+
+        /* Auto-dismiss alert styles */
+        .alert-dismissible .btn-close {
+            padding: 1rem;
+        }
+
+        .alert .alert-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 0 0 10px 10px;
+            animation: progressBar 6s linear forwards;
+        }
+
+        .alert-success .alert-progress {
+            background: #16a34a;
+        }
+
+        .alert-danger .alert-progress {
+            background: #dc2626;
+        }
+
+        .alert-warning .alert-progress {
+            background: #d97706;
+        }
+
+        .alert-info .alert-progress {
+            background: #1a73e8;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes progressBar {
+            from {
+                width: 100%;
+            }
+            to {
+                width: 0%;
+            }
+        }
+
+        /* Toast notification container */
+        .toast-container-custom {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 450px;
+            width: 100%;
+            pointer-events: none;
+        }
+
+        .toast-container-custom .alert {
+            pointer-events: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+            border: 1px solid rgba(226, 232, 240, 0.5);
+            margin-bottom: 12px;
+            position: relative;
+            overflow: hidden;
+        }
 
         /* ===== NOTIFICATION STYLES ===== */
         .notification-btn {
@@ -664,7 +741,7 @@
             position: absolute;
             top: -2px;
             right: -2px;
-            background: #ef4444;
+            background: #800000;
             color: white;
             font-size: 0.65rem;
             font-weight: 600;
@@ -693,7 +770,7 @@
             align-items: center;
             padding: 12px 16px;
             border-bottom: 1px solid rgba(226, 232, 240, 0.6);
-            background: #f8fafc;
+            background: #fdf2f2;
         }
 
         .notification-header h6 {
@@ -705,7 +782,7 @@
 
         .mark-all-read-btn {
             font-size: 0.75rem;
-            color: #3b82f6;
+            color: #800000;
             padding: 2px 8px;
             text-decoration: none;
         }
@@ -746,7 +823,7 @@
         }
 
         .notification-item.unread {
-            background: #eff6ff;
+            background: #fdf2f2;
         }
 
         .notification-item.unread::before {
@@ -756,7 +833,7 @@
             top: 0;
             bottom: 0;
             width: 3px;
-            background: #3b82f6;
+            background: #800000;
         }
 
         .notification-title {
@@ -831,13 +908,13 @@
         .notification-footer {
             padding: 12px 16px;
             border-top: 1px solid rgba(226, 232, 240, 0.6);
-            background: #f8fafc;
+            background: #fdf2f2;
             text-align: center;
         }
 
         .view-all-btn {
             font-size: 0.8rem;
-            color: #3b82f6;
+            color: #800000;
             text-decoration: none;
         }
 
@@ -867,22 +944,26 @@
                 {% if request.user.prison_station %}
                 <div class="user-station"><i class="bi bi-building me-1"></i>{{ request.user.prison_station.name }}</div>
                 {% endif %}
+                {% if request.user.is_suspicious %}
+                <div class="user-station text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Suspicious Activity Detected</div>
+                {% endif %}
             </div>
 
             <div class="sidebar-nav">
-                <!-- Dashboard -->
+                <!-- ===== DASHBOARD ===== -->
                 <a href="{% url 'dashboard' %}" class="nav-link {% if request.path == '/' %}active{% endif %}">
                     <i class="bi bi-speedometer2"></i> Dashboard
                 </a>
 
+                <!-- ===== RELEASE HUB ===== -->
                 {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_officer_in_charge or request.user.is_station_officer %}
                 <a href="{% url 'release_hub' %}" class="nav-link {% if 'release_hub' in request.path %}active{% endif %}">
                     <i class="bi bi-box-arrow-right"></i> Release Hub
                 </a>
                 {% endif %}
 
-                <!-- Prisoners -->
-                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_warden %}
+                <!-- ===== PRISONERS ===== -->
+                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_warden or request.user.is_ict_personnel %}
                 <div class="nav-item">
                     <a class="nav-link {% if 'prisoner' in request.path and 'fingerprint' not in request.path %}active{% endif %}" data-bs-toggle="collapse" href="#prisonersMenu" role="button" aria-expanded="{% if 'prisoner' in request.path and 'fingerprint' not in request.path %}true{% else %}false{% endif %}">
                         <i class="bi bi-people"></i> Prisoners
@@ -904,8 +985,8 @@
                 </div>
                 {% endif %}
 
-                <!-- Visitors -->
-                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_visitor_attendant %}
+                <!-- ===== VISITORS ===== -->
+                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_visitor_attendant or request.user.is_ict_personnel %}
                 <div class="nav-item">
                     <a class="nav-link {% if 'visitor' in request.path %}active{% endif %}" data-bs-toggle="collapse" href="#visitorsMenu" role="button" aria-expanded="{% if 'visitor' in request.path %}true{% else %}false{% endif %}">
                         <i class="bi bi-person-lines-fill"></i> Visitors
@@ -924,8 +1005,8 @@
                 </div>
                 {% endif %}
 
-                <!-- Medical -->
-                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_medical_officer %}
+                <!-- ===== MEDICAL ===== -->
+                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_medical_officer or request.user.is_ict_personnel %}
                 <div class="nav-item">
                     <a class="nav-link {% if 'medical' in request.path %}active{% endif %}" data-bs-toggle="collapse" href="#medicalMenu" role="button" aria-expanded="{% if 'medical' in request.path %}true{% else %}false{% endif %}">
                         <i class="bi bi-heart-pulse"></i> Medical
@@ -944,8 +1025,8 @@
                 </div>
                 {% endif %}
 
-                <!-- Incidents -->
-                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_warden %}
+                <!-- ===== INCIDENTS ===== -->
+                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_warden or request.user.is_ict_personnel %}
                 <div class="nav-item">
                     <a class="nav-link {% if 'incident' in request.path %}active{% endif %}" data-bs-toggle="collapse" href="#incidentsMenu" role="button" aria-expanded="{% if 'incident' in request.path %}true{% else %}false{% endif %}">
                         <i class="bi bi-exclamation-triangle"></i> Incidents
@@ -964,8 +1045,8 @@
                 </div>
                 {% endif %}
 
-                <!-- Ration Management -->
-                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_warden %}
+                <!-- ===== RATION MANAGEMENT ===== -->
+                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_warden or request.user.is_ict_personnel %}
                 <div class="nav-item">
                     <a class="nav-link {% if 'ration' in request.path %}active{% endif %}" data-bs-toggle="collapse" href="#rationMenu" role="button" aria-expanded="{% if 'ration' in request.path %}true{% else %}false{% endif %}">
                         <i class="bi bi-journal-check"></i> Rations
@@ -986,6 +1067,7 @@
                 {% endif %}
 
                 <!-- ===== RETURNS MODULE ===== -->
+                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_officer_in_charge or request.user.is_station_officer or request.user.is_ict_personnel %}
                 <div class="nav-item">
                     <a class="nav-link returns-link {% if 'returns' in request.path %}active{% endif %}" data-bs-toggle="collapse" href="#returnsMenu" role="button" aria-expanded="{% if 'returns' in request.path %}true{% else %}false{% endif %}">
                         <i class="bi bi-file-spreadsheet"></i> Returns
@@ -993,60 +1075,72 @@
                         <span class="nav-arrow"><i class="bi bi-chevron-down"></i></span>
                     </a>
                     <div class="submenu collapse {% if 'returns' in request.path %}show{% endif %}" id="returnsMenu">
-                        <!-- Dashboard -->
                         <a href="{% url 'returns:dashboard' %}" class="nav-link returns-sub {% if request.path == '/returns/' %}active{% endif %}">
                             <i class="bi bi-speedometer2"></i> Dashboard
                         </a>
-                        <!-- Templates -->
                         <a href="{% url 'returns:template_list' %}" class="nav-link returns-sub {% if 'templates' in request.path %}active{% endif %}">
                             <i class="bi bi-layout-text-window-reverse"></i> Templates
                         </a>
-                        <!-- Submissions -->
                         <a href="{% url 'returns:submission_list' %}" class="nav-link returns-sub {% if 'submissions' in request.path and 'create' not in request.path %}active{% endif %}">
                             <i class="bi bi-upload"></i> Submissions
                         </a>
-                        <!-- Submit New Return -->
+                        {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_officer_in_charge or request.user.is_station_officer %}
                         <a href="{% url 'returns:submission_create' %}" class="nav-link returns-sub {% if 'submissions/create' in request.path %}active{% endif %}">
                             <i class="bi bi-plus-circle"></i> Submit Return
                         </a>
-                        <!-- Station Status -->
+                        {% endif %}
                         <a href="{% url 'returns:station_status' %}" class="nav-link returns-sub {% if 'station-status' in request.path %}active{% endif %}">
                             <i class="bi bi-check2-circle"></i> Station Status
                         </a>
-                        <!-- Regional Summary -->
+                        {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_ict_personnel %}
                         <a href="{% url 'returns:regional_summary' %}" class="nav-link returns-sub {% if 'regional-summary' in request.path %}active{% endif %}">
                             <i class="bi bi-bar-chart-fill"></i> Regional Summary
                         </a>
-                        <!-- Monthly Status -->
+                        {% endif %}
                         <a href="{% url 'returns:monthly_status_report' %}" class="nav-link returns-sub {% if 'monthly-status' in request.path %}active{% endif %}">
                             <i class="bi bi-calendar-check"></i> Monthly Status
                         </a>
-                        <!-- Export Options -->
-                        <a href="{% url 'returns:export_options' %}" class="nav-link returns-sub export-link {% if 'export' in request.path and 'station' not in request.path and 'region' not in request.path and 'all' not in request.path %}active{% endif %}">
+                        {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_ict_personnel %}
+                        <a href="{% url 'returns:export_options' %}" class="nav-link returns-sub {% if 'export' in request.path and 'station' not in request.path and 'region' not in request.path and 'all' not in request.path %}active{% endif %}">
                             <i class="bi bi-download"></i> Export Options
                         </a>
-                        <!-- PDF Downloads Sub-submenu -->
-                        <div class="submenu-sub">
-                            <div class="submenu-sub-title">
-                                <i class="bi bi-file-earmark-pdf"></i> PDF Downloads
-                            </div>
-                            <a href="{% url 'returns:export_options' %}?export_type=station" class="nav-link export-link {% if 'export/station' in request.path %}active{% endif %}">
-                                <i class="bi bi-building"></i> By Station
-                            </a>
-                            {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_region_admin %}
-                            <a href="{% url 'returns:export_options' %}?export_type=region" class="nav-link export-link {% if 'export/region' in request.path %}active{% endif %}">
-                                <i class="bi bi-map"></i> By Region
-                            </a>
-                            <a href="{% url 'returns:export_options' %}?export_type=all" class="nav-link export-link {% if 'export/all' in request.path %}active{% endif %}">
-                                <i class="bi bi-globe"></i> All Stations
-                            </a>
-                            {% endif %}
-                        </div>
+                        {% endif %}
                     </div>
                 </div>
+                {% endif %}
+
+                <!-- ===== ICT SECURITY MODULE ===== -->
+                {% if request.user.is_ict_personnel or request.user.is_super_admin %}
+                <div class="nav-item">
+                    <a class="nav-link ict-link {% if 'ict-dashboard' in request.path or 'audit-trail' in request.path %}active{% endif %}" data-bs-toggle="collapse" href="#ictMenu" role="button" aria-expanded="{% if 'ict-dashboard' in request.path or 'audit-trail' in request.path %}true{% else %}false{% endif %}">
+                        <i class="bi bi-shield-lock"></i> ICT Security
+                        <span class="nav-badge ict-badge"><i class="bi bi-dot"></i> Monitor</span>
+                        <span class="nav-arrow"><i class="bi bi-chevron-down"></i></span>
+                    </a>
+                    <div class="submenu collapse {% if 'ict-dashboard' in request.path or 'audit-trail' in request.path %}show{% endif %}" id="ictMenu">
+                        <a href="{% url 'ict_dashboard' %}" class="nav-link ict-sub {% if 'ict-dashboard' in request.path %}active{% endif %}">
+                            <i class="bi bi-speedometer2"></i> Security Dashboard
+                        </a>
+                        <a href="{% url 'audit_trail_list' %}" class="nav-link ict-sub {% if 'audit-trail' in request.path and 'prisoner' not in request.path and 'sentry-alerts' not in request.path %}active{% endif %}">
+                            <i class="bi bi-list-check"></i> Audit Trail
+                        </a>
+                        <a href="{% url 'sentry_alerts_view' %}" class="nav-link ict-sub {% if 'sentry-alerts' in request.path %}active{% endif %}">
+                            <i class="bi bi-exclamation-triangle"></i> Sentry Alerts
+                        </a>
+                        <a href="{% url 'export_audit_trail' %}" class="nav-link ict-sub">
+                            <i class="bi bi-download"></i> Export Audit Trail
+                        </a>
+                        {% if request.user.is_super_admin %}
+                        <a href="{% url 'user_list' %}" class="nav-link ict-sub {% if 'users' in request.path %}active{% endif %}">
+                            <i class="bi bi-person-gear"></i> User Management
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
 
                 <!-- ===== FINGERPRINT / BIOMETRICS ===== -->
-                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_warden %}
+                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_warden or request.user.is_ict_personnel %}
                 <div class="nav-item">
                     <a class="nav-link biometric-link {% if 'fingerprint' in request.path %}active{% endif %}" data-bs-toggle="collapse" href="#fingerprintMenu" role="button" aria-expanded="{% if 'fingerprint' in request.path %}true{% else %}false{% endif %}">
                         <i class="bi bi-fingerprint"></i> Biometrics
@@ -1072,8 +1166,8 @@
                 </div>
                 {% endif %}
 
-                <!-- Reports & Analytics -->
-                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_warden %}
+                <!-- ===== REPORTS & ANALYTICS ===== -->
+                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_warden or request.user.is_ict_personnel %}
                 <div class="nav-item">
                     <a class="nav-link {% if 'reports' in request.path or 'lockup' in request.path or 'upcoming' in request.path and 'fingerprint' not in request.path and 'returns' not in request.path %}active{% endif %}" data-bs-toggle="collapse" href="#reportsMenu" role="button" aria-expanded="{% if 'reports' in request.path or 'lockup' in request.path or 'upcoming' in request.path and 'fingerprint' not in request.path and 'returns' not in request.path %}true{% else %}false{% endif %}">
                         <i class="bi bi-graph-up"></i> Reports
@@ -1086,7 +1180,7 @@
                         <a href="{% url 'upcoming_releases_report' %}" class="nav-link {% if 'upcoming_releases_report' in request.path %}active{% endif %}">
                             <i class="bi bi-calendar-check"></i> Upcoming Releases
                         </a>
-                        {% if request.user.is_super_admin or request.user.is_prison_admin %}
+                        {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_ict_personnel %}
                         <a href="{% url 'activity_log_list' %}" class="nav-link {% if 'activity_log_list' in request.path %}active{% endif %}">
                             <i class="bi bi-clock-history"></i> Activity Log
                         </a>
@@ -1095,19 +1189,22 @@
                 </div>
                 {% endif %}
 
-                <!-- Admin Management (Superuser only) -->
+                <!-- ===== ADMIN MANAGEMENT ===== -->
                 {% if request.user.is_super_admin %}
                 <div class="nav-item">
-                    <a class="nav-link {% if 'station' in request.path or 'user' in request.path %}active{% endif %}" data-bs-toggle="collapse" href="#adminMenu" role="button" aria-expanded="{% if 'station' in request.path or 'user' in request.path %}true{% else %}false{% endif %}">
+                    <a class="nav-link {% if 'station' in request.path or 'manage_prison_stations' in request.path %}active{% endif %}" data-bs-toggle="collapse" href="#adminMenu" role="button" aria-expanded="{% if 'station' in request.path or 'manage_prison_stations' in request.path %}true{% else %}false{% endif %}">
                         <i class="bi bi-shield-lock"></i> Administration
                         <span class="nav-arrow"><i class="bi bi-chevron-down"></i></span>
                     </a>
-                    <div class="submenu collapse {% if 'station' in request.path or 'user' in request.path %}show{% endif %}" id="adminMenu">
+                    <div class="submenu collapse {% if 'station' in request.path or 'manage_prison_stations' in request.path %}show{% endif %}" id="adminMenu">
                         <a href="{% url 'manage_prison_stations' %}" class="nav-link {% if 'manage_prison_stations' in request.path %}active{% endif %}">
                             <i class="bi bi-building"></i> Prison Stations
                         </a>
                         <a href="{% url 'user_list' %}" class="nav-link {% if 'users' in request.path %}active{% endif %}">
                             <i class="bi bi-person-gear"></i> User Management
+                        </a>
+                        <a href="{% url 'create_user' %}" class="nav-link {% if 'create_user' in request.path %}active{% endif %}">
+                            <i class="bi bi-person-plus"></i> Create User
                         </a>
                     </div>
                 </div>
@@ -1174,6 +1271,9 @@
                             <li><span class="dropdown-item-text text-muted small">{{ request.user.get_full_name|default:request.user.username }}</span></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{% url 'change_password' %}"><i class="bi bi-key me-2"></i>Change Password</a></li>
+                            {% if request.user.is_ict_personnel %}
+                            <li><a class="dropdown-item" href="{% url 'ict_dashboard' %}"><i class="bi bi-shield-lock me-2"></i>Security Dashboard</a></li>
+                            {% endif %}
                             <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
                         </ul>
                     </div>
@@ -1188,6 +1288,7 @@
                     <i class="bi bi-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}x-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
                     {{ message }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    <div class="alert-progress"></div>
                 </div>
                 {% endfor %}
             </div>
@@ -1209,7 +1310,83 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{% static 'js/scripts.js' %}"></script>
     <script>
-        // Notification System
+        // ===== AUTO-DISMISS ALERTS =====
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-dismiss alerts after 6 seconds
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                // Check if this alert already has a timeout (prevent duplicate)
+                if (alert.dataset.timeout) return;
+
+                // Set timeout to dismiss
+                const timeoutId = setTimeout(function() {
+                    // Fade out and remove
+                    alert.style.transition = 'opacity 0.5s ease';
+                    alert.style.opacity = '0';
+                    setTimeout(function() {
+                        if (alert.parentNode) {
+                            alert.remove();
+                        }
+                    }, 500);
+                }, 6000);
+
+                // Store timeout ID on the element
+                alert.dataset.timeout = timeoutId;
+
+                // If user hovers over alert, pause the timer
+                alert.addEventListener('mouseenter', function() {
+                    clearTimeout(timeoutId);
+                });
+
+                // When user leaves, restart the timer
+                alert.addEventListener('mouseleave', function() {
+                    const newTimeoutId = setTimeout(function() {
+                        alert.style.transition = 'opacity 0.5s ease';
+                        alert.style.opacity = '0';
+                        setTimeout(function() {
+                            if (alert.parentNode) {
+                                alert.remove();
+                            }
+                        }, 500);
+                    }, 3000); // 3 seconds after hover ends
+
+                    alert.dataset.timeout = newTimeoutId;
+                });
+
+                // If user clicks the close button, clear the timeout
+                const closeBtn = alert.querySelector('.btn-close');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', function() {
+                        clearTimeout(timeoutId);
+                    });
+                }
+            });
+
+            // Handle duplicate messages - remove duplicates
+            const messageContainer = document.querySelector('.container-fluid.pt-3');
+            if (messageContainer) {
+                const alertMessages = messageContainer.querySelectorAll('.alert');
+                const seenMessages = new Set();
+
+                alertMessages.forEach(function(alert) {
+                    const messageText = alert.textContent.trim();
+                    // Remove any existing progress bars before checking
+                    const progressBar = alert.querySelector('.alert-progress');
+                    if (progressBar) {
+                        // Keep the progress bar
+                    }
+
+                    // Check for duplicates (same message text)
+                    if (seenMessages.has(messageText)) {
+                        alert.remove();
+                    } else {
+                        seenMessages.add(messageText);
+                    }
+                });
+            }
+        });
+
+        // ===== NOTIFICATION SYSTEM =====
         class NotificationSystem {
             constructor() {
                 this.notificationBtn = document.getElementById('notificationBtn');
@@ -1221,12 +1398,10 @@
 
             init() {
                 if (this.notificationBtn) {
-                    // Load notifications when dropdown is shown
                     this.notificationBtn.addEventListener('shown.bs.dropdown', () => {
                         this.loadNotifications();
                     });
 
-                    // Mark all as read
                     if (this.markAllReadBtn) {
                         this.markAllReadBtn.addEventListener('click', (e) => {
                             e.preventDefault();
@@ -1235,9 +1410,8 @@
                     }
                 }
 
-                // Periodically update notification count
                 this.updateNotificationCount();
-                setInterval(() => this.updateNotificationCount(), 60000); // Update every minute
+                setInterval(() => this.updateNotificationCount(), 60000);
             }
 
             async loadNotifications() {
@@ -1291,7 +1465,6 @@
             }
 
             async handleNotificationClick(notificationId, actionUrl) {
-                // Mark as read
                 try {
                     await fetch(`/notifications/${notificationId}/read/`, {
                         method: 'POST',
@@ -1304,7 +1477,6 @@
                     console.error('Error marking notification as read:', error);
                 }
 
-                // Navigate to action URL if provided
                 if (actionUrl) {
                     window.location.href = actionUrl;
                 }
@@ -1398,10 +1570,8 @@
             }
         }
 
-        // Initialize notification system
         let notificationSystem;
         document.addEventListener('DOMContentLoaded', function() {
-            // Sidebar toggle
             const sidebarToggle = document.getElementById('sidebarToggle');
             const sidebar = document.getElementById('sidebar-wrapper');
             const overlay = document.getElementById('sidebarOverlay');
@@ -1426,7 +1596,6 @@
                 });
             }
 
-            // Close sidebar on escape key
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Escape' && sidebar.classList.contains('show')) {
                     sidebar.classList.remove('show');
@@ -1434,7 +1603,6 @@
                 }
             });
 
-            // Initialize notification system
             notificationSystem = new NotificationSystem();
         });
     </script>

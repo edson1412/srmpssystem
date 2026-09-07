@@ -1,4 +1,4 @@
-﻿{% extends "prison/base.html" %}
+{% extends "prison/base.html" %}
 {% load static %}
 
 {% block title %}Lockup Summary{% endblock %}
@@ -53,14 +53,38 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr><td>Male Convicted</td><td class="text-center">{{ station_summary.male_convicted|default:overall_summary.male_convicted|default:"0" }}</td></tr>
-                        <tr><td>Female Convicted</td><td class="text-center">{{ station_summary.female_convicted|default:overall_summary.female_convicted|default:"0" }}</td></tr>
-                        <tr><td>Male Remand</td><td class="text-center">{{ station_summary.male_remand|default:overall_summary.male_remand|default:"0" }}</td></tr>
-                        <tr><td>Female Remand</td><td class="text-center">{{ station_summary.female_remand|default:overall_summary.female_remand|default:"0" }}</td></tr>
-                        <tr><td>Foreigner Convicted</td><td class="text-center">{{ station_summary.foreigner_convicted|default:overall_summary.foreigner_convicted|default:"0" }}</td></tr>
-                        <tr><td>Foreigner Remand</td><td class="text-center">{{ station_summary.foreigner_remand|default:overall_summary.foreigner_remand|default:"0" }}</td></tr>
-                        <tr><td>Children</td><td class="text-center">{{ station_summary.children|default:overall_summary.children|default:"0" }}</td></tr>
-                        <tr class="table-dark text-white"><td><strong>Grand Total</strong></td><td class="text-center"><strong>{{ station_summary.total|default:overall_summary.grand_total|default:"0" }}</strong></td></tr>
+                        {% if station_summary %}
+                        <tr><td>Male Convicted</td><td class="text-center">{{ station_summary.male_convicted|default:"0" }}</td></tr>
+                        <tr><td>Female Convicted</td><td class="text-center">{{ station_summary.female_convicted|default:"0" }}</td></tr>
+                        <tr><td>Male Remand</td><td class="text-center">{{ station_summary.male_remand|default:"0" }}</td></tr>
+                        <tr><td>Female Remand</td><td class="text-center">{{ station_summary.female_remand|default:"0" }}</td></tr>
+                        <tr><td>Foreigner Convicted</td><td class="text-center">{{ station_summary.foreigner_convicted|default:"0" }}</td></tr>
+                        <tr><td>Foreigner Remand</td><td class="text-center">{{ station_summary.foreigner_remand|default:"0" }}</td></tr>
+                        <tr><td>Children</td><td class="text-center">{{ station_summary.children|default:"0" }}</td></tr>
+                        <tr class="table-dark text-white"><td><strong>Grand Total</strong></td><td class="text-center"><strong>{{ station_summary.total|default:"0" }}</strong></td></tr>
+                        {% elif overall_summary %}
+                        <tr><td>Male Convicted</td><td class="text-center">{{ overall_summary.male_convicted|default:"0" }}</td></tr>
+                        <tr><td>Female Convicted</td><td class="text-center">{{ overall_summary.female_convicted|default:"0" }}</td></tr>
+                        <tr><td>Male Remand</td><td class="text-center">{{ overall_summary.male_remand|default:"0" }}</td></tr>
+                        <tr><td>Female Remand</td><td class="text-center">{{ overall_summary.female_remand|default:"0" }}</td></tr>
+                        <tr><td>Foreigner Convicted</td><td class="text-center">{{ overall_summary.foreigner_convicted|default:"0" }}</td></tr>
+                        <tr><td>Foreigner Remand</td><td class="text-center">{{ overall_summary.foreigner_remand|default:"0" }}</td></tr>
+                        <tr><td>Children</td><td class="text-center">{{ overall_summary.children|default:"0" }}</td></tr>
+                        <tr class="table-dark text-white"><td><strong>Grand Total</strong></td><td class="text-center"><strong>{{ overall_summary.grand_total|default:"0" }}</strong></td></tr>
+                        {% elif regional_summary %}
+                        {% with first_region=regional_summary.values|first %}
+                        <tr><td>Male Convicted</td><td class="text-center">{{ first_region.male_convicted|default:"0" }}</td></tr>
+                        <tr><td>Female Convicted</td><td class="text-center">{{ first_region.female_convicted|default:"0" }}</td></tr>
+                        <tr><td>Male Remand</td><td class="text-center">{{ first_region.male_remand|default:"0" }}</td></tr>
+                        <tr><td>Female Remand</td><td class="text-center">{{ first_region.female_remand|default:"0" }}</td></tr>
+                        <tr><td>Foreigner Convicted</td><td class="text-center">{{ first_region.foreigner_convicted|default:"0" }}</td></tr>
+                        <tr><td>Foreigner Remand</td><td class="text-center">{{ first_region.foreigner_remand|default:"0" }}</td></tr>
+                        <tr><td>Children</td><td class="text-center">{{ first_region.children|default:"0" }}</td></tr>
+                        <tr class="table-dark text-white"><td><strong>Grand Total</strong></td><td class="text-center"><strong>{{ first_region.total|default:"0" }}</strong></td></tr>
+                        {% endwith %}
+                        {% else %}
+                        <tr><td colspan="2" class="text-center text-muted">No summary data available</td></tr>
+                        {% endif %}
                     </tbody>
                 </table>
             </div>

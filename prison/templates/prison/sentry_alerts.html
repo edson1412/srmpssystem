@@ -1,0 +1,654 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block page_title %}Sentry Alerts{% endblock %}
+
+{% block extra_css %}
+<style>
+    .alerts-container {
+        padding: 20px 0;
+    }
+
+    .alerts-header {
+        background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+        color: white;
+        padding: 24px 32px;
+        border-radius: 16px;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 16px;
+        box-shadow: 0 4px 20px rgba(220, 38, 38, 0.25);
+    }
+
+    .alerts-header .header-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .alerts-header .header-icon {
+        width: 56px;
+        height: 56px;
+        background: rgba(255,255,255,0.12);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .alerts-header h4 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 1.3rem;
+    }
+
+    .alerts-header p {
+        margin: 4px 0 0 0;
+        color: rgba(255,255,255,0.85);
+        font-size: 0.85rem;
+    }
+
+    .alert-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .alert-stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 16px 20px;
+        border: 1px solid #e2e8f0;
+        text-align: center;
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .alert-stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    .alert-stat-card .stat-number {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.2;
+    }
+
+    .alert-stat-card .stat-label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #64748b;
+        letter-spacing: 0.5px;
+        margin-top: 4px;
+    }
+
+    .alert-stat-card.critical .stat-number { color: #dc2626; }
+    .alert-stat-card.high .stat-number { color: #d97706; }
+    .alert-stat-card.total .stat-number { color: #0ea5e9; }
+    .alert-stat-card.resolved .stat-number { color: #16a34a; }
+
+    .filter-section {
+        background: white;
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
+        border: 1px solid #e2e8f0;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .filter-section .filter-group {
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .filter-section .filter-label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #64748b;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+        display: block;
+    }
+
+    .filter-section select {
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        padding: 8px 12px;
+        font-size: 0.85rem;
+        width: 100%;
+        transition: all 0.2s ease;
+        background: #f8fafc;
+    }
+
+    .filter-section select:focus {
+        border-color: #0ea5e9;
+        box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+        outline: none;
+        background: white;
+    }
+
+    .filter-section .btn-filter {
+        padding: 8px 24px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        border-radius: 8px;
+        border: none;
+        background: #0ea5e9;
+        color: white;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .filter-section .btn-filter:hover {
+        background: #0284c7;
+    }
+
+    .filter-section .btn-filter-outline {
+        padding: 8px 24px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        background: white;
+        color: #64748b;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        white-space: nowrap;
+        text-decoration: none;
+    }
+
+    .filter-section .btn-filter-outline:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+        text-decoration: none;
+    }
+
+    .alert-card {
+        border-left: 4px solid;
+        padding: 16px 20px;
+        margin-bottom: 12px;
+        background: #f8fafc;
+        border-radius: 0 10px 10px 0;
+        transition: all 0.2s ease;
+        border: 1px solid #e2e8f0;
+        border-left-width: 4px;
+    }
+
+    .alert-card:hover {
+        background: #f1f5f9;
+        transform: translateX(4px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .alert-card.critical { border-left-color: #dc2626; background: #fef2f2; }
+    .alert-card.high { border-left-color: #d97706; background: #fffbeb; }
+    .alert-card.medium { border-left-color: #f59e0b; background: #fffbeb; }
+    .alert-card.low { border-left-color: #3b82f6; background: #eff6ff; }
+
+    .alert-card.resolved {
+        opacity: 0.7;
+        background: #f0fdf4;
+        border-left-color: #16a34a;
+    }
+
+    .alert-card.resolved:hover {
+        opacity: 0.85;
+    }
+
+    .alert-card .alert-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .alert-card .alert-title {
+        font-weight: 700;
+        color: #0f172a;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .alert-card .alert-title i {
+        font-size: 1.1rem;
+    }
+
+    .alert-card .alert-type {
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 2px 10px;
+        border-radius: 12px;
+        background: #f1f5f9;
+        color: #64748b;
+        white-space: nowrap;
+    }
+
+    .alert-card .alert-description {
+        color: #475569;
+        font-size: 0.85rem;
+        margin: 8px 0;
+        line-height: 1.5;
+    }
+
+    .alert-card .alert-meta {
+        display: flex;
+        gap: 16px;
+        font-size: 0.75rem;
+        color: #94a3b8;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .alert-card .alert-meta i {
+        margin-right: 4px;
+    }
+
+    .alert-card .alert-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+    }
+
+    .badge-severity {
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.65rem;
+    }
+
+    .badge-critical { background: #fee2e2; color: #991b1b; }
+    .badge-high { background: #fef3c7; color: #92400e; }
+    .badge-medium { background: #fef3c7; color: #92400e; }
+    .badge-low { background: #dbeafe; color: #1e40af; }
+
+    .badge-status {
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.65rem;
+    }
+
+    .badge-status-active { background: #fee2e2; color: #991b1b; }
+    .badge-status-resolved { background: #dcfce7; color: #166534; }
+
+    .btn-resolve {
+        padding: 4px 14px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        border-radius: 8px;
+        background: #dcfce7;
+        color: #16a34a;
+        border: none;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    .btn-resolve:hover {
+        background: #bbf7d0;
+        transform: scale(1.02);
+    }
+
+    .btn-resolve:active {
+        transform: scale(0.98);
+    }
+
+    .btn-dismiss {
+        padding: 4px 14px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        border-radius: 8px;
+        background: #f1f5f9;
+        color: #64748b;
+        border: none;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    .btn-dismiss:hover {
+        background: #e2e8f0;
+    }
+
+    .empty-state {
+        padding: 50px 20px;
+        text-align: center;
+        color: #94a3b8;
+    }
+
+    .empty-state i {
+        font-size: 3.5rem;
+        display: block;
+        margin-bottom: 16px;
+        color: #cbd5e1;
+    }
+
+    .empty-state h6 {
+        color: #475569;
+        margin-bottom: 4px;
+    }
+
+    .empty-state p {
+        margin: 0;
+        font-size: 0.9rem;
+    }
+
+    .btn-back {
+        padding: 8px 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        border-radius: 8px;
+        border: 1px solid rgba(255,255,255,0.3);
+        background: transparent;
+        color: white;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-back:hover {
+        background: rgba(255,255,255,0.1);
+        color: white;
+        text-decoration: none;
+    }
+
+    @media (max-width: 768px) {
+        .alerts-header {
+            padding: 16px 20px;
+        }
+        .alerts-header .header-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 1.2rem;
+        }
+        .alerts-header h4 {
+            font-size: 1rem;
+        }
+        .alert-stats {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .filter-section {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .filter-section .filter-group {
+            min-width: 100%;
+        }
+        .filter-section .btn-filter,
+        .filter-section .btn-filter-outline {
+            width: 100%;
+            text-align: center;
+        }
+        .alert-card .alert-top {
+            flex-direction: column;
+        }
+        .alert-card .alert-meta {
+            flex-direction: column;
+            gap: 4px;
+            align-items: flex-start;
+        }
+        .alert-card .alert-actions {
+            width: 100%;
+        }
+        .alert-card .alert-actions button {
+            flex: 1;
+        }
+        .btn-back {
+            padding: 6px 14px;
+            font-size: 0.7rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .alert-stats {
+            grid-template-columns: 1fr;
+        }
+        .alert-stat-card .stat-number {
+            font-size: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="alerts-container">
+    <!-- Header -->
+    <div class="alerts-header">
+        <div class="header-left">
+            <div class="header-icon">
+                <i class="bi bi-shield-exclamation"></i>
+            </div>
+            <div>
+                <h4>Sentry Alerts</h4>
+                <p>Monitor and respond to security alerts across the prison management system</p>
+            </div>
+        </div>
+        <div>
+            <a href="{% url 'ict_dashboard' %}" class="btn-back">
+                <i class="bi bi-arrow-left me-1"></i>Back
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="alert-stats">
+        <div class="alert-stat-card total">
+            <div class="stat-number">{{ alerts|length }}</div>
+            <div class="stat-label">Total Alerts</div>
+        </div>
+        <div class="alert-stat-card critical">
+            <div class="stat-number">{{ alerts|length }}</div>
+            <div class="stat-label">Active Alerts</div>
+        </div>
+        <div class="alert-stat-card resolved">
+            <div class="stat-number">{{ alerts|length }}</div>
+            <div class="stat-label">Resolved</div>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="filter-section">
+        <div class="filter-group">
+            <span class="filter-label">Status</span>
+            <select id="statusFilter" onchange="applyFilter()">
+                <option value="">All Statuses</option>
+                <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+                <option value="resolved" {% if status_filter == 'resolved' %}selected{% endif %}>Resolved</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <span class="filter-label">Severity</span>
+            <select id="severityFilter" onchange="applyFilter()">
+                <option value="">All Severities</option>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+            </select>
+        </div>
+        <div class="filter-group d-flex gap-2">
+            <button class="btn-filter" onclick="applyFilter()">
+                <i class="bi bi-funnel me-1"></i>Apply
+            </button>
+            <a href="?" class="btn-filter-outline">
+                <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
+            </a>
+        </div>
+    </div>
+
+    <!-- Alerts List -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2 text-danger"></i>Security Alerts</h5>
+            <span class="text-muted small">{{ alerts|length }} alerts found</span>
+        </div>
+        <div class="card-body">
+            {% if alerts %}
+                {% for alert in alerts %}
+                <div class="alert-card {% if alert.is_resolved %}resolved{% else %}{{ alert.severity }}{% endif %}" id="alert-{{ alert.id }}">
+                    <div class="alert-top">
+                        <div class="alert-title">
+                            <i class="bi bi-{% if alert.severity == 'critical' %}exclamation-octagon{% elif alert.severity == 'high' %}exclamation-triangle{% else %}info-circle{% endif %}"></i>
+                            {{ alert.title }}
+                            <span class="badge-severity badge-{{ alert.severity }}">{{ alert.severity|title }}</span>
+                            <span class="badge-status {% if alert.is_resolved %}badge-status-resolved{% else %}badge-status-active{% endif %}">
+                                {% if alert.is_resolved %}Resolved{% else %}Active{% endif %}
+                            </span>
+                            <span class="alert-type">{{ alert.get_alert_type_display }}</span>
+                        </div>
+                        {% if not alert.is_resolved %}
+                        <div class="alert-actions">
+                            <button class="btn-resolve" onclick="resolveAlert({{ alert.id }})">
+                                <i class="bi bi-check-circle me-1"></i>Resolve
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="alert-description">{{ alert.description }}</div>
+                    <div class="alert-meta">
+                        <span><i class="bi bi-clock"></i>{{ alert.detected_at|timesince }} ago</span>
+                        {% if alert.user %}
+                        <span><i class="bi bi-person"></i>{{ alert.user.get_full_name|default:alert.user.username }}</span>
+                        {% endif %}
+                        {% if alert.prisoner %}
+                        <span><i class="bi bi-person-badge"></i>{{ alert.prisoner.prisoner_number }}</span>
+                        {% endif %}
+                        {% if alert.ip_address %}
+                        <span><i class="bi bi-globe"></i>{{ alert.ip_address }}</span>
+                        {% endif %}
+                        {% if alert.resolved_by %}
+                        <span><i class="bi bi-check-circle text-success"></i>Resolved by {{ alert.resolved_by.get_full_name|default:alert.resolved_by.username }}</span>
+                        {% endif %}
+                        {% if alert.resolved_at %}
+                        <span><i class="bi bi-clock-history"></i>{{ alert.resolved_at|timesince }} ago</span>
+                        {% endif %}
+                    </div>
+                    {% if alert.resolution_notes %}
+                    <div class="alert-meta mt-1">
+                        <span class="text-muted"><i class="bi bi-file-text"></i>Notes: {{ alert.resolution_notes }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-shield-check"></i>
+                <h6>All Clear</h6>
+                <p>No sentry alerts found. The system is secure.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Apply filter function
+    function applyFilter() {
+        const status = document.getElementById('statusFilter').value;
+        const severity = document.getElementById('severityFilter').value;
+        let url = window.location.pathname + '?';
+        if (status) url += 'status=' + encodeURIComponent(status);
+        if (severity) {
+            if (status) url += '&';
+            url += 'severity=' + encodeURIComponent(severity);
+        }
+        window.location.href = url || '?';
+    }
+
+    // Resolve Alert
+    function resolveAlert(alertId) {
+        if (!confirm('Are you sure you want to resolve this alert?')) return;
+
+        const notes = prompt('Resolution notes (optional):') || '';
+
+        fetch('/audit-trail/sentry-alerts/' + alertId + '/resolve/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                notes: notes
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message || 'Alert resolved successfully.');
+                // Reload to update the list
+                location.reload();
+            } else {
+                alert(data.error || 'Failed to resolve alert. Please try again.');
+            }
+        })
+        .catch(error => {
+            console.error('Error resolving alert:', error);
+            alert('Network error. Please try again.');
+        });
+    }
+
+    // CSRF Token Helper
+    function getCsrfToken() {
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            const trimmed = cookie.trim();
+            if (trimmed.startsWith('csrftoken=')) {
+                return decodeURIComponent(trimmed.substring('csrftoken='.length));
+            }
+        }
+        return '';
+    }
+
+    // Auto-refresh every 60 seconds if there are active alerts
+    let autoRefreshInterval = null;
+
+    function startAutoRefresh() {
+        const hasActiveAlerts = document.querySelector('.alert-card:not(.resolved)');
+        if (hasActiveAlerts) {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+            autoRefreshInterval = setInterval(function() {
+                if (!document.hidden) {
+                    location.reload();
+                }
+            }, 60000);
+        }
+    }
+
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+        } else {
+            startAutoRefresh();
+        }
+    });
+
+    startAutoRefresh();
+</script>
+{% endblock %}

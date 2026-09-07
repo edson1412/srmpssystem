@@ -19,17 +19,17 @@ from datetime import datetime, date
 from prison.models import PrisonStation
 from accounts.models import CustomUser
 from .models import (
-    ReturnTemplate, ReturnSubmission, ReturnData, 
+    ReturnTemplate, ReturnSubmission, ReturnData,
     RegionalReturnSummary, StationReturnStatus,
     MonthlySubmissionTracker, ReturnTypeStatus
 )
 from .forms import (
-    ReturnSubmissionForm, ReturnTemplateForm, 
+    ReturnSubmissionForm, ReturnTemplateForm,
     ReturnsFilterForm, PeriodSelectionForm,
     MonthlyTrackingForm
 )
 from .services import (
-    ReturnProcessingService, DefaultTemplateService, 
+    ReturnProcessingService, DefaultTemplateService,
     ReturnReportService, MonthlySubmissionService
 )
 from .pdf_service import ReturnPDFService
@@ -78,13 +78,22 @@ def _get_period_from_request(request):
     return timezone.now().strftime('%Y-%m')
 
 
+def _get_user_full_name(user):
+    """Get user's full name or username."""
+    if not user:
+        return 'Unknown'
+    if user.get_full_name():
+        return user.get_full_name()
+    return user.username
+
+
 # ============ DASHBOARD VIEW ============
 
 @login_required
 def returns_dashboard(request):
     """Returns dashboard showing overview of submissions and status."""
     user = request.user
-    
+
     # Get current period
     today = timezone.now()
     period = today.strftime('%Y-%m')
@@ -101,19 +110,27 @@ def returns_dashboard(request):
             submissions = submissions.filter(prison_station=user.prison_station)
         elif _is_region_user(user):
             submissions = submissions.filter(prison_station__region=user.region)
+        else:
+            submissions = submissions.none()
 
     total_submissions = submissions.count()
     pending_submissions = submissions.filter(status='pending').count()
     approved_submissions = submissions.filter(status='approved').count()
     rejected_submissions = submissions.filter(status='rejected').count()
+    imported_submissions = submissions.filter(status='imported').count()
 
     # Current month submissions
     current_month_submissions = submissions.filter(year=year, month=month).count()
-    
+
+    # Total records across all submissions
+    total_records = sum(s.row_count for s in submissions)
+    total_male = sum(s.total_male for s in submissions)
+    total_female = sum(s.total_female for s in submissions)
+
     # Recent submissions
     recent_submissions = submissions.select_related(
         'template', 'prison_station', 'submitted_by'
-    ).order_by('-submitted_at')[:10]
+    ).order_by('-submitted_at')[:8]
 
     # Station status for current period
     station_statuses = StationReturnStatus.objects.filter(
@@ -132,7 +149,7 @@ def returns_dashboard(request):
         year=year,
         month=month,
         status='not_submitted'
-    ).select_related('prison_station', 'template')[:10]
+    ).select_related('prison_station', 'template')[:6]
 
     # Get year months for navigation
     months = []
@@ -140,10 +157,69 @@ def returns_dashboard(request):
         month_count = submissions.filter(year=year, month=m).count()
         months.append({
             'month': m,
-            'name': date(year, m, 1).strftime('%B'),
+            'name': date(year, m, 1).strftime('%b'),
+            'full_name': date(year, m, 1).strftime('%B'),
             'count': month_count,
             'is_current': m == month,
         })
+
+    # Calculate submission rate
+    total_stations = PrisonStation.objects.count()
+    submission_rate = 0
+    if total_stations > 0:
+        submission_rate = (current_month_submissions / (total_stations * total_templates)) * 100 if total_templates > 0 else 0
+
+    # Get status distribution for chart
+    status_distribution = {
+        'pending': pending_submissions,
+        'approved': approved_submissions,
+        'rejected': rejected_submissions,
+        'imported': imported_submissions,
+    }
+
+    # Get category distribution for chart
+    category_distribution = {}
+    for submission in submissions:
+        category = submission.template.category
+        if category not in category_distribution:
+            category_distribution[category] = 0
+        category_distribution[category] += 1
+
+    # Get recent activity
+    recent_activity = []
+    for submission in recent_submissions:
+        submitted_by_name = _get_user_full_name(submission.submitted_by)
+        recent_activity.append({
+            'type': 'submission',
+            'title': f"{submission.template.name}",
+            'description': f"Submitted by {submitted_by_name}",
+            'date': submission.submitted_at,
+            'icon': 'bi-upload',
+            'color': 'primary',
+            'station': submission.prison_station.name
+        })
+
+    # Get approval activities
+    approved_activities = submissions.filter(
+        status='approved',
+        processed_at__isnull=False
+    ).order_by('-processed_at')[:3]
+
+    for submission in approved_activities:
+        processed_by_name = _get_user_full_name(submission.processed_by)
+        recent_activity.append({
+            'type': 'approval',
+            'title': f"{submission.template.name} - Approved",
+            'description': f"Approved by {processed_by_name}",
+            'date': submission.processed_at,
+            'icon': 'bi-check-circle',
+            'color': 'success',
+            'station': submission.prison_station.name
+        })
+
+    # Sort activity by date
+    recent_activity.sort(key=lambda x: x['date'], reverse=True)
+    recent_activity = recent_activity[:6]
 
     context = {
         'total_templates': total_templates,
@@ -151,7 +227,11 @@ def returns_dashboard(request):
         'pending_submissions': pending_submissions,
         'approved_submissions': approved_submissions,
         'rejected_submissions': rejected_submissions,
+        'imported_submissions': imported_submissions,
         'current_month_submissions': current_month_submissions,
+        'total_records': total_records,
+        'total_male': total_male,
+        'total_female': total_female,
         'recent_submissions': recent_submissions,
         'station_statuses': station_statuses[:10],
         'monthly_tracker': monthly_tracker[:5],
@@ -160,6 +240,11 @@ def returns_dashboard(request):
         'year': year,
         'month': month,
         'period': period,
+        'month_name': date(year, month, 1).strftime('%B'),
+        'submission_rate': round(submission_rate, 1),
+        'status_distribution': status_distribution,
+        'category_distribution': category_distribution,
+        'recent_activity': recent_activity,
         'page_title': 'Returns Dashboard',
     }
     return render(request, 'returns/dashboard.html', context)
@@ -292,7 +377,7 @@ def download_template_xlsx(request, category):
         )
         filename = f"return_template_{category}_{period}.xlsx"
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        
+
         wb.save(response)
         return response
 
@@ -561,7 +646,7 @@ def submission_download(request, pk):
 def export_submission_pdf(request, pk):
     """Export a single submission as PDF."""
     submission = get_object_or_404(ReturnSubmission, pk=pk)
-    
+
     # Check permissions
     user = request.user
     if not user.is_superuser:
@@ -569,7 +654,7 @@ def export_submission_pdf(request, pk):
             raise PermissionDenied("You do not have permission to export this submission.")
         if _is_region_user(user) and submission.prison_station.region != user.region:
             raise PermissionDenied("You do not have permission to export this submission.")
-    
+
     return ReturnPDFService.generate_return_pdf(submission, request.user)
 
 
@@ -579,7 +664,7 @@ def export_station_returns_pdf(request, station_id, template_id):
     station = get_object_or_404(PrisonStation, pk=station_id)
     template = get_object_or_404(ReturnTemplate, pk=template_id)
     period = request.GET.get('period', datetime.now().strftime('%Y-%m'))
-    
+
     # Check permissions
     user = request.user
     if not user.is_superuser:
@@ -587,7 +672,7 @@ def export_station_returns_pdf(request, station_id, template_id):
             raise PermissionDenied("You do not have permission to export returns for this station.")
         if _is_region_user(user) and station.region != user.region:
             raise PermissionDenied("You do not have permission to export returns for this station.")
-    
+
     return ReturnPDFService.generate_station_returns_pdf(station, template, period, request.user)
 
 
@@ -596,13 +681,13 @@ def export_regional_returns_pdf(request, template_id, region):
     """Export returns for a specific region and template as PDF."""
     template = get_object_or_404(ReturnTemplate, pk=template_id)
     period = request.GET.get('period', datetime.now().strftime('%Y-%m'))
-    
+
     # Check permissions
     user = request.user
     if not user.is_superuser:
         if _is_region_user(user) and user.region != region:
             raise PermissionDenied("You do not have permission to export returns for this region.")
-    
+
     return ReturnPDFService.generate_regional_returns_pdf(region, template, period, request.user)
 
 
@@ -611,12 +696,12 @@ def export_all_returns_pdf(request, template_id):
     """Export all returns for a specific template as PDF."""
     template = get_object_or_404(ReturnTemplate, pk=template_id)
     period = request.GET.get('period', datetime.now().strftime('%Y-%m'))
-    
+
     # Check permissions
     user = request.user
     if not user.is_superuser:
         raise PermissionDenied("You do not have permission to export all returns.")
-    
+
     return ReturnPDFService.generate_all_returns_pdf(template, period, request.user)
 
 
@@ -688,7 +773,7 @@ def station_status(request):
 def initialize_monthly_tracking(request):
     """Initialize monthly tracking for a period."""
     user = request.user
-    
+
     if not (user.is_superuser or hasattr(user, 'is_prison_admin') and user.is_prison_admin()):
         raise PermissionDenied("You do not have permission to initialize monthly tracking.")
 
@@ -922,67 +1007,36 @@ def api_monthly_status(request):
 def export_options(request):
     """View export options for returns."""
     user = request.user
-    
-    # Check permissions
-    if not (user.is_superuser or _is_region_user(user) or _is_station_user(user)):
-        messages.error(request, "You do not have permission to access export options.")
-        return redirect('returns:submission_list')
-    
-    templates = ReturnTemplate.objects.filter(is_active=True).order_by('category', 'name')
-    stations = PrisonStation.objects.all()
-    
-    # Filter stations based on user permissions
-    if not user.is_superuser:
-        if _is_station_user(user):
-            stations = stations.filter(pk=user.prison_station.pk)
-        elif _is_region_user(user):
-            stations = stations.filter(region=user.region)
-    
-    period = request.GET.get('period', timezone.now().strftime('%Y-%m'))
-    
-    context = {
-        'templates': templates,
-        'stations': stations,
-        'period': period,
-        'regions': PrisonStation.REGION_CHOICES,
-        'page_title': 'Export Returns',
-    }
-    return render(request, 'returns/export_options.html', context)
 
-@login_required
-def export_options(request):
-    """View export options for returns."""
-    user = request.user
-    
     # Check permissions
     if not (user.is_superuser or _is_region_user(user) or _is_station_user(user)):
         messages.error(request, "You do not have permission to access export options.")
         return redirect('returns:submission_list')
-    
+
     templates = ReturnTemplate.objects.filter(is_active=True).order_by('category', 'name')
     stations = PrisonStation.objects.all()
-    
+
     # Filter stations based on user permissions
     if not user.is_superuser:
         if _is_station_user(user):
             stations = stations.filter(pk=user.prison_station.pk)
         elif _is_region_user(user):
             stations = stations.filter(region=user.region)
-    
+
     period = request.GET.get('period', timezone.now().strftime('%Y-%m'))
-    
+
     # Get recent submissions for the selected period
     recent_submissions = ReturnSubmission.objects.filter(
         period=period
     ).select_related('template', 'prison_station', 'submitted_by').order_by('-submitted_at')[:20]
-    
+
     # Filter submissions based on user permissions
     if not user.is_superuser:
         if _is_station_user(user):
             recent_submissions = recent_submissions.filter(prison_station=user.prison_station)
         elif _is_region_user(user):
             recent_submissions = recent_submissions.filter(prison_station__region=user.region)
-    
+
     context = {
         'templates': templates,
         'stations': stations,

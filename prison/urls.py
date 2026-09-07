@@ -3,12 +3,13 @@ from django.contrib.auth import views as auth_views
 from . import views
 from .views import (
     VisitorListView, VisitorCreateView, VisitorUpdateView, VisitorApproveView, VisitorDetailView,
-    MedicalRecordListView, MedicalRecordCreateView, MedicalRecordUpdateView, MedicalRecordDetailView, MedicalRecordDeleteView, # Added DeleteView
+    VisitorItemCreateView,
+    MedicalRecordListView, MedicalRecordCreateView, MedicalRecordUpdateView, MedicalRecordDetailView, MedicalRecordDeleteView,
     IncidentReportListView, IncidentReportCreateView, IncidentReportDetailView,
     ActivityLogListView,
     PrisonerItemListView, PrisonerItemDetailView, AddPrisonerItemView, WithdrawPrisonerMoneyView, CollectPrisonerItemView,
     extended_prisoner_search,
-    RationItemListView, RationItemUpdateView, RationItemDeleteView, # New Ration Item Views
+    RationItemListView, RationItemUpdateView, RationItemDeleteView,
     RationConsumptionCreateView, RationProcurementCreateView, capture_fingerprint,
     fingerprint_search_api,
     fingerprint_identify,
@@ -16,15 +17,14 @@ from .views import (
     fingerprint_device_list,
     fingerprint_match_history,
     link_prisoner_identities,
-    fingerprint_dashboard, # New Ration Transaction Views
-    # lockup_summary_view, # New: Import the new lockup summary view
+    fingerprint_dashboard,
 )
 
 
 urlpatterns = [
     # Dashboard (now also serves as the ration dashboard)
     path('', views.dashboard, name='dashboard'),
-    path('ration_dashboard/', views.dashboard, name='ration_dashboard'), # Alias for dashboard for success_url redirects
+    path('ration_dashboard/', views.dashboard, name='ration_dashboard'),
 
     # NEW: Lockup Summary Page
     path('lockup_summary/', views.lockup_summary_view, name='lockup_summary'),
@@ -50,6 +50,7 @@ urlpatterns = [
     path('visitors/<int:pk>/edit/', VisitorUpdateView.as_view(), name='visitor_edit'),
     path('visitors/<int:pk>/approve/', VisitorApproveView.as_view(), name='visitor_approve'),
     path('visitors/<int:pk>/', VisitorDetailView.as_view(), name='visitor_detail'),
+    path('visitors/<int:visitor_id>/items/add/', VisitorItemCreateView.as_view(), name='visitor_item_add'),
 
     # Medical Record URLs
     path('medical/', MedicalRecordListView.as_view(), name='medical_record_list'),
@@ -81,9 +82,15 @@ urlpatterns = [
     path('release-hub/<int:prisoner_id>/forward/', views.forward_release_for_review, name='forward_release_for_review'),
     path('release-hub/reviews/<int:review_id>/approve/', views.approve_release_review, name='approve_release_review'),
     path('release-hub/reviews/<int:review_id>/reject/', views.reject_release_review, name='reject_release_review'),
+    path('prisoners/<int:prisoner_id>/release-details/', views.prisoner_release_details_api, name='prisoner_release_details_api'),
+
+    # Release Hub API endpoints
+    path('release-hub/api/forward/', views.release_forward_api, name='release_forward_api'),
+    path('release-hub/api/approve/', views.release_approve_api, name='release_approve_api'),
+    path('release-hub/api/reject/', views.release_reject_api, name='release_reject_api'),
 
     # NEW: Ration Management URLs
-    path('rations/', RationItemListView.as_view(), name='ration_item_list'), # List and Add via POST
+    path('rations/', RationItemListView.as_view(), name='ration_item_list'),
     path('rations/<int:pk>/edit/', RationItemUpdateView.as_view(), name='edit_ration_item'),
     path('rations/<int:pk>/delete/', RationItemDeleteView.as_view(), name='delete_ration_item'),
     path('rations/consume/', RationConsumptionCreateView.as_view(), name='record_consumption'),
@@ -104,6 +111,15 @@ urlpatterns = [
     path('stations/<int:station_id>/edit/', views.edit_prison_station, name='edit_prison_station'),
     path('stations/<int:station_id>/delete/', views.delete_prison_station, name='delete_prison_station'),
 
+    # NEW: ICT Security Dashboard URLs
+    path('ict-dashboard/', views.ict_dashboard, name='ict_dashboard'),
+    path('audit-trail/', views.audit_trail_list, name='audit_trail_list'),
+    path('audit-trail/prisoner/<int:prisoner_id>/', views.prisoner_audit_view, name='prisoner_audit_view'),
+    path('audit-trail/sentry-alerts/', views.sentry_alerts_view, name='sentry_alerts_view'),
+    path('audit-trail/sentry-alerts/<int:alert_id>/resolve/', views.resolve_sentry_alert, name='resolve_sentry_alert'),
+    path('audit-trail/export/', views.export_audit_trail, name='export_audit_trail'),
+
+    # Fingerprint / Biometric URLs
     path('fingerprint/dashboard/', fingerprint_dashboard, name='fingerprint_dashboard'),
     path('prisoners/<int:prisoner_id>/fingerprint/capture/', capture_fingerprint, name='capture_fingerprint'),
     path('fingerprint/search/', fingerprint_identify, name='fingerprint_identify'),
@@ -112,5 +128,5 @@ urlpatterns = [
     path('fingerprint/devices/', fingerprint_device_list, name='fingerprint_device_list'),
     path('fingerprint/matches/', fingerprint_match_history, name='fingerprint_match_history'),
     path('fingerprint/matches/<int:prisoner_id>/', fingerprint_match_history, name='fingerprint_match_history_prisoner'),
-    path('fingerprint/link/<int:prisoner1_id>/<int:prisoner2_id>/', link_prisoner_identities, name='link_prisoner_identities')
+    path('fingerprint/link/<int:prisoner1_id>/<int:prisoner2_id>/', link_prisoner_identities, name='link_prisoner_identities'),
 ]

@@ -14,6 +14,115 @@ import json
 
 User = get_user_model()
 
+# ============ PRISONER NUMBER COUNTER ============
+
+class PrisonerNumberCounter(models.Model):
+    """Track prisoner number counters by station, class, and year"""
+
+    PRISONER_CLASS_CHOICES = [
+        ('convicted', 'Convicted'),
+        ('remand', 'Remand'),
+    ]
+
+    prison_station = models.ForeignKey(
+        'PrisonStation',
+        on_delete=models.CASCADE,
+        related_name='number_counters'
+    )
+    prisoner_class = models.CharField(max_length=10, choices=PRISONER_CLASS_CHOICES)
+    year = models.IntegerField()
+    last_number = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['prison_station', 'prisoner_class', 'year']
+        ordering = ['prison_station', 'prisoner_class', '-year']
+        verbose_name = "Prisoner Number Counter"
+        verbose_name_plural = "Prisoner Number Counters"
+
+    def __str__(self):
+        return f"{self.prison_station.code}-{self.get_prisoner_class_display()} {self.year}: {self.last_number}"
+
+    @classmethod
+    def get_next_number(cls, prison_station, prisoner_class):
+        """
+        Get the next sequential number for a station, class, and current year
+
+        Args:
+            prison_station: PrisonStation instance
+            prisoner_class: 'convicted' or 'remand'
+
+        Returns:
+            int: The next sequential number
+        """
+        current_year = timezone.now().year
+
+        # Get or create the counter for this station, class, and year
+        counter, created = cls.objects.get_or_create(
+            prison_station=prison_station,
+            prisoner_class=prisoner_class,
+            year=current_year,
+            defaults={'last_number': 0}
+        )
+
+        # Increment and save
+        counter.last_number += 1
+        counter.save(update_fields=['last_number', 'updated_at'])
+
+        return counter.last_number
+
+    @classmethod
+    def generate_prisoner_number(cls, prison_station, prisoner_class):
+        """
+        Generate a complete prisoner number
+
+        Args:
+            prison_station: PrisonStation instance
+            prisoner_class: 'convicted' or 'remand'
+
+        Returns:
+            str: Generated prisoner number in format like BT001/2026 or BT-R001/2026
+        """
+        station_code = prison_station.code.upper()
+        current_year = timezone.now().year
+        next_num = cls.get_next_number(prison_station, prisoner_class)
+        num_str = str(next_num).zfill(3)  # Pad with zeros to 3 digits
+
+        if prisoner_class == 'convicted':
+            return f"{station_code}{num_str}/{current_year}"
+        else:  # remand
+            return f"{station_code}-R{num_str}/{current_year}"
+
+    @classmethod
+    def reset_counter(cls, prison_station, prisoner_class, year=None):
+        """
+        Reset a counter (for admin use only)
+
+        Args:
+            prison_station: PrisonStation instance
+            prisoner_class: 'convicted' or 'remand'
+            year: The year to reset (defaults to current year)
+        """
+        if year is None:
+            year = timezone.now().year
+
+        counter, created = cls.objects.get_or_create(
+            prison_station=prison_station,
+            prisoner_class=prisoner_class,
+            year=year,
+            defaults={'last_number': 0}
+        )
+
+        if not created:
+            counter.last_number = 0
+            counter.save(update_fields=['last_number', 'updated_at'])
+
+        return counter
+
+
+# ============ PRISON STATION ============
+
 class PrisonStation(models.Model):
     REGION_CHOICES = [
         ('southern', 'Southern Region'),
@@ -43,6 +152,9 @@ class PrisonStation(models.Model):
         verbose_name = "Prison Station"
         verbose_name_plural = "Prison Stations"
 
+
+# ============ PRISONER ============
+
 class Prisoner(models.Model):
     PRISONER_CLASS_CHOICES = [
         ('convicted', 'Convicted'),
@@ -54,7 +166,12 @@ class Prisoner(models.Model):
         ('female', 'Female'),
     ]
 
-    prisoner_number = models.CharField(max_length=20, unique=True)
+    prisoner_number = models.CharField(
+        max_length=20,
+        unique=True,
+        blank=True,
+        help_text="Auto-generated prisoner number. Leave blank to auto-generate."
+    )
     first_name = models.CharField(max_length=100)
     middle_name = models.CharField(max_length=100, blank=True)
     surname = models.CharField(max_length=100)
@@ -164,13 +281,23 @@ class Prisoner(models.Model):
         }
 
     def save(self, *args, **kwargs):
+        # Auto-generate prisoner number if not set
+        if not self.prisoner_number:
+            self.prisoner_number = PrisonerNumberCounter.generate_prisoner_number(
+                self.prison_station,
+                self.prisoner_class
+            )
+
         # Generate fingerprint hash from template if not set
         if self.fingerprint_template and not self.fingerprint_hash:
             self.fingerprint_hash = hashlib.sha256(
                 self.fingerprint_template.encode()
             ).hexdigest()
+
         super().save(*args, **kwargs)
 
+
+# ============ PRISONER RELEASE REVIEW ============
 
 class PrisonerReleaseReview(models.Model):
     REVIEW_ROLE_CHOICES = [
@@ -209,6 +336,8 @@ class PrisonerReleaseReview(models.Model):
     def __str__(self):
         return f"{self.prisoner.prisoner_number} - {self.get_review_role_display()}"
 
+
+# ============ CONVICTED PRISONER ============
 
 class ConvictedPrisoner(models.Model):
     OFFENSE_CHOICES = sorted([
@@ -468,6 +597,9 @@ class ConvictedPrisoner(models.Model):
             self.date_of_release_on_remission -= relativedelta(months=reduction_months_val, days=reduction_days)
         super().save(*args, **kwargs)
 
+
+# ============ REMAND PRISONER ============
+
 class RemandPrisoner(models.Model):
     OFFENSE_CHOICES = ConvictedPrisoner.OFFENSE_CHOICES
 
@@ -479,6 +611,9 @@ class RemandPrisoner(models.Model):
 
     def __str__(self):
         return f"{self.prisoner.prisoner_number} - {self.court_case_number}"
+
+
+# ============ RISK ASSESSMENT ============
 
 class RiskAssessment(models.Model):
     RISK_LEVEL_CHOICES = [
@@ -495,6 +630,9 @@ class RiskAssessment(models.Model):
 
     def __str__(self):
         return f"Risk Assessment for {self.prisoner.prisoner_number}"
+
+
+# ============ PRISONER PARTICULARS ============
 
 class PrisonerParticulars(models.Model):
     NATIONALITY_CHOICES = [
@@ -556,6 +694,9 @@ class PrisonerParticulars(models.Model):
     def __str__(self):
         return f"Particulars for {self.prisoner.prisoner_number}"
 
+
+# ============ PHYSICAL CHARACTERISTICS ============
+
 class PhysicalCharacteristics(models.Model):
     BODY_BUILD_CHOICES = [
         ('medium', 'Medium body build'),
@@ -607,6 +748,9 @@ class PhysicalCharacteristics(models.Model):
     def __str__(self):
         return f"Physical Characteristics for {self.prisoner.prisoner_number}"
 
+
+# ============ REHABILITATION PROGRAM ============
+
 class RehabilitationProgram(models.Model):
     LEVEL_CHOICES = [
         ('beginner', 'Beginner'),
@@ -623,6 +767,9 @@ class RehabilitationProgram(models.Model):
     def __str__(self):
         return f"Rehabilitation for {self.prisoner.prisoner_number}"
 
+
+# ============ PRISONER TRANSFER ============
+
 class PrisonerTransfer(models.Model):
     prisoner = models.ForeignKey(Prisoner, on_delete=models.CASCADE, related_name='transfers')
     from_prison = models.ForeignKey(PrisonStation, on_delete=models.CASCADE, related_name='transfers_out')
@@ -633,6 +780,9 @@ class PrisonerTransfer(models.Model):
 
     def __str__(self):
         return f"Transfer of {self.prisoner.prisoner_number} from {self.from_prison} to {self.to_prison}"
+
+
+# ============ ACTIVITY LOG ============
 
 class ActivityLog(models.Model):
     ACTION_CHOICES = [
@@ -665,6 +815,9 @@ class ActivityLog(models.Model):
     def __str__(self):
         return f"{self.user} {self.action}d {self.model} {self.object_id or ''} at {self.timestamp.strftime('%Y-%m-%d %H:%M')}"
 
+
+# ============ RELEASE ON REMISSION ============
+
 class ReleaseOnRemission(models.Model):
     prisoner = models.ForeignKey(Prisoner, on_delete=models.CASCADE)
     release_date = models.DateField()
@@ -677,6 +830,9 @@ class ReleaseOnRemission(models.Model):
 
     def __str__(self):
         return f"Release on remission for {self.prisoner.prisoner_number}"
+
+
+# ============ VISITOR ============
 
 class Visitor(models.Model):
     RELATIONSHIP_CHOICES = [
@@ -723,6 +879,9 @@ class Visitor(models.Model):
     class Meta:
         pass
 
+
+# ============ MEDICAL RECORD ============
+
 class MedicalRecord(models.Model):
     MEDICAL_CATEGORIES = [
         ('routine', 'Routine Checkup'),
@@ -748,6 +907,9 @@ class MedicalRecord(models.Model):
     def __str__(self):
         return f"{self.get_category_display()} for {self.prisoner} on {self.record_date}"
 
+
+# ============ INCIDENT REPORT ============
+
 class IncidentReport(models.Model):
     SEVERITY_CHOICES = [
         ('low', 'Low'),
@@ -772,6 +934,9 @@ class IncidentReport(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.get_severity_display()} ({self.date_occurred.strftime('%Y-%m-%d %H:%M')})"
+
+
+# ============ PRISONER ITEM ============
 
 class PrisonerItem(models.Model):
     ITEM_TYPE_CHOICES = [
@@ -834,6 +999,9 @@ class PrisonerItem(models.Model):
             self.current_amount = self.initial_amount
         super().save(*args, **kwargs)
 
+
+# ============ PRISONER ITEM TRANSACTION ============
+
 class PrisonerItemTransaction(models.Model):
     TRANSACTION_TYPE_CHOICES = [
         ('deposit', 'Deposit'),
@@ -868,6 +1036,7 @@ class PrisonerItemTransaction(models.Model):
                 self.item.current_amount -= self.amount
             self.item.save()
         super().save(*args, **kwargs)
+
 
 # ============ BIOMETRIC / FINGERPRINT MODELS ============
 
@@ -979,7 +1148,7 @@ class FingerprintAuditLog(models.Model):
     performed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     performed_at = models.DateTimeField(auto_now_add=True)
     ip_address = models.GenericIPAddressField(blank=True, null=True)
-    user_agent = models.TextField(blank=True, null=True)  # Make this nullable
+    user_agent = models.TextField(blank=True, null=True)
     details = models.JSONField(default=dict, blank=True)
     success = models.BooleanField(default=True)
     error_message = models.TextField(blank=True)
@@ -995,6 +1164,7 @@ class FingerprintAuditLog(models.Model):
 
     def __str__(self):
         return f"{self.prisoner} - {self.get_operation_display()} at {self.performed_at}"
+
 
 # ============ RATION MANAGEMENT MODELS ============
 
@@ -1091,9 +1261,8 @@ class RationItem(models.Model):
         if auto:
             quantity_used = self.daily_consumption_per_prisoner_kg * prisoner_count
         else:
-            quantity_used = 0  # Would need manual input
+            quantity_used = 0
 
-        # Create consumption record
         consumption = RationConsumption.objects.create(
             item=self,
             consumption_date=timezone.now().date(),
@@ -1102,15 +1271,13 @@ class RationItem(models.Model):
             is_auto_calculated=auto
         )
 
-        # Update stock
         self.current_stock_kg -= quantity_used
         self.last_consumption_date = timezone.now().date()
         self.save(update_fields=['current_stock_kg', 'last_consumption_date', 'last_stock_update'])
-
-        # Update estimated days
         self.update_estimated_days()
 
         return consumption
+
 
 class RationConsumption(models.Model):
     item = models.ForeignKey(RationItem, on_delete=models.CASCADE, related_name='consumptions')
@@ -1149,15 +1316,14 @@ class RationConsumption(models.Model):
         super().clean()
 
     def save(self, *args, **kwargs):
-        # Deduct from stock when consumption is recorded
-        if not self.pk:  # Only on creation
+        if not self.pk:
             if self.item and self.quantity_used_kg:
                 self.item.current_stock_kg -= self.quantity_used_kg
                 self.item.last_consumption_date = self.consumption_date
                 self.item.save(update_fields=['current_stock_kg', 'last_consumption_date', 'last_stock_update'])
-                # Update estimated days
                 self.item.update_estimated_days()
         super().save(*args, **kwargs)
+
 
 class RationProcurement(models.Model):
     item = models.ForeignKey(RationItem, on_delete=models.CASCADE, related_name='procurements')
@@ -1179,18 +1345,18 @@ class RationProcurement(models.Model):
         ordering = ['-procurement_date', 'item__name']
 
     def save(self, *args, **kwargs):
-        # Add to stock when procurement is recorded
-        if not self.pk:  # Only on creation
+        if not self.pk:
             if self.item and self.quantity_procured_kg:
                 self.item.current_stock_kg += self.quantity_procured_kg
                 self.item.save(update_fields=['current_stock_kg', 'last_stock_update'])
-                # Update estimated days
                 self.item.update_estimated_days()
         super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Procured {self.quantity_procured_kg}kg of {self.item.name} on {self.procurement_date}"
 
+
+# ============ NOTIFICATION ============
 
 class Notification(models.Model):
     NOTIFICATION_TYPES = [
@@ -1211,25 +1377,15 @@ class Notification(models.Model):
     message = models.TextField()
     notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES, default='general')
     priority = models.CharField(max_length=10, choices=PRIORITY_LEVELS, default='medium')
-
-    # Related objects (optional)
     prisoner = models.ForeignKey(Prisoner, on_delete=models.CASCADE, null=True, blank=True, related_name='notifications')
     medical_record = models.ForeignKey(MedicalRecord, on_delete=models.CASCADE, null=True, blank=True, related_name='notifications')
-
-    # Target users
     target_users = models.ManyToManyField(User, related_name='notifications', blank=True)
-
-    # Status tracking
     is_read = models.BooleanField(default=False)
     read_at = models.DateTimeField(null=True, blank=True)
     read_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='read_notifications')
-
-    # Metadata
     action_required = models.BooleanField(default=False)
     action_url = models.CharField(max_length=255, blank=True, null=True)
     due_date = models.DateField(null=True, blank=True)
-
-    # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     expires_at = models.DateTimeField(null=True, blank=True)
@@ -1243,7 +1399,6 @@ class Notification(models.Model):
         return f"{self.title} - {self.get_notification_type_display()}"
 
     def mark_as_read(self, user):
-        """Mark notification as read by a specific user"""
         if not self.is_read:
             self.is_read = True
             self.read_at = timezone.now()
@@ -1251,7 +1406,189 @@ class Notification(models.Model):
             self.save(update_fields=['is_read', 'read_at', 'read_by'])
 
     def is_expired(self):
-        """Check if notification has expired"""
         if self.expires_at:
             return timezone.now() > self.expires_at
         return False
+
+
+# ============ AUDIT TRAIL MODELS ============
+
+class AuditTrail(models.Model):
+    """Comprehensive audit trail for all system actions"""
+
+    ACTION_CHOICES = [
+        ('CREATE', 'Create'),
+        ('UPDATE', 'Update'),
+        ('DELETE', 'Delete'),
+        ('LOGIN', 'Login'),
+        ('LOGOUT', 'Logout'),
+        ('RELEASE', 'Release'),
+        ('TRANSFER', 'Transfer'),
+        ('SENTENCE_CHANGE', 'Sentence Change'),
+        ('DATE_CHANGE', 'Date Change'),
+        ('PERMISSION_CHANGE', 'Permission Change'),
+        ('APPROVE', 'Approve'),
+        ('REJECT', 'Reject'),
+        ('FORWARD', 'Forward'),
+        ('IMPORT', 'Import'),
+        ('EXPORT', 'Export'),
+    ]
+
+    SEVERITY_CHOICES = [
+        ('info', 'Information'),
+        ('warning', 'Warning'),
+        ('critical', 'Critical'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='audit_trails'
+    )
+    action = models.CharField(max_length=20, choices=ACTION_CHOICES)
+    model_name = models.CharField(max_length=50)
+    object_id = models.CharField(max_length=50, blank=True)
+    object_repr = models.CharField(max_length=200, blank=True)
+    changes = models.JSONField(default=dict, blank=True)
+    old_values = models.JSONField(default=dict, blank=True)
+    new_values = models.JSONField(default=dict, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES, default='info')
+    prison_station = models.ForeignKey(
+        PrisonStation,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='audit_trails'
+    )
+    description = models.TextField(blank=True)
+    request_path = models.CharField(max_length=200, blank=True)
+    session_id = models.CharField(max_length=40, blank=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['timestamp']),
+            models.Index(fields=['user', '-timestamp']),
+            models.Index(fields=['model_name', 'object_id']),
+            models.Index(fields=['action']),
+            models.Index(fields=['severity']),
+        ]
+
+    def __str__(self):
+        return f"{self.user} - {self.action} - {self.model_name} - {self.timestamp}"
+
+    @property
+    def is_sensitive(self):
+        sensitive_actions = ['DATE_CHANGE', 'SENTENCE_CHANGE', 'RELEASE', 'PERMISSION_CHANGE']
+        return self.action in sensitive_actions
+
+
+class PrisonerAuditHistory(models.Model):
+    prisoner = models.ForeignKey(Prisoner, on_delete=models.CASCADE, related_name='audit_history')
+    changed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='prisoner_audit_changes'
+    )
+    field_name = models.CharField(max_length=100)
+    old_value = models.TextField(blank=True)
+    new_value = models.TextField(blank=True)
+    change_reason = models.TextField(blank=True)
+    changed_at = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-changed_at']
+        indexes = [
+            models.Index(fields=['prisoner', '-changed_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.prisoner.prisoner_number} - {self.field_name} - {self.changed_at}"
+
+
+class ReleaseAuditLog(models.Model):
+    prisoner = models.ForeignKey(Prisoner, on_delete=models.CASCADE, related_name='release_audit_logs')
+    action = models.CharField(max_length=20)
+    performed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='release_audit_actions'
+    )
+    original_release_date = models.DateField(null=True, blank=True)
+    modified_release_date = models.DateField(null=True, blank=True)
+    original_sentence = models.FloatField(null=True, blank=True)
+    modified_sentence = models.FloatField(null=True, blank=True)
+    review_role = models.CharField(max_length=30, blank=True)
+    approval_status = models.CharField(max_length=20, blank=True)
+    change_reason = models.TextField(blank=True)
+    risk_flags = models.JSONField(default=dict, blank=True)
+    performed_at = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-performed_at']
+        indexes = [
+            models.Index(fields=['prisoner', '-performed_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.prisoner.prisoner_number} - {self.action} - {self.performed_at}"
+
+
+class SentryAlert(models.Model):
+    ALERT_TYPES = [
+        ('date_manipulation', 'Date Manipulation'),
+        ('sentence_reduction', 'Unexplained Sentence Reduction'),
+        ('early_release', 'Early Release Detected'),
+        ('unauthorized_access', 'Unauthorized Access'),
+        ('multiple_changes', 'Multiple Changes in Short Period'),
+        ('off_hours_access', 'Off-hours Access'),
+        ('foreign_ip', 'Foreign IP Address'),
+        ('privilege_escalation', 'Privilege Escalation'),
+    ]
+
+    SEVERITY_CHOICES = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+        ('critical', 'Critical'),
+    ]
+
+    alert_type = models.CharField(max_length=50, choices=ALERT_TYPES)
+    severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES, default='medium')
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    prisoner = models.ForeignKey(Prisoner, on_delete=models.CASCADE, null=True, blank=True, related_name='sentry_alerts')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='sentry_alerts')
+    audit_trail = models.ForeignKey(AuditTrail, on_delete=models.SET_NULL, null=True, blank=True, related_name='sentry_alerts')
+    is_resolved = models.BooleanField(default=False)
+    resolved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='resolved_sentry_alerts')
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolution_notes = models.TextField(blank=True)
+    detected_at = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-detected_at']
+        indexes = [
+            models.Index(fields=['alert_type']),
+            models.Index(fields=['severity']),
+            models.Index(fields=['is_resolved']),
+        ]
+
+    def __str__(self):
+        return f"{self.get_alert_type_display()} - {self.severity} - {self.detected_at}"
+
+    def resolve(self, user, notes=""):
+        self.is_resolved = True
+        self.resolved_by = user
+        self.resolved_at = timezone.now()
+        self.resolution_notes = notes
+        self.save()

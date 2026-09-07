@@ -1,0 +1,439 @@
+<!-- prison/templates/errors/error_page.html -->
+{% extends "errors/error_base.html" %}
+{% load static %}
+
+{% block title %}{{ error_code }} - {{ error_title }}{% endblock %}
+
+{% block content %}
+<style>
+    .error-page-container {
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    }
+
+    .error-card {
+        background: #ffffff;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        max-width: 800px;
+        width: 100%;
+        overflow: hidden;
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .error-header {
+        background: linear-gradient(135deg, {{ error_color }} 0%, #1e293b 100%);
+        color: white;
+        padding: 3rem 2rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .error-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: pulse 4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 0.5; }
+        50% { transform: scale(1.1); opacity: 0.3; }
+    }
+
+    /* Department Logo */
+    .department-logo {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
+        border: 3px solid rgba(255, 255, 255, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem auto;
+        position: relative;
+        z-index: 1;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .department-logo img {
+        width: 80%;
+        height: 80%;
+        object-fit: contain;
+        filter: brightness(0) invert(1); /* Makes logo white */
+    }
+
+    .department-name {
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: rgba(255, 255, 255, 0.9);
+        margin-bottom: 1rem;
+        position: relative;
+        z-index: 1;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+        display: inline-block;
+        padding-bottom: 0.5rem;
+    }
+
+    .error-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        position: relative;
+        z-index: 1;
+        animation: bounce 2s ease-in-out infinite;
+    }
+
+    @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+
+    .error-code {
+        font-size: 5rem;
+        font-weight: 800;
+        line-height: 1;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 1;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .error-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        position: relative;
+        z-index: 1;
+    }
+
+    .error-body {
+        padding: 3rem 2rem;
+    }
+
+    .error-message {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-left: 4px solid {{ error_color }};
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        font-size: 1rem;
+        color: #475569;
+    }
+
+    {% if error_details %}
+    .error-details {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        font-size: 0.85rem;
+        color: #991b1b;
+    }
+    {% endif %}
+
+    .suggestions-section {
+        margin-bottom: 2rem;
+    }
+
+    .suggestions-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #0f172a;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .suggestions-title i {
+        color: {{ error_color }};
+    }
+
+    .suggestions-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .suggestion-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #f1f5f9;
+        color: #475569;
+    }
+
+    .suggestion-item:last-child {
+        border-bottom: none;
+    }
+
+    .suggestion-icon {
+        color: {{ error_color }};
+        flex-shrink: 0;
+        margin-top: 0.2rem;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-top: 2rem;
+    }
+
+    .btn-action {
+        padding: 0.75rem 1.5rem;
+        border-radius: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, {{ error_color }}, #1e293b);
+        color: white;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .btn-secondary {
+        background: white;
+        color: #0f172a;
+        border: 2px solid #e2e8f0;
+    }
+
+    .btn-secondary:hover {
+        background: #f8fafc;
+        border-color: {{ error_color }};
+        color: {{ error_color }};
+    }
+
+    .error-footer {
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .error-footer-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .error-footer-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #94a3b8;
+        font-size: 0.85rem;
+    }
+
+    .error-footer-item i {
+        width: 16px;
+        text-align: center;
+    }
+
+    .error-footer-contact {
+        text-align: right;
+    }
+
+    .error-footer-contact h6 {
+        margin: 0;
+        color: #475569;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .error-footer-contact p {
+        margin: 0;
+        color: #94a3b8;
+        font-size: 0.8rem;
+    }
+
+    .error-footer-contact .contact-link {
+        color: {{ error_color }};
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .error-footer-contact .contact-link:hover {
+        text-decoration: underline;
+    }
+
+    @media (max-width: 768px) {
+        .error-page-container {
+            padding: 1rem;
+        }
+
+        .error-header {
+            padding: 2rem 1.5rem;
+        }
+
+        .error-code {
+            font-size: 3.5rem;
+        }
+
+        .error-body {
+            padding: 2rem 1.5rem;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+
+        .btn-action {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .error-footer {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .error-footer-contact {
+            text-align: left;
+        }
+
+        .department-logo {
+            width: 80px;
+            height: 80px;
+        }
+    }
+</style>
+
+<div class="error-page-container">
+    <div class="error-card">
+        <div class="error-header">
+            <!-- Department Logo -->
+            <div class="department-logo">
+                <img src="{% static 'images/logo.png' %}" alt="Malawi Prison Service Logo">
+            </div>
+
+            <div class="department-name">Malawi Prison Service</div>
+
+            <div class="error-icon">
+                <i class="fas {{ error_icon }}"></i>
+            </div>
+            <div class="error-code">{{ error_code }}</div>
+            <div class="error-title">{{ error_title }}</div>
+        </div>
+
+        <div class="error-body">
+            <div class="error-message">
+                <i class="fas fa-info-circle me-2"></i>
+                {{ error_message }}
+            </div>
+
+            {% if error_details %}
+            <div class="error-details">
+                <strong><i class="fas fa-exclamation-triangle me-1"></i>Technical Details:</strong>
+                <p class="mb-0 mt-1">{{ error_details }}</p>
+            </div>
+            {% endif %}
+
+            <div class="suggestions-section">
+                <h4 class="suggestions-title">
+                    <i class="fas fa-lightbulb"></i>
+                    What you can do:
+                </h4>
+                <ul class="suggestions-list">
+                    {% for suggestion in suggestions %}
+                    <li class="suggestion-item">
+                        <i class="fas fa-check-circle suggestion-icon"></i>
+                        <span>{{ suggestion }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="action-buttons">
+                <a href="{% url 'dashboard' %}" class="btn-action btn-primary">
+                    <i class="fas fa-home"></i>
+                    Go to Dashboard
+                </a>
+                <button onclick="history.back()" class="btn-action btn-secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    Go Back
+                </button>
+                <button onclick="location.reload()" class="btn-action btn-secondary">
+                    <i class="fas fa-sync"></i>
+                    Refresh Page
+                </button>
+            </div>
+
+            <div class="error-footer">
+                <div class="error-footer-info">
+                    <div class="error-footer-item">
+                        <i class="fas fa-user"></i>
+                        <span>User: {{ request.user.username|default:"Guest" }}</span>
+                    </div>
+                    <div class="error-footer-item">
+                        <i class="fas fa-calendar"></i>
+                        <span>Time: {% now "Y-m-d H:i" %}</span>
+                    </div>
+                    <div class="error-footer-item">
+                        <i class="fas fa-globe"></i>
+                        <span>System: Prison Management System</span>
+                    </div>
+                </div>
+                <div class="error-footer-contact">
+                    <h6>Need Help?</h6>
+                    <p>
+                        <i class="fas fa-envelope me-1"></i>
+                        <a href="mailto:admin@prison.gov.mw" class="contact-link">admin@prison.gov.mw</a>
+                    </p>
+                    <p>
+                        <i class="fas fa-phone me-1"></i>
+                        +265 992 293 207
+                    </p>
+                    <p>
+                        <i class="fas fa-clock me-1"></i>
+                        Mon-Fri: 8:00 AM - 4:30 PM
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

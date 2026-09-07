@@ -1,5 +1,5 @@
 <!-- dashboard.html -->
-{% extends "prison/base.html" %}
+{% extends "base.html" %}
 {% load static %}
 {% load custom_filters %}
 
@@ -7,9 +7,14 @@
 
 {% block extra_css %}
 <style>
-    /* ===== ENHANCED DASHBOARD STYLES ===== */
+    /* ===== ENHANCED DASHBOARD STYLES - MAROON THEME ===== */
     :root {
-        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --maroon-primary: #800000;
+        --maroon-dark: #5c0000;
+        --maroon-light: #a52a2a;
+        --maroon-gradient: linear-gradient(135deg, #800000 0%, #a52a2a 100%);
+        --maroon-gradient-light: linear-gradient(135deg, #a52a2a 0%, #c0392b 100%);
+        --maroon-gradient-dark: linear-gradient(135deg, #5c0000 0%, #800000 100%);
         --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
         --warning-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
         --info-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
@@ -43,13 +48,13 @@
         left: 0;
         right: 0;
         height: 4px;
-        background: var(--primary-gradient);
+        background: var(--maroon-gradient);
         opacity: 0;
         transition: opacity 0.3s ease;
     }
 
     .stat-card:hover {
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        box-shadow: 0 8px 30px rgba(128, 0, 0, 0.15);
         transform: translateY(-4px);
         border-color: transparent;
     }
@@ -71,40 +76,45 @@
         z-index: 1;
     }
 
-    .stat-card .stat-icon.blue { 
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    .stat-card .stat-icon.blue {
+        background: var(--maroon-gradient);
         color: #fff;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 4px 15px rgba(128, 0, 0, 0.4);
     }
-    .stat-card .stat-icon.green { 
+    .stat-card .stat-icon.green {
         background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
         color: #fff;
         box-shadow: 0 4px 15px rgba(17, 153, 142, 0.4);
     }
-    .stat-card .stat-icon.orange { 
+    .stat-card .stat-icon.orange {
         background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
         color: #fff;
         box-shadow: 0 4px 15px rgba(240, 147, 251, 0.4);
     }
-    .stat-card .stat-icon.purple { 
+    .stat-card .stat-icon.purple {
         background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
         color: #fff;
         box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
     }
-    .stat-card .stat-icon.red { 
+    .stat-card .stat-icon.red {
         background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
         color: #fff;
         box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
     }
-    .stat-card .stat-icon.teal { 
+    .stat-card .stat-icon.teal {
         background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
         color: #fff;
         box-shadow: 0 4px 15px rgba(67, 233, 123, 0.4);
     }
-    .stat-card .stat-icon.pink { 
+    .stat-card .stat-icon.pink {
         background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
         color: #fff;
         box-shadow: 0 4px 15px rgba(250, 112, 154, 0.4);
+    }
+    .stat-card .stat-icon.maroon {
+        background: var(--maroon-gradient);
+        color: #fff;
+        box-shadow: 0 4px 15px rgba(128, 0, 0, 0.4);
     }
 
     .stat-card .stat-label {
@@ -121,7 +131,7 @@
         font-weight: 800;
         color: #0f172a;
         line-height: 1.1;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--maroon-gradient);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -137,12 +147,12 @@
         gap: 4px;
     }
 
-    .stat-card .stat-change.up { 
-        background: rgba(17, 153, 142, 0.1); 
+    .stat-card .stat-change.up {
+        background: rgba(17, 153, 142, 0.1);
         color: #11998e;
     }
-    .stat-card .stat-change.down { 
-        background: rgba(255, 107, 107, 0.1); 
+    .stat-card .stat-change.down {
+        background: rgba(255, 107, 107, 0.1);
         color: #ff6b6b;
     }
 
@@ -169,7 +179,7 @@
     }
 
     .section-header h3 i {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--maroon-gradient);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -179,16 +189,16 @@
     .section-header .btn-link {
         font-size: 0.85rem;
         font-weight: 600;
-        color: #667eea;
+        color: var(--maroon-primary);
         text-decoration: none;
         padding: 8px 16px;
         border-radius: 8px;
-        background: rgba(102, 126, 234, 0.1);
+        background: rgba(128, 0, 0, 0.1);
         transition: all 0.3s ease;
     }
 
     .section-header .btn-link:hover {
-        background: rgba(102, 126, 234, 0.2);
+        background: rgba(128, 0, 0, 0.2);
         transform: translateY(-1px);
     }
 
@@ -204,13 +214,13 @@
     }
 
     .dashboard-card:hover {
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        box-shadow: 0 8px 30px rgba(128, 0, 0, 0.12);
         transform: translateY(-2px);
     }
 
     .dashboard-card .card-header {
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-        border-bottom: 1px solid #e2e8f0;
+        background: linear-gradient(135deg, #fdf2f2 0%, #f8f0f0 100%);
+        border-bottom: 1px solid #e8d5d5;
         padding: 18px 24px;
         font-weight: 700;
         font-size: 0.95rem;
@@ -221,7 +231,7 @@
     }
 
     .dashboard-card .card-header i {
-        color: #667eea;
+        color: var(--maroon-primary);
         margin-right: 8px;
     }
 
@@ -253,13 +263,13 @@
     }
 
     .table-dashboard thead th {
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        background: linear-gradient(135deg, #fdf2f2 0%, #f8f0f0 100%);
         color: #475569;
         font-weight: 700;
         text-transform: uppercase;
         font-size: 0.7rem;
         letter-spacing: 0.5px;
-        border-bottom: 2px solid #e2e8f0;
+        border-bottom: 2px solid #e8d5d5;
         padding: 14px 16px;
     }
 
@@ -272,18 +282,18 @@
     }
 
     .table-dashboard tbody tr:hover {
-        background: rgba(102, 126, 234, 0.05);
+        background: rgba(128, 0, 0, 0.03);
     }
 
     .table-dashboard .prisoner-link {
-        color: #667eea;
+        color: var(--maroon-primary);
         text-decoration: none;
         font-weight: 600;
         transition: color 0.2s ease;
     }
 
     .table-dashboard .prisoner-link:hover {
-        color: #764ba2;
+        color: var(--maroon-dark);
     }
 
     /* Enhanced Lockup Summary Table */
@@ -310,10 +320,10 @@
 
     .lockup-table .total-row td {
         font-weight: 800;
-        border-top: 2px solid #667eea;
+        border-top: 2px solid var(--maroon-primary);
         padding-top: 16px;
-        color: #667eea;
-        background: rgba(102, 126, 234, 0.05);
+        color: var(--maroon-primary);
+        background: rgba(128, 0, 0, 0.03);
     }
 
     /* Enhanced Recidivism Progress */
@@ -353,7 +363,7 @@
     }
 
     .activity-item:hover {
-        background: rgba(102, 126, 234, 0.03);
+        background: rgba(128, 0, 0, 0.02);
         padding-left: 8px;
         padding-right: 8px;
         border-radius: 8px;
@@ -372,9 +382,9 @@
         justify-content: center;
         font-size: 1rem;
         flex-shrink: 0;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--maroon-gradient);
         color: #fff;
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        box-shadow: 0 4px 12px rgba(128, 0, 0, 0.3);
     }
 
     .activity-content {
@@ -420,17 +430,17 @@
         transform: translateX(4px);
     }
 
-    .ration-alert.danger { 
+    .ration-alert.danger {
         background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
         color: #991b1b;
         border-left-color: #dc2626;
     }
-    .ration-alert.warning { 
+    .ration-alert.warning {
         background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
         color: #92400e;
         border-left-color: #f59e0b;
     }
-    .ration-alert.info { 
+    .ration-alert.info {
         background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
         color: #1e40af;
         border-left-color: #3b82f6;
@@ -523,12 +533,12 @@
     }
 
     ::-webkit-scrollbar-thumb {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--maroon-gradient);
         border-radius: 4px;
     }
 
     ::-webkit-scrollbar-thumb:hover {
-        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        background: var(--maroon-gradient-dark);
     }
 </style>
 {% endblock %}
@@ -542,7 +552,7 @@
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <h2 class="fw-bold mb-1" style="color: #0f172a;">
+                            <h2 class="fw-bold mb-1" style="color: var(--maroon-dark);">
                                 Welcome back, {{ user.get_full_name|default:user.username }}!
                             </h2>
                             <p class="text-muted mb-0">
@@ -553,7 +563,7 @@
                         </div>
                         <div class="text-end d-none d-md-block">
                             <div class="text-muted small">Current Time</div>
-                            <div class="fw-bold" style="color: #667eea;" id="currentTime"></div>
+                            <div class="fw-bold" style="color: var(--maroon-primary);" id="currentTime"></div>
                         </div>
                     </div>
                 </div>
@@ -574,7 +584,7 @@
                             <i class="bi bi-arrow-up"></i> Active
                         </div>
                     </div>
-                    <div class="stat-icon blue"><i class="bi bi-people-fill"></i></div>
+                    <div class="stat-icon maroon"><i class="bi bi-people-fill"></i></div>
                 </div>
             </div>
         </div>
@@ -668,9 +678,9 @@
                 <div class="card-body">
                     <div class="d-flex align-items-center justify-content-between mb-3">
                         <h6 class="fw-bold mb-0" style="color: #0f172a;">
-                            <i class="bi bi-graph-up me-2" style="color: #667eea;"></i>Population Trend
+                            <i class="bi bi-graph-up me-2" style="color: var(--maroon-primary);"></i>Population Trend
                         </h6>
-                        <span class="badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                        <span class="badge" style="background: var(--maroon-gradient); color: white;">
                             <i class="bi bi-calendar3 me-1"></i>Last 6 Months
                         </span>
                     </div>
@@ -688,9 +698,9 @@
             <div class="dashboard-card h-100">
                 <div class="card-header">
                     <span>
-                        <i class="bi bi-lock-fill me-2" style="color: #667eea;"></i>Lockup Summary
+                        <i class="bi bi-lock-fill me-2" style="color: var(--maroon-primary);"></i>Lockup Summary
                     </span>
-                    <span class="badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <span class="badge" style="background: var(--maroon-gradient); color: white;">
                         {{ today_date|date:"M d, Y" }}
                     </span>
                 </div>
@@ -761,7 +771,7 @@
                         </table>
                     </div>
                     <div class="mt-3 text-end">
-                        <a href="{% url 'upcoming_releases_report' %}" class="btn btn-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                        <a href="{% url 'upcoming_releases_report' %}" class="btn btn-sm" style="background: var(--maroon-gradient); color: white; border: none;">
                             <i class="bi bi-arrow-right me-1"></i>View All Releases
                         </a>
                     </div>
@@ -856,9 +866,9 @@
                 <div class="dashboard-card h-100">
                     <div class="card-header">
                         <span>
-                            <i class="bi bi-pie-chart-fill me-2" style="color: #667eea;"></i>Medical Cases by Category
+                            <i class="bi bi-pie-chart-fill me-2" style="color: var(--maroon-primary);"></i>Medical Cases by Category
                         </span>
-                        <span class="badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                        <span class="badge" style="background: var(--maroon-gradient); color: white;">
                             Distribution
                         </span>
                     </div>
@@ -894,7 +904,7 @@
                                     {% for record in medical_stats.recent_records %}
                                     <tr>
                                         <td>
-                                            <span class="badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                                            <span class="badge" style="background: var(--maroon-gradient); color: white;">
                                                 {{ record.record_date|date:"M d" }}
                                             </span>
                                         </td>
@@ -923,6 +933,70 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ===== RATION ALERTS ===== -->
+    {% if show_ration_stats and ration_alerts %}
+    <div class="mt-4">
+        <div class="section-header">
+            <h3>
+                <i class="bi bi-journal-check-fill"></i> Ration Alerts
+            </h3>
+        </div>
+        <div class="dashboard-card">
+            <div class="card-body">
+                {% for alert in ration_alerts %}
+                <div class="ration-alert {{ alert.type }}">
+                    <i class="bi bi-{% if alert.type == 'danger' %}exclamation-octagon{% elif alert.type == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %}"></i>
+                    {{ alert.message }}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ===== RATION DAILY NEEDS ===== -->
+    {% if show_ration_stats and daily_ration_needs %}
+    <div class="mt-4">
+        <div class="section-header">
+            <h3>
+                <i class="bi bi-calculator-fill"></i> Daily Ration Needs
+            </h3>
+        </div>
+        <div class="row g-4">
+            {% for item_name, item_data in daily_ration_needs.items %}
+            <div class="col-xl-3 col-lg-6 col-md-6">
+                <div class="stat-card">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="stat-label">{{ item_name }}</div>
+                            <div class="stat-value" style="font-size: 1.2rem;">{{ item_data.required_kg|floatformat:2 }} kg</div>
+                            <div class="stat-change {{ item_data.is_low_stock|yesno:'down,up' }}">
+                                <i class="bi bi-{% if item_data.is_low_stock %}exclamation-triangle{% else %}check-circle{% endif %}"></i>
+                                Stock: {{ item_data.current_stock_kg|floatformat:2 }} {{ item_data.unit }}
+                            </div>
+                        </div>
+                        <div class="stat-icon {{ item_data.is_low_stock|yesno:'red,green' }}">
+                            <i class="bi bi-{% if item_data.is_low_stock %}exclamation-octagon{% else %}check-circle{% endif %}"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar" role="progressbar"
+                                 style="width: {{ item_data.percentage_remaining|floatformat:0 }}%; background: {{ item_data.is_low_stock|yesno:'linear-gradient(90deg, #f5576c, #f093fb),linear-gradient(90deg, #11998e, #38ef7d)' }};"
+                                 aria-valuenow="{{ item_data.percentage_remaining }}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <div class="d-flex justify-content-between mt-2">
+                            <span class="text-muted small">Days: {{ item_data.days_of_coverage|floatformat:0 }}</span>
+                            <span class="text-muted small">{{ item_data.percentage_remaining|floatformat:0 }}%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
         </div>
     </div>
     {% endif %}
@@ -978,18 +1052,18 @@
         // ===== CURRENT TIME UPDATE =====
         function updateTime() {
             const now = new Date();
-            const timeString = now.toLocaleTimeString('en-US', { 
-                hour: '2-digit', 
+            const timeString = now.toLocaleTimeString('en-US', {
+                hour: '2-digit',
                 minute: '2-digit',
                 second: '2-digit',
-                hour12: true 
+                hour12: true
             });
             const timeElement = document.getElementById('currentTime');
             if (timeElement) {
                 timeElement.textContent = timeString;
             }
         }
-        
+
         // Update time immediately and then every second
         updateTime();
         setInterval(updateTime, 1000);
@@ -999,11 +1073,11 @@
         (function() {
             var ctx = document.getElementById('populationChart');
             if (!ctx) return;
-            
+
             // Safe data preparation
             var rawLabels = "{% for month in months %}{{ month }}|{% endfor %}".split('|').filter(function(x) { return x; });
             var rawData = "{% for count in prisoner_counts %}{{ count }}|{% endfor %}".split('|').filter(function(x) { return x; }).map(Number);
-            
+
             new Chart(ctx.getContext('2d'), {
                 type: 'line',
                 data: {
@@ -1011,17 +1085,17 @@
                     datasets: [{
                         label: 'Total Prisoners',
                         data: rawData,
-                        backgroundColor: 'rgba(102, 126, 234, 0.15)',
-                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(128, 0, 0, 0.15)',
+                        borderColor: '#800000',
                         borderWidth: 3,
                         tension: 0.4,
                         fill: true,
                         pointRadius: 5,
-                        pointBackgroundColor: '#667eea',
+                        pointBackgroundColor: '#800000',
                         pointBorderColor: '#fff',
                         pointBorderWidth: 2,
                         pointHoverRadius: 7,
-                        pointHoverBackgroundColor: '#764ba2',
+                        pointHoverBackgroundColor: '#a52a2a',
                         pointHoverBorderColor: '#fff',
                         pointHoverBorderWidth: 3,
                     }]
@@ -1050,19 +1124,19 @@
                     scales: {
                         y: {
                             beginAtZero: true,
-                            grid: { 
+                            grid: {
                                 color: 'rgba(0,0,0,0.05)',
                                 drawBorder: false
                             },
-                            ticks: { 
-                                precision: 0, 
+                            ticks: {
+                                precision: 0,
                                 font: { size: 11, weight: '500' },
                                 color: '#64748b'
                             }
                         },
                         x: {
                             grid: { display: false },
-                            ticks: { 
+                            ticks: {
                                 font: { size: 11, weight: '500' },
                                 color: '#64748b'
                             }
@@ -1082,7 +1156,7 @@
         (function() {
             var medCtx = document.getElementById('medicalCategoriesChart');
             if (!medCtx) return;
-            
+
             // Safe data preparation
             var categoriesData = {{ medical_stats.count_by_category|safe }};
             var labels = categoriesData.map(function(item) {
@@ -1098,19 +1172,19 @@
             });
             var data = categoriesData.map(function(item) { return item.count; });
             var colors = [
-                'rgba(102, 126, 234, 0.8)',
-                'rgba(239, 68, 68, 0.8)',
-                'rgba(245, 158, 11, 0.8)',
-                'rgba(139, 92, 246, 0.8)',
-                'rgba(13, 148, 136, 0.8)',
+                'rgba(128, 0, 0, 0.8)',
+                'rgba(165, 42, 42, 0.8)',
+                'rgba(192, 57, 43, 0.8)',
+                'rgba(211, 84, 0, 0.8)',
+                'rgba(231, 76, 60, 0.8)',
                 'rgba(148, 163, 184, 0.8)'
             ];
             var borderColors = [
-                '#667eea',
-                '#ef4444',
-                '#f59e0b',
-                '#8b5cf6',
-                '#0d9488',
+                '#800000',
+                '#a52a2a',
+                '#c0392b',
+                '#d35400',
+                '#e74c3c',
                 '#94a3b8'
             ];
 
