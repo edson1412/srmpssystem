@@ -1,0 +1,399 @@
+<!-- ration_dashboard.html -->
+{% load crispy_forms_tags %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    .ration-dashboard-section {
+        margin-top: 28px;
+    }
+
+    .ration-dashboard-section .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .ration-dashboard-section .section-header h3 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .ration-dashboard-section .section-header h3 i {
+        color: #0d9488;
+        font-size: 1.2rem;
+    }
+
+    .ration-dashboard-section .section-header .btn-link {
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: #0d9488;
+        text-decoration: none;
+    }
+
+    .ration-dashboard-section .section-header .btn-link:hover {
+        text-decoration: underline;
+    }
+
+    .ration-card {
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        padding: 24px;
+        margin-bottom: 0;
+        transition: box-shadow 0.2s ease;
+    }
+
+    .ration-card:hover {
+        box-shadow: var(--card-hover-shadow);
+    }
+
+    .ration-alert {
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 6px;
+        border-left: 4px solid;
+    }
+
+    .ration-alert.danger {
+        background: #fee2e2;
+        color: #991b1b;
+        border-left-color: #dc2626;
+    }
+
+    .ration-alert.warning {
+        background: #fef3c7;
+        color: #92400e;
+        border-left-color: #f59e0b;
+    }
+
+    .ration-alert.info {
+        background: #dbeafe;
+        color: #1e40af;
+        border-left-color: #3b82f6;
+    }
+
+    .ration-alert.success {
+        background: #dcfce7;
+        color: #166534;
+        border-left-color: #22c55e;
+    }
+
+    .ration-alert i {
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .ration-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+        margin: 16px 0 20px 0;
+    }
+
+    .ration-stat-item {
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 12px 16px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .ration-stat-item .label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        color: #94a3b8;
+        font-weight: 600;
+    }
+
+    .ration-stat-item .value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .ration-table {
+        font-size: 0.85rem;
+        margin-bottom: 0;
+    }
+
+    .ration-table thead th {
+        background: #f8fafc;
+        color: #64748b;
+        font-weight: 600;
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 8px 12px;
+    }
+
+    .ration-table tbody td {
+        padding: 8px 12px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        color: #334155;
+    }
+
+    .ration-table tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .ration-progress {
+        height: 18px;
+        background: #f1f5f9;
+        border-radius: 20px;
+        overflow: hidden;
+        min-width: 120px;
+    }
+
+    .ration-progress .bar {
+        height: 100%;
+        border-radius: 20px;
+        transition: width 0.6s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.6rem;
+        font-weight: 600;
+        color: #fff;
+        padding: 0 6px;
+        white-space: nowrap;
+    }
+
+    .ration-progress .bar.green { background: linear-gradient(90deg, #22c55e, #16a34a); }
+    .ration-progress .bar.orange { background: linear-gradient(90deg, #fbbf24, #f59e0b); color: #92400e; }
+    .ration-progress .bar.red { background: linear-gradient(90deg, #f87171, #dc2626); }
+
+    .ration-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid #f1f5f9;
+    }
+
+    .btn-ration {
+        padding: 8px 20px;
+        font-weight: 600;
+        border-radius: 10px;
+        border: none;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+    }
+
+    .btn-ration:hover {
+        transform: translateY(-1px);
+    }
+
+    .btn-ration.primary {
+        background: #0d9488;
+        color: #fff;
+    }
+
+    .btn-ration.primary:hover {
+        background: #0f766e;
+        box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
+    }
+
+    .btn-ration.secondary {
+        background: #1a73e8;
+        color: #fff;
+    }
+
+    .btn-ration.secondary:hover {
+        background: #1557b0;
+        box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+    }
+
+    .empty-ration {
+        text-align: center;
+        padding: 30px 20px;
+        color: #94a3b8;
+    }
+
+    .empty-ration i {
+        font-size: 2.5rem;
+        display: block;
+        margin-bottom: 10px;
+        color: #cbd5e1;
+    }
+
+    @media (max-width: 768px) {
+        .ration-card {
+            padding: 16px;
+        }
+        .ration-stats {
+            grid-template-columns: 1fr 1fr;
+        }
+        .ration-table {
+            font-size: 0.75rem;
+        }
+        .ration-table thead th,
+        .ration-table tbody td {
+            padding: 6px 10px;
+        }
+        .ration-progress {
+            min-width: 80px;
+            height: 16px;
+        }
+        .ration-actions {
+            flex-direction: column;
+        }
+        .btn-ration {
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% if show_ration_stats %}
+<div class="ration-dashboard-section">
+    <div class="section-header">
+        <h3>
+            <i class="bi bi-journal-check"></i> Ration Management Summary
+        </h3>
+        <a href="{% url 'ration_item_list' %}" class="btn-link">
+            <i class="bi bi-arrow-right me-1"></i> Manage Rations
+        </a>
+    </div>
+
+    <div class="ration-card">
+        <!-- Alerts -->
+        <div class="mb-3">
+            {% if ration_alerts %}
+                {% for alert in ration_alerts %}
+                <div class="ration-alert {{ alert.type }}">
+                    <i class="bi bi-{% if alert.type == 'danger' %}exclamation-circle-fill{% elif alert.type == 'warning' %}exclamation-triangle-fill{% else %}info-circle-fill{% endif %}"></i>
+                    {{ alert.message }}
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="ration-alert success">
+                    <i class="bi bi-check-circle-fill"></i>
+                    All ration items are at healthy stock levels.
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Stats -->
+        <div class="ration-stats">
+            <div class="ration-stat-item">
+                <div class="label"><i class="bi bi-calendar3 me-1"></i> Today</div>
+                <div class="value">{{ today_date|date:"M d, Y" }}</div>
+            </div>
+            <div class="ration-stat-item">
+                <div class="label"><i class="bi bi-people me-1"></i> People Requiring Ration</div>
+                <div class="value">{{ total_people_requiring_ration|default:0 }}</div>
+            </div>
+            <div class="ration-stat-item">
+                <div class="label"><i class="bi bi-clock-history me-1"></i> Avg Days Remaining</div>
+                <div class="value">{{ average_days_remaining|default:0 }}</div>
+            </div>
+            <div class="ration-stat-item">
+                <div class="label"><i class="bi bi-boxes me-1"></i> Active Items</div>
+                <div class="value">{{ daily_ration_needs|length|default:0 }}</div>
+            </div>
+        </div>
+
+        <!-- Table -->
+        {% if daily_ration_needs %}
+        <div class="table-responsive">
+            <table class="table ration-table">
+                <thead>
+                    <tr>
+                        <th>Ration Item</th>
+                        <th>Current Stock (kg)</th>
+                        <th>Daily/Person (kg)</th>
+                        <th>Daily Need (kg)</th>
+                        <th style="min-width: 160px;">Days Remaining</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item_name, data in daily_ration_needs.items %}
+                    <tr>
+                        <td><strong>{{ item_name }}</strong></td>
+                        <td>{{ data.current_stock_kg|floatformat:2 }}</td>
+                        <td>{{ data.daily_per_prisoner|floatformat:4 }}</td>
+                        <td>{{ data.required_kg|floatformat:2 }}</td>
+                        <td>
+                            {% if data.estimated_days_remaining > 0 %}
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="ration-progress flex-grow-1">
+                                        {% if data.estimated_days_remaining >= 30 %}
+                                            <div class="bar green" style="width: 100%;">
+                                                {{ data.estimated_days_remaining }} days
+                                            </div>
+                                        {% elif data.estimated_days_remaining >= 14 %}
+                                            <div class="bar orange" style="width: {{ data.days_percentage|floatformat:0 }}%;">
+                                                {{ data.estimated_days_remaining }} days
+                                            </div>
+                                        {% else %}
+                                            <div class="bar red" style="width: {{ data.days_percentage|floatformat:0 }}%;">
+                                                {{ data.estimated_days_remaining }} days
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% else %}
+                                <span class="text-danger small fw-bold">Stock Out</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if data.estimated_days_remaining >= 30 %}
+                                <span class="badge bg-success">Healthy</span>
+                            {% elif data.estimated_days_remaining >= 14 %}
+                                <span class="badge bg-warning text-dark">Warning</span>
+                            {% elif data.estimated_days_remaining > 0 %}
+                                <span class="badge bg-danger">Critical</span>
+                            {% else %}
+                                <span class="badge bg-dark">Out of Stock</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-ration">
+            <i class="bi bi-box-seam"></i>
+            <p class="mb-0">No active ration items defined for this prison station.</p>
+            <small class="text-muted">Add ration items to start tracking inventory.</small>
+        </div>
+        {% endif %}
+
+        <!-- Actions -->
+        <div class="ration-actions">
+            <a href="{% url 'record_consumption' %}" class="btn-ration primary">
+                <i class="bi bi-arrow-down-circle"></i> Record Daily Consumption
+            </a>
+            <a href="{% url 'record_procurement' %}" class="btn-ration secondary">
+                <i class="bi bi-arrow-up-circle"></i> Record Procurement
+            </a>
+            <a href="{% url 'ration_item_list' %}" class="btn-ration" style="background: #64748b; color: white;">
+                <i class="bi bi-gear"></i> Manage Items
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}

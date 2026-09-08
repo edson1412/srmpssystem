@@ -1,0 +1,196 @@
+{% extends "prison/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Add Visitor{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-color: rgba(173, 216, 230, 0.6);
+    }
+    .form-section {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 24px 28px;
+        margin-bottom: 24px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+    }
+    .form-section-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .form-section-title i {
+        font-size: 1.1rem;
+        color: #1a73e8;
+    }
+    .btn-save {
+        padding: 10px 32px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #1a73e8;
+        border: none;
+        transition: all 0.2s ease;
+    }
+    .btn-save:hover {
+        background: #1557b0;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+    }
+    .btn-cancel {
+        padding: 10px 28px;
+        font-weight: 600;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        background: #fff;
+        transition: all 0.2s ease;
+    }
+    .btn-cancel:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+    .items-input {
+        background: #f8fafc;
+        border: 2px dashed #e2e8f0;
+        border-radius: 10px;
+        padding: 16px;
+    }
+    .items-input textarea {
+        border: none;
+        background: transparent;
+        resize: vertical;
+    }
+    .items-input:focus-within {
+        border-color: #1a73e8;
+        background: #f0f7ff;
+    }
+</style>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h1 class="h3 fw-bold mb-1">{{ form_title|default:"Register New Visitor" }}</h1>
+            <p class="text-muted small mb-0">
+                <i class="bi bi-person-plus me-1"></i>
+                Register a new visitor and manage items brought
+            </p>
+        </div>
+        <a href="{% url 'visitor_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Visitors
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                <i class="bi bi-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}x-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+
+        <!-- Visitor Information -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-person-fill"></i> Visitor Information
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    {{ form.first_name|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.surname|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.id_number|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.contact_number|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.relationship|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.prisoner|as_crispy_field }}
+                </div>
+                <div class="col-12">
+                    {{ form.address|as_crispy_field }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Visit Information -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-calendar-check"></i> Visit Details
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    {{ form.visit_date|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.visit_time|as_crispy_field }}
+                </div>
+                <div class="col-12">
+                    {{ form.purpose_of_visit|as_crispy_field }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Items Section -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-box-seam"></i> Items Brought
+                <span class="badge bg-secondary ms-auto">Optional</span>
+            </div>
+            <div class="items-input">
+                {{ form.items_description|as_crispy_field }}
+                <small class="text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Enter items brought by visitor separated by commas. Money items will be added to prisoner's account.
+                    Example: "Money 5000, Bread, Soap, Clothes"
+                </small>
+            </div>
+        </div>
+
+        <div class="d-flex gap-3 flex-wrap mt-4">
+            <button type="submit" class="btn btn-save">
+                <i class="bi bi-check-circle me-2"></i> Register Visitor
+            </button>
+            <a href="{% url 'visitor_list' %}" class="btn-cancel">
+                <i class="bi bi-x-lg me-1"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#id_prisoner').select2({
+            placeholder: "Search for a prisoner...",
+            allowClear: true,
+            width: '100%'
+        });
+    });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+{% endblock %}

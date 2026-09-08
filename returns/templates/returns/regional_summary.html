@@ -1,0 +1,295 @@
+<!-- returns/regional_summary.html -->
+{% extends "prison/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block page_title %}Regional Return Summary{% endblock %}
+
+{% block extra_css %}
+<style>
+    .summary-card {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 20px 24px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        height: 100%;
+        transition: box-shadow 0.2s ease;
+    }
+
+    .summary-card:hover {
+        box-shadow: var(--card-hover-shadow);
+    }
+
+    .summary-card .number {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.1;
+    }
+
+    .summary-card .label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #94a3b8;
+        letter-spacing: 0.3px;
+    }
+
+    .summary-card .sub-label {
+        font-size: 0.7rem;
+        color: #94a3b8;
+    }
+
+    .region-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid #f1f5f9;
+        transition: background 0.15s ease;
+    }
+
+    .region-row:hover {
+        background: rgba(102, 126, 234, 0.03);
+    }
+
+    .region-row:last-child {
+        border-bottom: none;
+    }
+
+    .region-row .region-name {
+        font-weight: 600;
+        color: #0f172a;
+        font-size: 0.9rem;
+    }
+
+    .region-row .region-stats {
+        display: flex;
+        gap: 20px;
+        font-size: 0.85rem;
+        color: #64748b;
+    }
+
+    .region-row .region-stats span {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .filter-card {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 20px 24px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        margin-bottom: 24px;
+        box-shadow: var(--card-shadow);
+    }
+
+    .category-breakdown .cat-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .category-breakdown .cat-item:last-child {
+        border-bottom: none;
+    }
+
+    .progress-bar-custom {
+        height: 6px;
+        border-radius: 4px;
+        background: #f1f5f9;
+        overflow: hidden;
+        margin-top: 4px;
+    }
+
+    .progress-bar-custom .fill {
+        height: 100%;
+        border-radius: 4px;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        transition: width 0.6s ease;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h1 class="h3 fw-bold mb-1">Regional Return Summary</h1>
+            <p class="text-muted small mb-0">
+                <i class="bi bi-bar-chart-fill me-1"></i>
+                {{ summary.period|default:"No period selected" }}
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'returns:regional_summary_export' %}?period={{ period }}" class="btn btn-primary btn-sm">
+                <i class="bi bi-download me-1"></i> Export CSV
+            </a>
+            <a href="{% url 'returns:dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter -->
+    <div class="filter-card">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                {{ period_form.period|as_crispy_field }}
+            </div>
+            <div class="col-md-4">
+                {{ period_form.category|as_crispy_field }}
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search me-1"></i> Generate Summary
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3 col-sm-6">
+            <div class="summary-card text-center">
+                <div class="number">{{ summary.total_submissions|default:0 }}</div>
+                <div class="label">Total Submissions</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="summary-card text-center">
+                <div class="number">{{ summary.total_records|default:0 }}</div>
+                <div class="label">Total Records</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="summary-card text-center">
+                <div class="number text-primary">{{ summary.total_male|default:0 }}</div>
+                <div class="label">Male</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="summary-card text-center">
+                <div class="number text-danger">{{ summary.total_female|default:0 }}</div>
+                <div class="label">Female</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Regional Breakdown -->
+        <div class="col-lg-6">
+            <div class="summary-card">
+                <h6 class="fw-bold mb-3">
+                    <i class="bi bi-geo-alt me-2" style="color: #667eea;"></i>
+                    Regional Breakdown
+                </h6>
+                {% if summary.by_region %}
+                {% for region, data in summary.by_region.items %}
+                <div class="region-row">
+                    <div>
+                        <div class="region-name">{{ region }}</div>
+                        <div class="sub-label">{{ data.stations }} stations</div>
+                    </div>
+                    <div class="region-stats">
+                        <span><i class="bi bi-upload"></i> {{ data.submissions }}</span>
+                        <span><i class="bi bi-list-ul"></i> {{ data.records }}</span>
+                        <span class="text-primary"><i class="bi bi-gender-male"></i> {{ data.male }}</span>
+                        <span class="text-danger"><i class="bi bi-gender-female"></i> {{ data.female }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="text-center py-4">
+                    <p class="text-muted mb-0">No regional data available</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Category Breakdown -->
+        <div class="col-lg-6">
+            <div class="summary-card">
+                <h6 class="fw-bold mb-3">
+                    <i class="bi bi-tag me-2" style="color: #667eea;"></i>
+                    Category Breakdown
+                </h6>
+                {% if summary.by_category %}
+                <div class="category-breakdown">
+                    {% for category, data in summary.by_category.items %}
+                    <div class="cat-item">
+                        <div>
+                            <div style="font-weight: 600; font-size: 0.9rem; color: #0f172a;">{{ category|title }}</div>
+                            <div class="sub-label">{{ data.stations|length }} stations</div>
+                        </div>
+                        <div class="text-end">
+                            <div>{{ data.records }} records</div>
+                            <div class="sub-label">
+                                <span class="text-primary">{{ data.male }} M</span>
+                                <span class="text-danger ms-2">{{ data.female }} F</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <p class="text-muted mb-0">No category data available</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Station Details -->
+    <div class="row g-4 mt-2">
+        <div class="col-12">
+            <div class="summary-card">
+                <h6 class="fw-bold mb-3">
+                    <i class="bi bi-building me-2" style="color: #667eea;"></i>
+                    Station Details
+                </h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Station</th>
+                                <th class="text-center">Submissions</th>
+                                <th class="text-center">Records</th>
+                                <th class="text-center">Male</th>
+                                <th class="text-center">Female</th>
+                                <th>Categories</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for station, data in summary.by_station.items %}
+                            <tr>
+                                <td class="fw-semibold">{{ station }}</td>
+                                <td class="text-center">{{ data.count }}</td>
+                                <td class="text-center">{{ data.records }}</td>
+                                <td class="text-center text-primary">{{ data.male }}</td>
+                                <td class="text-center text-danger">{{ data.female }}</td>
+                                <td>
+                                    <span class="text-muted small">
+                                        {{ data.categories|slice:":3"|join:", " }}
+                                        {% if data.categories|length > 3 %}...{% endif %}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-3">No station data available</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

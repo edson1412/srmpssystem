@@ -1,0 +1,559 @@
+<!-- prison/templates/errors/error_base.html -->
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="System Error - Malawi Prison Service">
+    <title>{% block title %}Error - Malawi Prison Service{% endblock %}</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font Awesome 6.5 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+    <style>
+        :root {
+            --maroon-primary: #800000;
+            --maroon-dark: #5c0000;
+            --maroon-light: #a52a2a;
+            --maroon-lighter: #c0392b;
+            --maroon-gradient: linear-gradient(135deg, #800000 0%, #a52a2a 100%);
+            --maroon-gradient-light: linear-gradient(135deg, #a52a2a 0%, #c0392b 100%);
+            --maroon-gradient-dark: linear-gradient(135deg, #5c0000 0%, #800000 100%);
+
+            --dark-color: #1e293b;
+            --light-color: #f8fafc;
+            --border-color: #e2e8f0;
+            --secondary-color: #64748b;
+            --muted-color: #94a3b8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            color: var(--dark-color);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Container */
+        .error-container {
+            max-width: 900px;
+            width: 100%;
+            margin: 2rem;
+            padding: 1rem;
+        }
+
+        /* Animation */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .error-container {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        /* Card */
+        .error-card {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+        }
+
+        /* Header */
+        .error-header {
+            background: var(--maroon-gradient);
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .error-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.3; }
+        }
+
+        /* Department Logo */
+        .department-logo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border: 3px solid rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem auto;
+            position: relative;
+            z-index: 1;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .department-logo img {
+            width: 80%;
+            height: 80%;
+            object-fit: contain;
+            filter: brightness(0) invert(1);
+        }
+
+        .department-name {
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 1rem;
+            position: relative;
+            z-index: 1;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+            display: inline-block;
+            padding-bottom: 0.5rem;
+        }
+
+        .error-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            position: relative;
+            z-index: 1;
+            animation: bounce 2s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .error-code {
+            font-size: 5rem;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 1;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .error-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Body */
+        .error-body {
+            padding: 3rem 2rem;
+        }
+
+        /* Error Message */
+        .error-message {
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--maroon-primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            font-size: 1rem;
+            color: #475569;
+        }
+
+        /* Error Details */
+        .error-details {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.85rem;
+            color: #991b1b;
+        }
+
+        /* Suggestions */
+        .suggestions-section {
+            margin-bottom: 2rem;
+        }
+
+        .suggestions-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--dark-color);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .suggestions-title i {
+            color: var(--maroon-primary);
+        }
+
+        .suggestions-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .suggestion-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #f1f5f9;
+            color: #475569;
+        }
+
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .suggestion-icon {
+            color: var(--maroon-primary);
+            flex-shrink: 0;
+            margin-top: 0.2rem;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 2rem;
+        }
+
+        .btn-action {
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: var(--maroon-gradient);
+            color: white;
+            box-shadow: 0 4px 12px rgba(128, 0, 0, 0.2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(128, 0, 0, 0.3);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--dark-color);
+            border: 2px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: #f8fafc;
+            border-color: var(--maroon-primary);
+            color: var(--maroon-primary);
+        }
+
+        /* Footer */
+        .error-footer {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .error-footer-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .error-footer-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--muted-color);
+            font-size: 0.85rem;
+        }
+
+        .error-footer-item i {
+            width: 16px;
+            text-align: center;
+        }
+
+        .error-footer-contact {
+            text-align: right;
+        }
+
+        .error-footer-contact h6 {
+            margin: 0;
+            color: #475569;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .error-footer-contact p {
+            margin: 0;
+            color: var(--muted-color);
+            font-size: 0.8rem;
+        }
+
+        .error-footer-contact .contact-link {
+            color: var(--maroon-primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .error-footer-contact .contact-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .error-container {
+                margin: 1rem;
+                padding: 0.5rem;
+            }
+
+            .error-header {
+                padding: 2rem 1.5rem;
+            }
+
+            .error-code {
+                font-size: 3.5rem;
+            }
+
+            .error-body {
+                padding: 2rem 1.5rem;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .btn-action {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .error-footer {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .error-footer-contact {
+                text-align: left;
+            }
+
+            .department-logo {
+                width: 80px;
+                height: 80px;
+            }
+        }
+
+        /* Dark Mode */
+        [data-bs-theme="dark"] {
+            --dark-color: #f1f5f9;
+            --light-color: #0f172a;
+            --border-color: #334155;
+            --secondary-color: #94a3b8;
+            --muted-color: #64748b;
+        }
+
+        [data-bs-theme="dark"] .error-card {
+            background: #1e293b;
+        }
+
+        [data-bs-theme="dark"] .error-message {
+            background: rgba(128, 0, 0, 0.1);
+            border-color: rgba(128, 0, 0, 0.3);
+        }
+
+        [data-bs-theme="dark"] .suggestion-item {
+            border-bottom-color: #334155;
+        }
+
+        [data-bs-theme="dark"] .btn-secondary {
+            background: #0f172a;
+            border-color: var(--border-color);
+            color: var(--dark-color);
+        }
+    </style>
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-card">
+            <!-- Header -->
+            <div class="error-header">
+                {% block header %}
+                <!-- Department Logo -->
+                <div class="department-logo">
+                    <img src="{% static 'images/logo.png' %}" alt="Malawi Prison Service Logo">
+                </div>
+
+                <div class="department-name">Malawi Prison Service</div>
+
+                <div class="error-icon">
+                    <i class="fas {% block error_icon %}fa-exclamation-triangle{% endblock %}"></i>
+                </div>
+                <div class="error-code">{% block error_code %}500{% endblock %}</div>
+                <div class="error-title">{% block error_title %}Error{% endblock %}</div>
+                {% endblock %}
+            </div>
+
+            <!-- Body -->
+            <div class="error-body">
+                {% block content %}
+                <!-- Default Error Message -->
+                <div class="error-message">
+                    <i class="fas fa-info-circle me-2"></i>
+                    {% block error_message %}An unexpected error occurred. Please try again.{% endblock %}
+                </div>
+
+                <!-- Error Details (Optional) -->
+                {% block error_details %}{% endblock %}
+
+                <!-- Suggestions -->
+                {% block suggestions %}
+                <div class="suggestions-section">
+                    <h4 class="suggestions-title">
+                        <i class="fas fa-lightbulb"></i>
+                        What you can do:
+                    </h4>
+                    <ul class="suggestions-list">
+                        {% block suggestion_items %}
+                        <li class="suggestion-item">
+                            <i class="fas fa-check-circle suggestion-icon"></i>
+                            <span>Try refreshing the page</span>
+                        </li>
+                        <li class="suggestion-item">
+                            <i class="fas fa-check-circle suggestion-icon"></i>
+                            <span>Go back to the previous page</span>
+                        </li>
+                        <li class="suggestion-item">
+                            <i class="fas fa-check-circle suggestion-icon"></i>
+                            <span>Contact support if the issue persists</span>
+                        </li>
+                        {% endblock %}
+                    </ul>
+                </div>
+                {% endblock %}
+
+                <!-- Action Buttons -->
+                {% block action_buttons %}
+                <div class="action-buttons">
+                    <a href="/" class="btn-action btn-primary">
+                        <i class="fas fa-home"></i>
+                        Go to Dashboard
+                    </a>
+                    <button onclick="history.back()" class="btn-action btn-secondary">
+                        <i class="fas fa-arrow-left"></i>
+                        Go Back
+                    </button>
+                    <button onclick="location.reload()" class="btn-action btn-secondary">
+                        <i class="fas fa-sync"></i>
+                        Refresh Page
+                    </button>
+                </div>
+                {% endblock %}
+
+                <!-- Footer -->
+                {% block footer %}
+                <div class="error-footer">
+                    <div class="error-footer-info">
+                        <div class="error-footer-item">
+                            <i class="fas fa-user"></i>
+                            <span>User: {% block user %}{{ request.user.username|default:"Guest" }}{% endblock %}</span>
+                        </div>
+                        <div class="error-footer-item">
+                            <i class="fas fa-calendar"></i>
+                            <span>Time: {% block timestamp %}{% now "Y-m-d H:i" %}{% endblock %}</span>
+                        </div>
+                        <div class="error-footer-item">
+                            <i class="fas fa-globe"></i>
+                            <span>System: Prison Management System</span>
+                        </div>
+                    </div>
+                    <div class="error-footer-contact">
+                        {% block contact_info %}
+                        <h6>Need Help?</h6>
+                        <p>
+                            <i class="fas fa-envelope me-1"></i>
+                            <a href="mailto:admin@prison.gov.mw" class="contact-link">admin@prison.gov.mw</a>
+                        </p>
+                        <p>
+                            <i class="fas fa-phone me-1"></i>
+                            +265 992 293 207
+                        </p>
+                        <p>
+                            <i class="fas fa-clock me-1"></i>
+                            Mon-Fri: 8:00 AM - 4:30 PM
+                        </p>
+                        {% endblock %}
+                    </div>
+                </div>
+                {% endblock %}
+                {% endblock %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

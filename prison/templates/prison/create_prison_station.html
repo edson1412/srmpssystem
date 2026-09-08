@@ -1,0 +1,51 @@
+{% extends "prison/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Create Prison Station{% endblock %}
+{% block content %}
+<style>
+    body {
+        background-color: rgba(173, 216, 230, 0.6); /* Light blue with 60% opacity */
+    }
+</style>
+
+
+<div class="container-fluid">
+    <h1 class="mb-4">Create New Prison Station</h1>
+    
+    <div class="card">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        {{ form.name|as_crispy_field }}
+                    </div>
+                    <div class="col-md-2">
+                        {{ form.code|as_crispy_field }}
+                    </div>
+                    <div class="col-md-3">
+                        {{ form.location|as_crispy_field }}
+                    </div>
+                    <div class="col-md-3">
+                        {{ form.region|as_crispy_field }}
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        {{ form.contact_number|as_crispy_field }}
+                    </div>
+                    <div class="col-md-2">
+                        {{ form.capacity|as_crispy_field }}
+                    </div>
+                    <div class="col-md-3">
+                        {{ form.date_established|as_crispy_field }}
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Create Station</button>
+                <a href="{% url 'manage_prison_stations' %}" class="btn btn-secondary">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

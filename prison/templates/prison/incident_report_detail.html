@@ -1,0 +1,98 @@
+{% extends "prison/base.html" %}
+
+{% block title %}Incident Report Details - {{ incident.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-color: rgba(173, 216, 230, 0.6); /* Light blue with 60% opacity */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Incident Report: {{ incident.title }}</h1>
+        <div>
+            {# Assuming an edit URL for incident reports exists #}
+            {# <a href="{% url 'incident_report_edit' incident.id %}" class="btn btn-outline-primary me-2"> #}
+            {#     <i class="bi bi-pencil-square"></i> Edit Report #}
+            {# </a> #}
+            <a href="{% url 'incident_report_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to List
+            </a>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Incident Details</h5>
+        </div>
+        <div class="card-body">
+            <table class="table table-sm table-borderless">
+                <tr>
+                    <th>Title:</th>
+                    <td>{{ incident.title }}</td>
+                </tr>
+                <tr>
+                    <th>Description:</th>
+                    <td>{{ incident.description }}</td>
+                </tr>
+                <tr>
+                    <th>Severity:</th>
+                    <td><span class="badge bg-{% if incident.severity == 'critical' %}danger{% elif incident.severity == 'high' %}warning{% elif incident.severity == 'medium' %}info{% else %}success{% endif %}">{{ incident.get_severity_display }}</span></td>
+                </tr>
+                <tr>
+                    <th>Date Occurred:</th>
+                    <td>{{ incident.date_occurred|date:"Y-m-d H:i" }}</td>
+                </tr>
+                <tr>
+                    <th>Location:</th>
+                    <td>{{ incident.location }}</td>
+                </tr>
+                <tr>
+                    <th>Involved Prisoners:</th>
+                    <td>
+                        {% for prisoner in incident.involved_prisoners.all %}
+                            <a href="{% url 'prisoner_detail' prisoner.id %}">{{ prisoner.full_name }} ({{ prisoner.prisoner_number }})</a>{% if not forloop.last %}, {% endif %}
+                        {% empty %}
+                            N/A
+                        {% endfor %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>Involved Staff:</th>
+                    <td>{{ incident.involved_staff|default:"N/A" }}</td>
+                </tr>
+                <tr>
+                    <th>Actions Taken:</th>
+                    <td>{{ incident.actions_taken }}</td>
+                </tr>
+                <tr>
+                    <th>Follow-up Required:</th>
+                    <td>{{ incident.follow_up_required|yesno:"Yes,No" }}</td>
+                </tr>
+                {% if incident.follow_up_required %}
+                <tr>
+                    <th>Follow-up Notes:</th>
+                    <td>{{ incident.follow_up_notes|default:"N/A" }}</td>
+                </tr>
+                {% endif %}
+                <tr>
+                    <th>Reported By:</th>
+                    <td>{{ incident.reported_by.get_full_name|default:incident.reported_by.username }}</td>
+                </tr>
+                <tr>
+                    <th>Created At:</th>
+                    <td>{{ incident.created_at|date:"Y-m-d H:i" }}</td>
+                </tr>
+                <tr>
+                    <th>Last Updated:</th>
+                    <td>{{ incident.updated_at|date:"Y-m-d H:i" }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

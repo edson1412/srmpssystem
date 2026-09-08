@@ -1,0 +1,124 @@
+{% extends "prison/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block page_title %}Generate Return from Database{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 24px 28px;
+        margin-bottom: 24px;
+        box-shadow: var(--card-shadow);
+    }
+
+    .candidate-list {
+        max-height: 460px;
+        overflow-y: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+    }
+
+    .candidate-row {
+        padding: 14px 16px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .candidate-row:last-child {
+        border-bottom: 0;
+    }
+
+    .candidate-name {
+        font-weight: 600;
+        color: #0f172a;
+    }
+
+    .candidate-meta {
+        color: #64748b;
+        font-size: 0.8rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h1 class="h3 fw-bold mb-1">Generate Return from Database</h1>
+            <p class="text-muted small mb-0">Build a return from active prisoner records at your station.</p>
+        </div>
+        <a href="{% url 'returns:submission_list' %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Back to Submissions
+        </a>
+    </div>
+
+    {% if form.errors %}
+    <div class="alert alert-danger">Please select a valid return type and reporting period.</div>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-section">
+            <div class="form-section-title mb-3">
+                <i class="bi bi-database me-2"></i> Return Selection
+            </div>
+            {{ form.category|as_crispy_field }}
+            {{ form.period|as_crispy_field }}
+            <button type="submit" name="preview" value="1" class="btn btn-outline-primary mt-2">
+                <i class="bi bi-search me-2"></i> Load Matching Prisoners
+            </button>
+        </div>
+
+        {% if selected_category %}
+        <div class="form-section">
+            <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                <div class="form-section-title mb-0">
+                    <i class="bi bi-people me-2"></i> Matching Prisoners
+                </div>
+                <span class="badge text-bg-primary">{{ candidates|length }} records</span>
+            </div>
+
+            {% if candidates %}
+            <div class="candidate-list">
+                {% for prisoner in candidates %}
+                <div class="candidate-row">
+                    <div class="candidate-name">{{ prisoner.full_name }}</div>
+                    <div class="candidate-meta mb-2">
+                        {{ prisoner.prisoner_number }} · {{ prisoner.get_sex_display }} · Age {{ prisoner.age }}
+                    </div>
+                    {% if requires_child_details %}
+                    <div class="row g-2">
+                        <div class="col-md-5">
+                            <label class="form-label" for="child_{{ prisoner.id }}_name">Child name</label>
+                            <input class="form-control" id="child_{{ prisoner.id }}_name" name="child_{{ prisoner.id }}_name" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label" for="child_{{ prisoner.id }}_age">Child age</label>
+                            <input class="form-control" id="child_{{ prisoner.id }}_age" name="child_{{ prisoner.id }}_age" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="child_{{ prisoner.id }}_sex">Child sex</label>
+                            <select class="form-select" id="child_{{ prisoner.id }}_sex" name="child_{{ prisoner.id }}_sex" required>
+                                <option value="">Select sex</option>
+                                <option value="F">Female</option>
+                                <option value="M">Male</option>
+                            </select>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            <button type="submit" class="btn btn-primary mt-4">
+                <i class="bi bi-file-earmark-check me-2"></i> Generate Return
+            </button>
+            {% else %}
+            <div class="alert alert-info mb-0">No active prisoners match this return type at your station.</div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}

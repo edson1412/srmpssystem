@@ -1,0 +1,31 @@
+{% extends "prison/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Edit Medical Record - {{ medical_record.prisoner.full_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-color: rgba(173, 216, 230, 0.6); /* Light blue with 60% opacity */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">Edit Medical Record for: {{ medical_record.prisoner.full_name }}</h1>
+    
+    <div class="card">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                {{ form|crispy }}
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">Update Record</button>
+                    <a href="{% url 'medical_record_detail' medical_record.id %}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

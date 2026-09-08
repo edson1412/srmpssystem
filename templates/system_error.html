@@ -1,0 +1,505 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="System Error - Prison HRMS">
+    <title>System Error - Prison HRMS</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font Awesome 6.5 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --primary-dark: #2563eb;
+            --primary-light: #dbeafe;
+            --secondary-color: #64748b;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --info-color: #06b6d4;
+            --dark-color: #1e293b;
+            --light-color: #f8fafc;
+            --border-color: #e2e8f0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            color: var(--dark-color);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .error-container {
+            max-width: 800px;
+            width: 100%;
+            margin: 2rem;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .error-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .error-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+        }
+
+        .error-header {
+            background: linear-gradient(135deg, var(--danger-color), #dc2626);
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .error-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.3; }
+        }
+
+        .error-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .error-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .error-subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .error-body {
+            padding: 3rem 2rem;
+        }
+
+        .error-message {
+            background: linear-gradient(135deg, #fef2f2, #fee2e2);
+            border: 1px solid #fecaca;
+            border-left: 4px solid var(--danger-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+            color: #991b1b;
+        }
+
+        .error-code {
+            font-family: 'Courier New', monospace;
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            color: var(--secondary-color);
+        }
+
+        .help-section {
+            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+            border: 1px solid #bae6fd;
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+
+        .help-title {
+            color: var(--primary-color);
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .contact-info {
+            display: grid;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .contact-item:hover {
+            background: var(--primary-light);
+            border-color: var(--primary-color);
+            transform: translateX(5px);
+        }
+
+        .contact-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .contact-details h5 {
+            margin: 0;
+            color: var(--dark-color);
+            font-weight: 600;
+        }
+
+        .contact-details p {
+            margin: 0;
+            color: var(--secondary-color);
+            font-size: 0.9rem;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-action {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--dark-color);
+            border: 2px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--light-color);
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        .error-details {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .timestamp {
+            color: var(--secondary-color);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .error-container {
+                margin: 1rem;
+            }
+
+            .error-header {
+                padding: 2rem 1.5rem;
+            }
+
+            .error-title {
+                font-size: 2rem;
+            }
+
+            .error-body {
+                padding: 2rem 1.5rem;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .btn-action {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* Dark Theme */
+        [data-bs-theme="dark"] {
+            --dark-color: #f1f5f9;
+            --light-color: #0f172a;
+            --border-color: #334155;
+            --secondary-color: #94a3b8;
+        }
+
+        [data-bs-theme="dark"] .error-card {
+            background: #1e293b;
+            border-color: var(--border-color);
+        }
+
+        [data-bs-theme="dark"] .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+        }
+
+        [data-bs-theme="dark"] .help-section {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        [data-bs-theme="dark"] .contact-item {
+            background: #0f172a;
+            border-color: var(--border-color);
+        }
+
+        [data-bs-theme="dark"] .error-code {
+            background: #0f172a;
+            border-color: var(--border-color);
+        }
+
+        [data-bs-theme="dark"] .btn-secondary {
+            background: #0f172a;
+            border-color: var(--border-color);
+            color: var(--dark-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-card">
+            <div class="error-header">
+                <div class="error-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <h1 class="error-title">System Error</h1>
+                <p class="error-subtitle">Something went wrong with the application</p>
+            </div>
+
+            <div class="error-body">
+                {% if error_message %}
+                    <div class="error-message">
+                        <i class="fas fa-info-circle me-2"></i>
+                        {{ error_message }}
+                    </div>
+                {% else %}
+                    <div class="error-message">
+                        <i class="fas fa-info-circle me-2"></i>
+                        An unexpected error occurred while processing your request. Our technical team has been notified of this issue.
+                    </div>
+                {% endif %}
+
+                {% if error_code %}
+                    <div class="error-code">
+                        <strong>Error Code:</strong> {{ error_code }}
+                    </div>
+                {% endif %}
+
+                <div class="help-section">
+                    <h3 class="help-title">
+                        <i class="fas fa-life-ring"></i>
+                        Need Help? Contact System Administrator
+                    </h3>
+                    <p class="text-muted mb-3">
+                        If this problem persists, please contact your system administrator with the following information:
+                    </p>
+
+                    <div class="contact-info">
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <div class="contact-details">
+                                <h5>Email Support</h5>
+                                <p>admin@prisonhrms.gov</p>
+                            </div>
+                        </div>
+
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i class="fas fa-phone"></i>
+                            </div>
+                            <div class="contact-details">
+                                <h5>Hotline</h5>
+                                <p>+265 992 293 207</p>
+                                <p>+265 886 552 823</p>
+                            </div>
+                        </div>
+
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="contact-details">
+                                <h5>Support Hours</h5>
+                                <p>Monday - Friday: 8:00 AM - 4:30 PM</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <a href="{% url 'hrms:dashboard' %}" class="btn-action btn-primary">
+                        <i class="fas fa-home"></i>
+                        Go to Dashboard
+                    </a>
+                    <a href="{% url 'audit:audit_log_list' %}" class="btn-action btn-secondary">
+                        <i class="fas fa-history"></i>
+                        View Audit Trail
+                    </a>
+                    <button onclick="history.back()" class="btn-action btn-secondary">
+                        <i class="fas fa-arrow-left"></i>
+                        Go Back
+                    </button>
+                    <button onclick="location.reload()" class="btn-action btn-secondary">
+                        <i class="fas fa-sync"></i>
+                        Refresh Page
+                    </button>
+                </div>
+
+                <div class="error-details">
+                    <div class="timestamp">
+                        <i class="fas fa-calendar-alt"></i>
+                        Error occurred: {% now "Y-m-d H:i:s" %}
+                    </div>
+                    {% if request.user %}
+                        <div class="timestamp mt-2">
+                            <i class="fas fa-user"></i>
+                            User: {{ request.user.username }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Auto-refresh after 30 seconds (optional)
+        let refreshTimer = setTimeout(() => {
+            if (confirm('The page will automatically refresh to check if the issue has been resolved. Continue?')) {
+                location.reload();
+            }
+        }, 30000);
+
+        // Clear timer if user interacts with the page
+        document.addEventListener('click', () => {
+            clearTimeout(refreshTimer);
+        });
+
+        document.addEventListener('keypress', () => {
+            clearTimeout(refreshTimer);
+        });
+
+        // Theme toggle functionality (if needed)
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-bs-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-bs-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+
+        // Load saved theme
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-bs-theme', savedTheme);
+        });
+    </script>
+</body>
+</html>

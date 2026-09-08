@@ -1,0 +1,687 @@
+{% extends "prison/base.html" %}
+{% load static %}
+
+{% block page_title %}Returns Hub{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .page-header h1 {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .page-header h1 i {
+        color: #1a73e8;
+    }
+
+    .btn-upload {
+        padding: 10px 24px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #1a73e8;
+        border: none;
+        transition: all 0.2s ease;
+        color: #fff;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-upload:hover {
+        background: #1557b0;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(26, 115, 232, 0.3);
+        color: #fff;
+    }
+
+    .filter-section {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 20px 24px;
+        margin-bottom: 24px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+    }
+
+    .filter-section .section-title {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #64748b;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .filter-section .section-title i {
+        color: #1a73e8;
+    }
+
+    .btn-filter {
+        padding: 8px 24px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #1a73e8;
+        border: none;
+        transition: all 0.2s ease;
+        color: #fff;
+    }
+
+    .btn-filter:hover {
+        background: #1557b0;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+    }
+
+    .btn-reset {
+        padding: 8px 20px;
+        font-weight: 600;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        background: #fff;
+        transition: all 0.2s ease;
+    }
+
+    .btn-reset:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+
+    .form-control, .form-select {
+        border-radius: 8px;
+        border-color: #e2e8f0;
+        padding: 8px 14px;
+        font-size: 0.875rem;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #1a73e8;
+        box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+    }
+
+    .form-label {
+        font-weight: 500;
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-bottom: 4px;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .stat-box {
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 12px 16px;
+        border: 1px solid #e2e8f0;
+        text-align: center;
+    }
+
+    .stat-box .number {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #0f172a;
+        display: block;
+    }
+
+    .stat-box .label {
+        font-size: 0.7rem;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        font-weight: 600;
+    }
+
+    .stat-box .label i {
+        margin-right: 4px;
+    }
+
+    .stat-box.draft .number { color: #94a3b8; }
+    .stat-box.submitted .number { color: #f59e0b; }
+    .stat-box.approved .number { color: #16a34a; }
+    .stat-box.rejected .number { color: #dc2626; }
+    .stat-box.completed .number { color: #3b82f6; }
+
+    .table-returns {
+        font-size: 0.85rem;
+        margin-bottom: 0;
+    }
+
+    .table-returns thead th {
+        background: #f8fafc;
+        color: #64748b;
+        font-weight: 600;
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 10px 14px;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .table-returns tbody td {
+        padding: 10px 14px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        color: #334155;
+    }
+
+    .table-returns tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .table-returns .return-link {
+        color: #1a73e8;
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .table-returns .return-link:hover {
+        text-decoration: underline;
+    }
+
+    .badge-status {
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 3px 12px;
+        border-radius: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .badge-status.draft { background: #f1f5f9; color: #64748b; }
+    .badge-status.submitted { background: #fef3c7; color: #d97706; }
+    .badge-status.processing { background: #dbeafe; color: #1d4ed8; }
+    .badge-status.under_review { background: #ede9fe; color: #7c3aed; }
+    .badge-status.approved { background: #dcfce7; color: #16a34a; }
+    .badge-status.rejected { background: #fee2e2; color: #dc2626; }
+    .badge-status.completed { background: #dbeafe; color: #1a73e8; }
+    .badge-status.archived { background: #f1f5f9; color: #64748b; }
+
+    .btn-action-sm {
+        padding: 4px 8px;
+        font-size: 0.7rem;
+        border-radius: 6px;
+        border: none;
+        transition: all 0.15s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .btn-action-sm:hover {
+        transform: translateY(-1px);
+    }
+
+    .section-card {
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+    }
+
+    .section-card .card-header {
+        background: transparent;
+        padding: 14px 20px;
+        border-bottom: 1px solid #f1f5f9;
+        font-weight: 600;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .section-card .card-header i {
+        color: #1a73e8;
+    }
+
+    .section-card .card-body {
+        padding: 0;
+    }
+
+    .empty-state {
+        padding: 40px 20px;
+        text-align: center;
+        color: #94a3b8;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        display: block;
+        margin-bottom: 12px;
+        color: #cbd5e1;
+    }
+
+    .pagination-custom {
+        padding: 16px 20px;
+        border-top: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: center;
+    }
+
+    .trend-chart {
+        height: 80px;
+        display: flex;
+        align-items: flex-end;
+        gap: 4px;
+        padding: 8px 0;
+    }
+
+    .trend-bar {
+        flex: 1;
+        min-height: 4px;
+        border-radius: 4px;
+        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+        transition: height 0.5s ease;
+        position: relative;
+    }
+
+    .trend-bar:hover {
+        opacity: 0.8;
+    }
+
+    .trend-bar .tooltip-text {
+        display: none;
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #0f172a;
+        color: #fff;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.6rem;
+        white-space: nowrap;
+        margin-bottom: 4px;
+    }
+
+    .trend-bar:hover .tooltip-text {
+        display: block;
+    }
+
+    .pending-badge {
+        background: #fef3c7;
+        color: #d97706;
+        padding: 2px 10px;
+        border-radius: 10px;
+        font-size: 0.65rem;
+        font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+        .page-header h1 {
+            font-size: 1.1rem;
+        }
+        .filter-section {
+            padding: 16px;
+        }
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .stat-box .number {
+            font-size: 1.2rem;
+        }
+        .table-returns {
+            font-size: 0.75rem;
+        }
+        .table-returns thead th,
+        .table-returns tbody td {
+            padding: 6px 10px;
+        }
+        .btn-upload {
+            padding: 6px 16px;
+            font-size: 0.8rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="page-header">
+        <h1>
+            <i class="bi bi-file-earmark"></i>
+            Returns Hub
+        </h1>
+        <a href="{% url 'upload_return' %}" class="btn-upload">
+            <i class="bi bi-upload me-2"></i> Upload New Return
+        </a>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-box draft">
+            <span class="number">{{ returns_by_status.draft|default:0 }}</span>
+            <span class="label"><i class="bi bi-file-earmark"></i> Draft</span>
+        </div>
+        <div class="stat-box submitted">
+            <span class="number">{{ returns_by_status.submitted|default:0 }}</span>
+            <span class="label"><i class="bi bi-clock-history"></i> Submitted</span>
+        </div>
+        <div class="stat-box approved">
+            <span class="number">{{ returns_by_status.approved|default:0 }}</span>
+            <span class="label"><i class="bi bi-check-circle"></i> Approved</span>
+        </div>
+        <div class="stat-box rejected">
+            <span class="number">{{ returns_by_status.rejected|default:0 }}</span>
+            <span class="label"><i class="bi bi-x-circle"></i> Rejected</span>
+        </div>
+        <div class="stat-box completed">
+            <span class="number">{{ returns_by_status.completed|default:0 }}</span>
+            <span class="label"><i class="bi bi-check2-all"></i> Completed</span>
+        </div>
+        <div class="stat-box" style="background: #f1f5f9;">
+            <span class="number">{{ total_returns|default:0 }}</span>
+            <span class="label"><i class="bi bi-file-earmark"></i> Total</span>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="filter-section">
+        <div class="section-title">
+            <i class="bi bi-funnel"></i> Filter Returns
+        </div>
+        <form method="GET" class="row g-3">
+            <div class="col-md-2">
+                <label class="form-label">Return Type</label>
+                {{ filter_form.return_type }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Status</label>
+                {{ filter_form.status }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Month</label>
+                {{ filter_form.month }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Year</label>
+                {{ filter_form.year }}
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">CSV Data</label>
+                {{ filter_form.has_csv_data }}
+            </div>
+            <div class="col-md-2 d-flex align-items-end gap-2">
+                <button type="submit" class="btn-filter">
+                    <i class="bi bi-search me-1"></i> Filter
+                </button>
+                <a href="{% url 'returns_hub' %}" class="btn-reset">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                </a>
+            </div>
+        </form>
+        <div class="row g-3 mt-2">
+            <div class="col-md-4">
+                <label class="form-label">Search</label>
+                {{ filter_form.search_query }}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Date From</label>
+                {{ filter_form.date_from }}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Date To</label>
+                {{ filter_form.date_to }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Returns Table -->
+    <div class="section-card">
+        <div class="card-header">
+            <span><i class="bi bi-list-ul"></i> All Returns</span>
+            <span class="badge bg-light text-muted">{{ returns|length }} total</span>
+        </div>
+        <div class="card-body">
+            {% if returns %}
+            <div class="table-responsive">
+                <table class="table table-returns">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Type</th>
+                            <th>Station</th>
+                            <th>Period</th>
+                            <th>Status</th>
+                            <th>Records</th>
+                            <th>Uploaded</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for return_obj in returns %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'return_detail' return_obj.id %}" class="return-link">
+                                    {{ return_obj.title|truncatechars:30 }}
+                                </a>
+                            </td>
+                            <td>{{ return_obj.get_return_type_display|truncatechars:20 }}</td>
+                            <td>{{ return_obj.station.name|truncatechars:15 }}</td>
+                            <td>{{ return_obj.get_reporting_period_display|default:"N/A" }}</td>
+                            <td>
+                                <span class="badge-status {{ return_obj.status }}">
+                                    {{ return_obj.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if return_obj.has_csv_data %}
+                                    <span class="text-success">{{ return_obj.csv_row_count|default:0 }}</span>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="text-muted small">{{ return_obj.created_at|date:"M d, Y" }}</span>
+                            </td>
+                            <td class="text-end">
+                                <div class="d-flex gap-1 justify-content-end">
+                                    <a href="{% url 'return_detail' return_obj.id %}" class="btn-action-sm btn-outline-primary" title="View">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    {% if return_obj.can_edit %}
+                                    <a href="{% url 'return_edit' return_obj.id %}" class="btn-action-sm btn-outline-warning" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    {% endif %}
+                                    {% if return_obj.has_csv_data %}
+                                    <a href="{% url 'return_export_csv' return_obj.id %}" class="btn-action-sm btn-outline-success" title="Export CSV">
+                                        <i class="bi bi-filetype-csv"></i>
+                                    </a>
+                                    <a href="{% url 'return_export_pdf' return_obj.id %}" class="btn-action-sm btn-outline-danger" title="Export PDF">
+                                        <i class="bi bi-file-pdf"></i>
+                                    </a>
+                                    {% endif %}
+                                    {% if return_obj.file %}
+                                    <a href="{% url 'return_download_file' return_obj.id %}" class="btn-action-sm btn-outline-secondary" title="Download File">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-inbox"></i>
+                <p class="mb-0">No returns found.</p>
+                <small class="text-muted">Upload a new return to get started.</small>
+                <div class="mt-3">
+                    <a href="{% url 'upload_return' %}" class="btn btn-primary">
+                        <i class="bi bi-upload me-2"></i> Upload New Return
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Monthly Trends -->
+    <div class="row mt-4">
+        <div class="col-lg-6">
+            <div class="section-card">
+                <div class="card-header">
+                    <span><i class="bi bi-graph-up"></i> Monthly Trends</span>
+                    <span class="badge bg-light text-muted">{{ current_year }}</span>
+                </div>
+                <div class="card-body">
+                    <div class="trend-chart">
+                        {% for item in monthly_trends %}
+                        <div class="trend-bar" style="height: {% widthratio item.count total_returns|default:1 100 %}%; background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);">
+                            <span class="tooltip-text">{{ item.month }}: {{ item.count }}</span>
+                        </div>
+                        {% empty %}
+                        <div class="text-muted text-center w-100 py-4">No data available</div>
+                        {% endfor %}
+                    </div>
+                    <div class="d-flex justify-content-between text-muted small mt-2">
+                        <span>Jan</span>
+                        <span>Feb</span>
+                        <span>Mar</span>
+                        <span>Apr</span>
+                        <span>May</span>
+                        <span>Jun</span>
+                        <span>Jul</span>
+                        <span>Aug</span>
+                        <span>Sep</span>
+                        <span>Oct</span>
+                        <span>Nov</span>
+                        <span>Dec</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="section-card">
+                <div class="card-header">
+                    <span><i class="bi bi-pie-chart"></i> Returns by Type</span>
+                    <span class="badge bg-light text-muted">{{ current_year }}</span>
+                </div>
+                <div class="card-body">
+                    {% if returns_by_type %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Return Type</th>
+                                    <th class="text-end">Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in returns_by_type %}
+                                <tr>
+                                    <td>{{ item.return_type|title }}</td>
+                                    <td class="text-end"><span class="badge bg-light text-dark">{{ item.count }}</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                        <p class="mb-0">No returns this year</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Approvals -->
+    {% if pending_approvals %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="section-card">
+                <div class="card-header">
+                    <span><i class="bi bi-clock-history"></i> Pending Approvals</span>
+                    <span class="pending-badge">{{ pending_approvals|length }}</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-returns">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Station</th>
+                                    <th>Submitted</th>
+                                    <th>Records</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for return_obj in pending_approvals %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'return_detail' return_obj.id %}" class="return-link">
+                                            {{ return_obj.title|truncatechars:30 }}
+                                        </a>
+                                    </td>
+                                    <td>{{ return_obj.station.name }}</td>
+                                    <td>{{ return_obj.submitted_at|date:"M d, Y" }}</td>
+                                    <td>{{ return_obj.csv_row_count|default:0 }}</td>
+                                    <td class="text-end">
+                                        <div class="d-flex gap-1 justify-content-end">
+                                            <a href="{% url 'return_approve' return_obj.id %}" class="btn-action-sm btn-success" onclick="return confirm('Approve this return?')">
+                                                <i class="bi bi-check-lg"></i> Approve
+                                            </a>
+                                            <a href="{% url 'return_reject' return_obj.id %}" class="btn-action-sm btn-danger" onclick="return confirm('Reject this return?')">
+                                                <i class="bi bi-x-lg"></i> Reject
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-submit filter on change
+    document.querySelectorAll('.filter-section select').forEach(function(select) {
+        select.addEventListener('change', function() {
+            this.closest('form').submit();
+        });
+    });
+});
+</script>
+{% endblock %}

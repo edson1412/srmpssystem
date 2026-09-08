@@ -1,0 +1,53 @@
+<!-- returns/submission_approve_confirm.html -->
+{% extends "prison/base.html" %}
+
+{% block page_title %}Approve Submission{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-6 col-md-8">
+            <div class="card border-0 shadow-sm" style="border-radius: 16px;">
+                <div class="card-body p-4 text-center">
+                    <div class="mb-4">
+                        <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center" 
+                             style="width: 72px; height: 72px;">
+                            <i class="bi bi-check-circle-fill text-success" style="font-size: 2.5rem;"></i>
+                        </div>
+                    </div>
+                    
+                    <h4 class="fw-bold mb-2">Approve Submission</h4>
+                    <p class="text-muted mb-4">
+                        Are you sure you want to approve this submission?
+                    </p>
+
+                    <div class="bg-light p-3 rounded-3 mb-4 text-start">
+                        <div class="row g-2">
+                            <div class="col-6"><span class="text-muted">Template:</span></div>
+                            <div class="col-6">{{ submission.template.name }}</div>
+                            <div class="col-6"><span class="text-muted">Station:</span></div>
+                            <div class="col-6">{{ submission.prison_station.name }}</div>
+                            <div class="col-6"><span class="text-muted">Period:</span></div>
+                            <div class="col-6">{{ submission.period_display }}</div>
+                            <div class="col-6"><span class="text-muted">Records:</span></div>
+                            <div class="col-6">{{ submission.row_count }}</div>
+                        </div>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex gap-3 justify-content-center">
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-circle me-2"></i> Confirm Approve
+                            </button>
+                            <a href="{% url 'returns:submission_detail' submission.id %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-lg me-1"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

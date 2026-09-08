@@ -1,0 +1,653 @@
+{% extends "prison/base.html" %}
+{% load crispy_forms_tags %}
+{% load custom_filters %}
+
+{% block page_title %}{% if is_edit %}Edit Return{% else %}Create New Return{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 24px 28px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        transition: box-shadow 0.2s ease;
+        margin-bottom: 24px;
+    }
+
+    .form-section:hover {
+        box-shadow: var(--card-hover-shadow);
+    }
+
+    .form-section-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .form-section-title i {
+        font-size: 1.1rem;
+        color: #8b5cf6;
+    }
+
+    .form-control, .form-select {
+        border-radius: 8px;
+        border-color: #e2e8f0;
+        padding: 8px 14px;
+        font-size: 0.875rem;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #8b5cf6;
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+    }
+
+    .form-label {
+        font-weight: 500;
+        font-size: 0.8rem;
+        color: #334155;
+    }
+
+    .help-text {
+        font-size: 0.7rem;
+        color: #94a3b8;
+        margin-top: 4px;
+    }
+
+    .btn-save {
+        padding: 10px 32px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #8b5cf6;
+        border: none;
+        transition: all 0.2s ease;
+        color: #fff;
+    }
+
+    .btn-save:hover {
+        background: #7c3aed;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(139, 92, 246, 0.3);
+        color: #fff;
+    }
+
+    .btn-cancel {
+        padding: 10px 28px;
+        font-weight: 600;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        background: #fff;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-cancel:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        color: #64748b;
+    }
+
+    .template-info {
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 16px 20px;
+        border: 1px solid #e2e8f0;
+        margin-top: 16px;
+    }
+
+    .template-info h6 {
+        font-weight: 600;
+        color: #0f172a;
+        margin-bottom: 8px;
+    }
+
+    .template-info .badge-column {
+        font-size: 0.7rem;
+        padding: 2px 10px;
+        border-radius: 10px;
+        background: #e2e8f0;
+        color: #475569;
+        display: inline-block;
+        margin: 2px 4px 2px 0;
+    }
+
+    .template-info .badge-column.required {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .csv-preview {
+        background: #0f172a;
+        border-radius: 8px;
+        padding: 16px;
+        color: #e2e8f0;
+        font-family: 'Courier New', monospace;
+        font-size: 0.75rem;
+        overflow-x: auto;
+        max-height: 300px;
+        overflow-y: auto;
+        margin-top: 12px;
+    }
+
+    .csv-preview .header {
+        color: #8b5cf6;
+        font-weight: 600;
+    }
+
+    .file-upload-area {
+        border: 2px dashed #e2e8f0;
+        border-radius: 10px;
+        padding: 30px;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .file-upload-area:hover {
+        border-color: #8b5cf6;
+        background: rgba(139, 92, 246, 0.05);
+    }
+
+    .file-upload-area.dragover {
+        border-color: #8b5cf6;
+        background: rgba(139, 92, 246, 0.1);
+    }
+
+    .file-upload-area i {
+        font-size: 3rem;
+        color: #94a3b8;
+        display: block;
+        margin-bottom: 8px;
+    }
+
+    .file-upload-area p {
+        color: #64748b;
+        margin-bottom: 0;
+    }
+
+    .loading-spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #e2e8f0;
+        border-top-color: #8b5cf6;
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+        .form-section {
+            padding: 16px 18px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h1 class="h3 fw-bold mb-1">{% if is_edit %}Edit Return{% else %}Create New Return{% endif %}</h1>
+            <p class="text-muted small mb-0">
+                <i class="bi bi-file-earmark me-1"></i>
+                {% if is_edit %}Update the return details{% else %}Upload and manage inmate returns{% endif %}
+            </p>
+        </div>
+        <a href="{% url 'returns_hub' %}" class="btn-cancel">
+            <i class="bi bi-arrow-left me-1"></i> Back to Returns
+        </a>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" id="returnForm">
+        {% csrf_token %}
+
+        <!-- Basic Information -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-info-circle"></i> Basic Information
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    {{ form.title|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.return_type|as_crispy_field }}
+                </div>
+            </div>
+            <div class="row g-3 mt-2">
+                <div class="col-md-4">
+                    {{ form.month|as_crispy_field }}
+                </div>
+                <div class="col-md-4">
+                    {{ form.year|as_crispy_field }}
+                </div>
+                <div class="col-md-4">
+                    {{ form.station|as_crispy_field }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Template Info -->
+        <div class="form-section" id="templateInfoSection">
+            <div class="form-section-title">
+                <i class="bi bi-table"></i> Template Information
+            </div>
+            <div id="templateInfoContent">
+                {% if template_info %}
+                <div class="template-info">
+                    <h6>{{ template_info.name }}</h6>
+                    <p class="text-muted small mb-2">{{ template_info.description|default:"No description available" }}</p>
+                    <div class="mt-2">
+                        <strong class="small">Expected Columns:</strong>
+                        <div class="mt-1">
+                            {% for col in template_info.columns %}
+                            <span class="badge-column {% if col.required %}required{% endif %}">
+                                {{ col.header }}
+                                {% if col.required %}<i class="bi bi-asterisk text-danger" style="font-size: 0.5rem;"></i>{% endif %}
+                            </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% if template_info.sample_data %}
+                    <div class="mt-3">
+                        <strong class="small">Sample Data Preview:</strong>
+                        <div class="csv-preview">
+                            <div class="header">
+                                {% for col in template_info.columns %}{{ col.header }} | {% endfor %}
+                            </div>
+                            {% for row in template_info.sample_data %}
+                            <div>
+                                {% for col in template_info.columns %}
+                                {{ row|get_item:col.key|default:"—" }} |
+                                {% endfor %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="template-info">
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle me-2"></i>
+                        No template is defined for this return type.
+                        <a href="{% url 'template_create' %}" target="_blank" class="alert-link">Create a template</a>
+                        or use the default column structure below.
+                    </div>
+                    <div class="mt-3">
+                        <h6 class="fw-bold small text-muted">Default Columns</h6>
+                        <div class="d-flex flex-wrap gap-1 mt-1">
+                            <span class="badge-column required">Ser. No.</span>
+                            <span class="badge-column required">Prisoner No.</span>
+                            <span class="badge-column required">Full Name</span>
+                            <span class="badge-column">Sex</span>
+                            <span class="badge-column">Age</span>
+                            <span class="badge-column">Offense</span>
+                            <span class="badge-column">Court</span>
+                            <span class="badge-column">Sentence (months)</span>
+                            <span class="badge-column">Date of Committal</span>
+                            <span class="badge-column">Remarks</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            <div id="templateLoading" style="display: none; text-align: center; padding: 20px;">
+                <div class="loading-spinner"></div>
+                <span class="text-muted ms-2">Loading template...</span>
+            </div>
+        </div>
+
+        <!-- File Upload -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-cloud-upload"></i> File Upload
+            </div>
+            <div class="row g-3">
+                <div class="col-md-8">
+                    {{ form.file|as_crispy_field }}
+                    <div class="help-text">
+                        Supported formats: PDF, Word, Excel, CSV, JPG, PNG. Max size: 10MB
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    {{ form.status|as_crispy_field }}
+                </div>
+            </div>
+        </div>
+
+        <!-- CSV Import -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-filetype-csv"></i> CSV Import (Optional)
+            </div>
+            <div class="row g-3">
+                <div class="col-md-8">
+                    {{ form.csv_file|as_crispy_field }}
+                    <div class="help-text">
+                        Upload a CSV file with inmate data matching the selected template.
+                        <a href="#" id="downloadSampleBtn" class="text-primary" data-return-type="{{ form.return_type.value|default:'' }}">
+                            <i class="bi bi-download me-1"></i> Download sample CSV
+                        </a>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    {{ form.preview_data|as_crispy_field }}
+                </div>
+            </div>
+            <div id="csvPreviewContainer" style="display: none;">
+                <div class="mt-3">
+                    <h6 class="fw-bold"><i class="bi bi-eye"></i> CSV Preview</h6>
+                    <div id="csvPreviewContent" class="csv-preview">Loading preview...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Remarks -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-chat"></i> Remarks
+            </div>
+            <div class="row g-3">
+                <div class="col-12">
+                    {{ form.remarks|as_crispy_field }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="d-flex gap-3 flex-wrap mt-4 mb-4">
+            <button type="submit" class="btn-save">
+                <i class="bi bi-save me-2"></i> {% if is_edit %}Update Return{% else %}Create Return{% endif %}
+            </button>
+            <a href="{% url 'returns_hub' %}" class="btn-cancel">
+                <i class="bi bi-x-lg me-1"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ===== TEMPLATE INFO LOADING =====
+    const returnTypeSelect = document.getElementById('id_return_type');
+    const templateInfoContent = document.getElementById('templateInfoContent');
+    const templateLoading = document.getElementById('templateLoading');
+    let templateLoadTimeout = null;
+
+    function loadTemplateInfo(returnType) {
+        if (!returnType) {
+            // Show default message
+            templateInfoContent.innerHTML = `
+                <div class="template-info">
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Please select a return type to view template information.
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        // Show loading
+        templateInfoContent.style.display = 'none';
+        templateLoading.style.display = 'block';
+
+        // Clear previous timeout
+        if (templateLoadTimeout) {
+            clearTimeout(templateLoadTimeout);
+        }
+
+        // Fetch template info with timeout
+        const controller = new AbortController();
+        templateLoadTimeout = setTimeout(() => controller.abort(), 10000);
+
+        fetch(`/returns/ajax/template/?return_type=${returnType}`, {
+            signal: controller.signal
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            templateLoading.style.display = 'none';
+            templateInfoContent.style.display = 'block';
+
+            if (data.success && data.template) {
+                const template = data.template;
+                let html = `<div class="template-info">`;
+                html += `<h6>${template.name || 'Template'}</h6>`;
+                html += `<p class="text-muted small mb-2">${template.description || 'No description available'}</p>`;
+                html += `<div class="mt-2">`;
+                html += `<strong class="small">Expected Columns:</strong>`;
+                html += `<div class="mt-1">`;
+                
+                if (template.columns && template.columns.length > 0) {
+                    template.columns.forEach(col => {
+                        const required = col.required ? 'required' : '';
+                        html += `<span class="badge-column ${required}">`;
+                        html += col.header || col.key;
+                        if (col.required) {
+                            html += ` <i class="bi bi-asterisk text-danger" style="font-size: 0.5rem;"></i>`;
+                        }
+                        html += `</span>`;
+                    });
+                } else {
+                    html += `<span class="text-muted">No columns defined</span>`;
+                }
+                
+                html += `</div></div>`;
+
+                // Sample data
+                if (data.sample_csv) {
+                    html += `<div class="mt-3">`;
+                    html += `<strong class="small">Sample CSV Format:</strong>`;
+                    html += `<div class="csv-preview" style="max-height: 200px; overflow-y: auto;">`;
+                    html += `<pre style="margin: 0; white-space: pre-wrap; word-break: break-all;">${data.sample_csv}</pre>`;
+                    html += `</div></div>`;
+                }
+
+                html += `</div>`;
+                templateInfoContent.innerHTML = html;
+            } else {
+                // Show error but with default info
+                templateInfoContent.innerHTML = `
+                    <div class="template-info">
+                        <div class="alert alert-warning mb-0">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            ${data.error || 'Could not load template information. Using default structure.'}
+                        </div>
+                        <div class="mt-3">
+                            <h6 class="fw-bold small text-muted">Default Columns</h6>
+                            <div class="d-flex flex-wrap gap-1 mt-1">
+                                <span class="badge-column required">Ser. No.</span>
+                                <span class="badge-column required">Prisoner No.</span>
+                                <span class="badge-column required">Full Name</span>
+                                <span class="badge-column">Sex</span>
+                                <span class="badge-column">Age</span>
+                                <span class="badge-column">Offense</span>
+                                <span class="badge-column">Court</span>
+                                <span class="badge-column">Sentence (months)</span>
+                                <span class="badge-column">Date of Committal</span>
+                                <span class="badge-column">Remarks</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading template:', error);
+            templateLoading.style.display = 'none';
+            templateInfoContent.style.display = 'block';
+            
+            if (error.name === 'AbortError') {
+                templateInfoContent.innerHTML = `
+                    <div class="template-info">
+                        <div class="alert alert-warning mb-0">
+                            <i class="bi bi-clock me-2"></i>
+                            Request timed out. Please try again.
+                        </div>
+                    </div>
+                `;
+            } else {
+                templateInfoContent.innerHTML = `
+                    <div class="template-info">
+                        <div class="alert alert-danger mb-0">
+                            <i class="bi bi-exclamation-circle me-2"></i>
+                            Error loading template: ${error.message || 'Unknown error'}
+                        </div>
+                    </div>
+                `;
+            }
+        });
+    }
+
+    // Load template on page load if return type is selected
+    if (returnTypeSelect && returnTypeSelect.value) {
+        loadTemplateInfo(returnTypeSelect.value);
+    }
+
+    // Load template on return type change
+    if (returnTypeSelect) {
+        returnTypeSelect.addEventListener('change', function() {
+            loadTemplateInfo(this.value);
+        });
+    }
+
+    // ===== CSV FILE PREVIEW =====
+    const csvFileInput = document.getElementById('id_csv_file');
+    const previewContainer = document.getElementById('csvPreviewContainer');
+    const previewContent = document.getElementById('csvPreviewContent');
+
+    if (csvFileInput) {
+        csvFileInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file && file.name.toLowerCase().endsWith('.csv')) {
+                const formData = new FormData();
+                formData.append('csv_file', file);
+
+                previewContainer.style.display = 'block';
+                previewContent.innerHTML = '<div class="loading-spinner"></div> Loading preview...';
+
+                fetch('/returns/ajax/preview-csv/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        let html = '<div class="header">';
+                        data.headers.forEach(h => {
+                            html += `<span>${h} | </span>`;
+                        });
+                        html += '</div>';
+                        if (data.preview_rows && data.preview_rows.length > 0) {
+                            data.preview_rows.forEach(row => {
+                                html += '<div>';
+                                data.headers.forEach(h => {
+                                    const value = row[h] !== undefined && row[h] !== null ? row[h] : '—';
+                                    html += `${value} | `;
+                                });
+                                html += '</div>';
+                            });
+                            if (data.total_rows > data.preview_count) {
+                                html += `<div class="text-muted mt-2">... and ${data.total_rows - data.preview_count} more rows</div>`;
+                            }
+                        } else {
+                            html += '<div class="text-muted">No data rows found</div>';
+                        }
+                        previewContent.innerHTML = html;
+                    } else {
+                        previewContent.textContent = 'Error: ' + (data.error || 'Failed to preview CSV');
+                    }
+                })
+                .catch(error => {
+                    previewContent.textContent = 'Error loading preview: ' + error.message;
+                });
+            } else if (file) {
+                previewContainer.style.display = 'block';
+                previewContent.textContent = '⚠️ Please upload a valid CSV file.';
+            } else {
+                previewContainer.style.display = 'none';
+            }
+        });
+    }
+
+    // ===== DOWNLOAD SAMPLE CSV =====
+    const downloadBtn = document.getElementById('downloadSampleBtn');
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            let returnType = this.dataset.returnType || document.getElementById('id_return_type').value;
+            
+            if (!returnType) {
+                // If no return type selected, try to get it from the select
+                returnType = document.getElementById('id_return_type').value;
+                if (!returnType) {
+                    alert('Please select a return type first.');
+                    return;
+                }
+            }
+            
+            // Show loading state
+            const originalText = this.innerHTML;
+            this.innerHTML = '<span class="loading-spinner"></span> Downloading...';
+            this.style.pointerEvents = 'none';
+            
+            // Download the CSV
+            window.location.href = `/returns/ajax/template/?return_type=${returnType}&download=1`;
+            
+            // Restore button after 3 seconds
+            setTimeout(() => {
+                this.innerHTML = originalText;
+                this.style.pointerEvents = 'auto';
+            }, 3000);
+        });
+    }
+
+    // ===== FORM VALIDATION =====
+    document.getElementById('returnForm').addEventListener('submit', function(e) {
+        const returnType = document.getElementById('id_return_type').value;
+        const title = document.getElementById('id_title').value;
+        
+        if (!returnType) {
+            e.preventDefault();
+            alert('Please select a return type.');
+            document.getElementById('id_return_type').focus();
+            return false;
+        }
+        
+        if (!title) {
+            e.preventDefault();
+            alert('Please enter a title for the return.');
+            document.getElementById('id_title').focus();
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

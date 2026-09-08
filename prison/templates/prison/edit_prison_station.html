@@ -1,0 +1,57 @@
+{% extends "prison/base.html" %}
+
+{% block title %}Edit Prison Station - {{ station.name }}{% endblock %}
+
+{% block content %}
+<style>
+    body {
+        background-color: rgba(173, 216, 230, 0.6); /* Light blue with 60% opacity */
+    }
+</style>
+
+<div class="container-fluid">
+    <h1 class="mb-4">Edit Prison Station: {{ station.name }}</h1>
+    
+    <div class="card">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-4">
+                        {{ form.name.label_tag }}
+                        {{ form.name }}
+                    </div>
+                    <div class="col-md-2">
+                        {{ form.code.label_tag }}
+                        {{ form.code }}
+                    </div>
+                    <div class="col-md-3">
+                        {{ form.location.label_tag }}
+                        {{ form.location }}
+                    </div>
+                    <div class="col-md-3">
+                        {{ form.region.label_tag }}
+                        {{ form.region }}
+                    </div>
+                    <div class="col-md-3">
+                        {{ form.contact_number.label_tag }}
+                        {{ form.contact_number }}
+                    </div>
+                    <div class="col-md-2">
+                        {{ form.capacity.label_tag }}
+                        {{ form.capacity }}
+                    </div>
+                    <div class="col-md-3">
+                        {{ form.date_established.label_tag }}
+                        {{ form.date_established }}
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <button type="submit" class="btn btn-primary">Update Station</button>
+                    <a href="{% url 'manage_prison_stations' %}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "prison/base.html" %}
+
+{% block title %}Delete Prison Station - {{ station.name }}{% endblock %}
+
+{% block content %}
+<style>
+    body {
+        background-color: rgba(173, 216, 230, 0.6); /* Light blue with 60% opacity */
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">Confirm Deletion</h4>
+                </div>
+                <div class="card-body">
+                    <p>Are you sure you want to delete prison station <strong>{{ station.name }}</strong>?</p>
+                    <p class="text-danger">This action cannot be undone.</p>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'manage_prison_stations' %}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-danger">Confirm Delete</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

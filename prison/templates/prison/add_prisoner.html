@@ -1,0 +1,1290 @@
+<!-- add_prisoner.html -->
+{% extends "base.html" %}
+{% load static %}
+{% load custom_filters %}
+
+{% block page_title %}Add New Prisoner{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --ict-primary: #0ea5e9;
+        --ict-primary-dark: #0284c7;
+        --convicted-color: #16a34a;
+        --remand-color: #d97706;
+        --success-color: #16a34a;
+        --danger-color: #dc2626;
+        --warning-color: #d97706;
+    }
+
+    .add-prisoner-container {
+        padding: 20px 0;
+    }
+
+    /* Page Header */
+    .page-header {
+        background: linear-gradient(135deg, #0c4a6e 0%, #0ea5e9 100%);
+        color: white;
+        padding: 24px 32px;
+        border-radius: 16px;
+        margin-bottom: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 16px;
+        box-shadow: 0 4px 20px rgba(14, 165, 233, 0.25);
+    }
+
+    .page-header .header-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .page-header .header-icon {
+        width: 56px;
+        height: 56px;
+        background: rgba(255,255,255,0.12);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .page-header h4 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 1.3rem;
+        letter-spacing: -0.3px;
+    }
+
+    .page-header p {
+        margin: 4px 0 0 0;
+        color: rgba(255,255,255,0.85);
+        font-size: 0.85rem;
+    }
+
+    .btn-back {
+        padding: 8px 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        border-radius: 8px;
+        border: 1px solid rgba(255,255,255,0.3);
+        background: transparent;
+        color: white;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-back:hover {
+        background: rgba(255,255,255,0.1);
+        color: white;
+        text-decoration: none;
+        transform: translateY(-1px);
+    }
+
+    /* Form Sections */
+    .form-section {
+        background: #ffffff;
+        border-radius: 14px;
+        padding: 24px 28px;
+        margin-bottom: 24px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        transition: box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    .form-section:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    .form-section-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .form-section-title i {
+        font-size: 1.1rem;
+        color: #0ea5e9;
+    }
+
+    .form-section-title .badge-section {
+        font-size: 0.6rem;
+        font-weight: 600;
+        padding: 2px 10px;
+        border-radius: 12px;
+        background: #dbeafe;
+        color: #0ea5e9;
+        margin-left: auto;
+    }
+
+    .form-section-title .badge-section.required {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .form-section-title .badge-section.optional {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    /* Form Controls */
+    .form-label {
+        font-weight: 500;
+        font-size: 0.8rem;
+        color: #334155;
+        margin-bottom: 4px;
+    }
+
+    .form-label .required-star {
+        color: #dc2626;
+        margin-left: 2px;
+    }
+
+    .form-control, .form-select {
+        border-radius: 8px;
+        border-color: #e2e8f0;
+        padding: 8px 14px;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+        background: #fafbfc;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #0ea5e9;
+        box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+        outline: none;
+        background: white;
+    }
+
+    .form-control.is-invalid, .form-select.is-invalid {
+        border-color: #dc2626;
+    }
+
+    .form-control.is-invalid:focus, .form-select.is-invalid:focus {
+        box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+    }
+
+    .form-control:disabled, .form-select:disabled {
+        background: #f1f5f9;
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+
+    .help-text {
+        font-size: 0.7rem;
+        color: #64748b;
+        margin-top: 4px;
+    }
+
+    .help-text i {
+        margin-right: 4px;
+    }
+
+    .error-text {
+        font-size: 0.7rem;
+        color: #dc2626;
+        margin-top: 4px;
+    }
+
+    /* Prisoner Number Preview */
+    .number-preview {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border: 2px solid #0ea5e9;
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+        display: none;
+        animation: slideDown 0.4s ease;
+        position: relative;
+    }
+
+    .number-preview.show {
+        display: block;
+    }
+
+    .number-preview .preview-label {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #0284c7;
+        letter-spacing: 0.5px;
+    }
+
+    .number-preview .preview-number-container {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-top: 4px;
+    }
+
+    .number-preview .preview-number {
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: #0284c7;
+        font-family: 'Courier New', monospace;
+        letter-spacing: 1px;
+    }
+
+    .number-preview .preview-badge {
+        font-size: 0.65rem;
+        padding: 4px 14px;
+        border-radius: 12px;
+        font-weight: 600;
+        display: inline-block;
+    }
+
+    .preview-badge.convicted {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .preview-badge.remand {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .number-preview .preview-info {
+        font-size: 0.7rem;
+        color: #64748b;
+        margin-top: 6px;
+    }
+
+    .number-preview .preview-info i {
+        color: #0ea5e9;
+    }
+
+    .number-preview .preview-status {
+        position: absolute;
+        top: -10px;
+        right: 16px;
+        background: #0ea5e9;
+        color: white;
+        padding: 2px 14px;
+        border-radius: 12px;
+        font-size: 0.6rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
+    }
+
+    .number-preview .preview-status i {
+        margin-right: 4px;
+    }
+
+    /* File Upload Styles */
+    .file-upload-wrapper {
+        border: 2px dashed #e2e8f0;
+        border-radius: 10px;
+        padding: 30px 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: #fafbfc;
+        position: relative;
+    }
+
+    .file-upload-wrapper:hover {
+        border-color: #0ea5e9;
+        background: #f0f9ff;
+    }
+
+    .file-upload-wrapper .upload-icon {
+        font-size: 2.5rem;
+        color: #94a3b8;
+        display: block;
+        margin-bottom: 8px;
+    }
+
+    .file-upload-wrapper .upload-text {
+        font-size: 0.85rem;
+        color: #64748b;
+    }
+
+    .file-upload-wrapper .upload-hint {
+        font-size: 0.7rem;
+        color: #94a3b8;
+    }
+
+    .file-upload-wrapper.dragover {
+        border-color: #0ea5e9;
+        background: #f0f9ff;
+    }
+
+    .file-preview-container {
+        margin-top: 12px;
+        position: relative;
+        display: inline-block;
+        width: 100%;
+    }
+
+    .file-preview {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        background: #f8fafc;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .file-preview .file-icon {
+        font-size: 2rem;
+        flex-shrink: 0;
+    }
+
+    .file-preview .file-icon.image {
+        color: #0ea5e9;
+    }
+
+    .file-preview .file-icon.pdf {
+        color: #dc2626;
+    }
+
+    .file-preview .file-icon.doc {
+        color: #2563eb;
+    }
+
+    .file-preview .file-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .file-preview .file-name {
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: #0f172a;
+        word-break: break-all;
+    }
+
+    .file-preview .file-size {
+        font-size: 0.7rem;
+        color: #94a3b8;
+    }
+
+    .file-preview .file-remove {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: #fee2e2;
+        color: #dc2626;
+        border: none;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .file-preview .file-remove:hover {
+        background: #fecaca;
+        transform: scale(1.1);
+    }
+
+    .file-preview img {
+        max-height: 80px;
+        max-width: 80px;
+        border-radius: 4px;
+        object-fit: cover;
+    }
+
+    /* Image Preview */
+    .image-preview-container {
+        margin-top: 12px;
+        position: relative;
+        display: inline-block;
+        width: 100%;
+    }
+
+    .image-preview {
+        max-height: 200px;
+        max-width: 100%;
+        border-radius: 8px;
+        border: 2px solid #e2e8f0;
+        padding: 4px;
+        background: #f8fafc;
+        object-fit: cover;
+    }
+
+    .image-preview-remove {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #dc2626;
+        color: white;
+        border: none;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+    }
+
+    .image-preview-remove:hover {
+        transform: scale(1.1);
+        background: #991b1b;
+    }
+
+    /* Buttons */
+    .btn-save {
+        padding: 10px 32px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #0ea5e9;
+        border: none;
+        color: white;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-save:hover {
+        background: #0284c7;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+        color: white;
+    }
+
+    .btn-save:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .btn-save .spinner {
+        display: none;
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+    }
+
+    .btn-save.loading .spinner {
+        display: inline-block;
+    }
+
+    .btn-save.loading .btn-text {
+        display: none;
+    }
+
+    .btn-cancel {
+        padding: 10px 28px;
+        font-weight: 600;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        background: #fff;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-cancel:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        color: #64748b;
+        text-decoration: none;
+    }
+
+    /* Animations */
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 992px) {
+        .page-header {
+            padding: 20px 24px;
+        }
+        .page-header .header-icon {
+            width: 48px;
+            height: 48px;
+            font-size: 1.4rem;
+        }
+        .page-header h4 {
+            font-size: 1.1rem;
+        }
+        .form-section {
+            padding: 20px 22px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .page-header {
+            padding: 16px 18px;
+            border-radius: 12px;
+        }
+        .page-header .header-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 1.2rem;
+        }
+        .page-header h4 {
+            font-size: 1rem;
+        }
+        .page-header p {
+            font-size: 0.75rem;
+        }
+        .form-section {
+            padding: 16px 16px;
+            border-radius: 10px;
+        }
+        .form-section-title {
+            font-size: 0.75rem;
+        }
+        .form-section-title .badge-section {
+            display: none;
+        }
+        .number-preview {
+            padding: 14px 16px;
+        }
+        .number-preview .preview-number {
+            font-size: 1.2rem;
+        }
+        .number-preview .preview-status {
+            position: static;
+            display: inline-block;
+            margin-top: 8px;
+        }
+        .number-preview .preview-number-container {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .btn-save, .btn-cancel {
+            width: 100%;
+            justify-content: center;
+            padding: 12px 20px;
+        }
+        .file-upload-wrapper {
+            padding: 20px 16px;
+        }
+        .file-upload-wrapper .upload-icon {
+            font-size: 2rem;
+        }
+        .btn-back {
+            padding: 6px 14px;
+            font-size: 0.7rem;
+        }
+        .file-preview {
+            flex-wrap: wrap;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .page-header {
+            padding: 12px 14px;
+            border-radius: 10px;
+        }
+        .page-header .header-left {
+            gap: 10px;
+        }
+        .page-header .header-icon {
+            width: 36px;
+            height: 36px;
+            font-size: 1rem;
+        }
+        .page-header h4 {
+            font-size: 0.9rem;
+        }
+        .form-section {
+            padding: 12px 12px;
+        }
+        .form-control, .form-select {
+            font-size: 0.8rem;
+            padding: 6px 10px;
+        }
+        .number-preview .preview-number {
+            font-size: 1rem;
+            word-break: break-all;
+        }
+        .file-preview {
+            flex-direction: column;
+            align-items: stretch;
+            text-align: center;
+        }
+        .file-preview .file-remove {
+            align-self: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="add-prisoner-container">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="header-left">
+            <div class="header-icon">
+                <i class="bi bi-person-plus"></i>
+            </div>
+            <div>
+                <h4>Add New Prisoner</h4>
+                <p>Create a new prisoner record with auto-generated number</p>
+            </div>
+        </div>
+        <a href="{% url 'prisoner_list' %}" class="btn-back">
+            <i class="bi bi-arrow-left me-1"></i> Back to List
+        </a>
+    </div>
+
+    <!-- Error Messages -->
+    {% if prisoner_form.errors %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <div class="d-flex align-items-start gap-2">
+            <i class="bi bi-exclamation-circle-fill mt-1"></i>
+            <div>
+                <strong>Please correct the errors below.</strong>
+                <ul class="mb-0 mt-1 ps-3 small">
+                    {% for field, errors in prisoner_form.errors.items %}
+                        {% for error in errors %}
+                            <li>{{ field|title }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <div class="alert-progress"></div>
+    </div>
+    {% endif %}
+
+    <!-- Prisoner Number Preview -->
+    <div id="prisonerNumberPreview" class="number-preview">
+        <span class="preview-status">
+            <i class="bi bi-check-circle"></i>Auto-generated
+        </span>
+        <div class="preview-label"><i class="bi bi-hash"></i> Prisoner Number</div>
+        <div class="preview-number-container">
+            <div class="preview-number" id="previewNumber">—</div>
+            <span class="preview-badge" id="previewBadge">—</span>
+        </div>
+        <div class="preview-info">
+            <i class="bi bi-info-circle"></i>
+            This number will be automatically assigned when you save the record
+        </div>
+    </div>
+
+    <!-- Form - IMPORTANT: enctype="multipart/form-data" is required for file uploads -->
+    <form method="post" enctype="multipart/form-data" id="prisonerForm" novalidate>
+        {% csrf_token %}
+
+        <!-- Classification Section -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-building-fill"></i> Classification
+                <span class="badge-section required">Required</span>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label" for="id_prisoner_class">
+                        <i class="bi bi-tag me-1"></i>Prisoner Class <span class="required-star">*</span>
+                    </label>
+                    {{ prisoner_form.prisoner_class }}
+                    {% if prisoner_form.prisoner_class.errors %}
+                    <div class="error-text">{{ prisoner_form.prisoner_class.errors }}</div>
+                    {% endif %}
+                    <div class="help-text">
+                        <i class="bi bi-info-circle"></i>
+                        Select whether the prisoner is Convicted or Remand
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="id_prison_station">
+                        <i class="bi bi-geo-alt me-1"></i>Prison Station <span class="required-star">*</span>
+                    </label>
+                    {{ prisoner_form.prison_station }}
+                    {% if prisoner_form.prison_station.errors %}
+                    <div class="error-text">{{ prisoner_form.prison_station.errors }}</div>
+                    {% endif %}
+                    <div class="help-text">
+                        <i class="bi bi-info-circle"></i>
+                        {{ prisoner_form.prison_station.help_text }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Basic Information Section -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-person-fill"></i> Basic Information
+                <span class="badge-section required">Required</span>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label" for="id_first_name">
+                        First Name <span class="required-star">*</span>
+                    </label>
+                    {{ prisoner_form.first_name }}
+                    {% if prisoner_form.first_name.errors %}
+                    <div class="error-text">{{ prisoner_form.first_name.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="id_middle_name">Middle Name</label>
+                    {{ prisoner_form.middle_name }}
+                    {% if prisoner_form.middle_name.errors %}
+                    <div class="error-text">{{ prisoner_form.middle_name.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="id_surname">
+                        Surname <span class="required-star">*</span>
+                    </label>
+                    {{ prisoner_form.surname }}
+                    {% if prisoner_form.surname.errors %}
+                    <div class="error-text">{{ prisoner_form.surname.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="id_sex">
+                        Sex <span class="required-star">*</span>
+                    </label>
+                    {{ prisoner_form.sex }}
+                    {% if prisoner_form.sex.errors %}
+                    <div class="error-text">{{ prisoner_form.sex.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="id_age">
+                        Age <span class="required-star">*</span>
+                    </label>
+                    {{ prisoner_form.age }}
+                    {% if prisoner_form.age.errors %}
+                    <div class="error-text">{{ prisoner_form.age.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Prison Details Section -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-lock-fill"></i> Prison Details
+                <span class="badge-section required">Required</span>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label" for="id_block_number">
+                        Block Number <span class="required-star">*</span>
+                    </label>
+                    {{ prisoner_form.block_number }}
+                    {% if prisoner_form.block_number.errors %}
+                    <div class="error-text">{{ prisoner_form.block_number.errors }}</div>
+                    {% endif %}
+                    <div class="help-text">
+                        <i class="bi bi-info-circle"></i>
+                        e.g., A1, B2, C3
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="id_cell_number">
+                        Cell Number <span class="required-star">*</span>
+                    </label>
+                    {{ prisoner_form.cell_number }}
+                    {% if prisoner_form.cell_number.errors %}
+                    <div class="error-text">{{ prisoner_form.cell_number.errors }}</div>
+                    {% endif %}
+                    <div class="help-text">
+                        <i class="bi bi-info-circle"></i>
+                        e.g., 1, 2, 3
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label" for="id_date_admitted">Date Admitted</label>
+                    {{ prisoner_form.date_admitted }}
+                    {% if prisoner_form.date_admitted.errors %}
+                    <div class="error-text">{{ prisoner_form.date_admitted.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Photo Upload Section -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-image"></i> Prisoner Photo
+                <span class="badge-section optional">Optional</span>
+            </div>
+            <div class="row g-3">
+                <div class="col-12">
+                    <div class="file-upload-wrapper" id="imageUploadWrapper">
+                        <i class="bi bi-cloud-arrow-up upload-icon"></i>
+                        <div class="upload-text">Click to upload prisoner photo</div>
+                        <div class="upload-hint">Supported formats: JPG, PNG, GIF (Max: 5MB)</div>
+                    </div>
+                    {{ prisoner_form.image }}
+                    <div id="imagePreviewContainer" class="mt-2"></div>
+                    {% if prisoner_form.image.errors %}
+                    <div class="error-text">{{ prisoner_form.image.errors }}</div>
+                    {% endif %}
+                    {{ prisoner_form.additional_photos|as_crispy_field }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Document Upload Section -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-file-earmark-pdf"></i> Document Upload
+                <span class="badge-section optional">Optional</span>
+            </div>
+            <div class="row g-3">
+                <div class="col-12">
+                    <div class="file-upload-wrapper" id="documentUploadWrapper">
+                        <i class="bi bi-file-earmark-pdf upload-icon"></i>
+                        <div class="upload-text">Click to upload document</div>
+                        <div class="upload-hint">Supported format: PDF (Max: 10MB)</div>
+                    </div>
+                    {{ prisoner_form.document }}
+                    {{ prisoner_form.additional_documents|as_crispy_field }}
+                    <div id="documentPreviewContainer" class="mt-2"></div>
+                    {% if prisoner_form.document.errors %}
+                    <div class="error-text">{{ prisoner_form.document.errors }}</div>
+                    {% endif %}
+                    <div class="help-text mt-2">
+                        <i class="bi bi-info-circle"></i>
+                        Upload PDF documents such as court orders, medical reports, or other official documents.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex gap-3 flex-wrap mt-4">
+            <button type="submit" class="btn-save" id="submitBtn">
+                <span class="btn-text"><i class="bi bi-arrow-right-circle me-2"></i>Save and Continue</span>
+                <span class="spinner"></span>
+            </button>
+            <a href="{% url 'prisoner_list' %}" class="btn-cancel">
+                <i class="bi bi-x-lg me-1"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // ===== DOM Elements =====
+        const prisonerClassSelect = document.getElementById('id_prisoner_class');
+        const prisonStationSelect = document.getElementById('id_prison_station');
+        const previewDiv = document.getElementById('prisonerNumberPreview');
+        const previewNumber = document.getElementById('previewNumber');
+        const previewBadge = document.getElementById('previewBadge');
+        const form = document.getElementById('prisonerForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const imageInput = document.getElementById('id_image');
+        const documentInput = document.getElementById('id_document');
+        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+        const documentPreviewContainer = document.getElementById('documentPreviewContainer');
+        const imageUploadWrapper = document.getElementById('imageUploadWrapper');
+        const documentUploadWrapper = document.getElementById('documentUploadWrapper');
+
+        // ===== Helper Functions =====
+
+        // Get station code from select
+        function getStationCode() {
+            const selected = prisonStationSelect.options[prisonStationSelect.selectedIndex];
+            if (!selected || !selected.value) return '';
+
+            const text = selected.text || '';
+            const match = text.match(/^([A-Z]{2,3})\s*[-|:]/);
+            if (match) {
+                return match[1];
+            }
+            const value = selected.value;
+            if (value && value.length <= 4) {
+                return value.toUpperCase();
+            }
+            return text.substring(0, 2).toUpperCase();
+        }
+
+        // Get prisoner class
+        function getPrisonerClass() {
+            return prisonerClassSelect.value;
+        }
+
+        // Update the prisoner number preview
+        function updatePreview() {
+            const stationCode = getStationCode();
+            const prisonerClass = getPrisonerClass();
+
+            if (!stationCode || !prisonerClass) {
+                previewDiv.classList.remove('show');
+                return;
+            }
+
+            const year = new Date().getFullYear();
+            let badgeClass = '';
+            let badgeText = '';
+            let numberFormat = '';
+
+            if (prisonerClass === 'convicted') {
+                badgeClass = 'convicted';
+                badgeText = 'Convicted Prisoner';
+                numberFormat = `${stationCode}001/${year}`;
+            } else if (prisonerClass === 'remand') {
+                badgeClass = 'remand';
+                badgeText = 'Remand Prisoner';
+                numberFormat = `${stationCode}-R001/${year}`;
+            } else {
+                previewDiv.classList.remove('show');
+                return;
+            }
+
+            previewNumber.textContent = numberFormat;
+            previewBadge.className = `preview-badge ${badgeClass}`;
+            previewBadge.textContent = badgeText;
+            previewDiv.classList.add('show');
+        }
+
+        // Validate form before submission
+        function validateForm() {
+            const classVal = getPrisonerClass();
+            const stationVal = prisonStationSelect.value;
+
+            if (!classVal) {
+                alert('Please select a prisoner class (Convicted or Remand).');
+                prisonerClassSelect.focus();
+                return false;
+            }
+            if (!stationVal && !prisonStationSelect.disabled) {
+                alert('Please select a prison station.');
+                prisonStationSelect.focus();
+                return false;
+            }
+            return true;
+        }
+
+        // ===== File Preview Functions =====
+
+        // Format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Get file icon based on type
+        function getFileIcon(file) {
+            if (file.type.startsWith('image/')) {
+                return 'image';
+            } else if (file.type === 'application/pdf') {
+                return 'pdf';
+            } else if (file.type === 'application/msword' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                return 'doc';
+            }
+            return 'pdf';
+        }
+
+        // Handle image preview
+        function handleImagePreview(file) {
+            if (!file) {
+                imagePreviewContainer.innerHTML = '';
+                imageUploadWrapper.style.display = 'block';
+                return;
+            }
+
+            // Validate file size (5MB max)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Image file size must be under 5MB. Current size: ' + formatFileSize(file.size));
+                imageInput.value = '';
+                return;
+            }
+
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please upload an image file (JPG, PNG, or GIF).');
+                imageInput.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagePreviewContainer.innerHTML = `
+                    <div class="image-preview-container">
+                        <img src="${e.target.result}" class="image-preview" alt="Prisoner photo preview">
+                        <button type="button" class="image-preview-remove" onclick="removeImage()">
+                            <i class="bi bi-x"></i>
+                        </button>
+                        <div class="file-preview" style="margin-top: 8px;">
+                            <div class="file-info">
+                                <div class="file-name">${file.name}</div>
+                                <div class="file-size">${formatFileSize(file.size)}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                imageUploadWrapper.style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Remove image
+        window.removeImage = function() {
+            imageInput.value = '';
+            imagePreviewContainer.innerHTML = '';
+            imageUploadWrapper.style.display = 'block';
+        };
+
+        // Handle document preview
+        function handleDocumentPreview(file) {
+            if (!file) {
+                documentPreviewContainer.innerHTML = '';
+                documentUploadWrapper.style.display = 'block';
+                return;
+            }
+
+            // Validate file size (10MB max)
+            if (file.size > 10 * 1024 * 1024) {
+                alert('Document file size must be under 10MB. Current size: ' + formatFileSize(file.size));
+                documentInput.value = '';
+                return;
+            }
+
+            // Validate file type
+            if (file.type !== 'application/pdf') {
+                alert('Please upload a PDF document.');
+                documentInput.value = '';
+                return;
+            }
+
+            const icon = getFileIcon(file);
+            const iconClass = {
+                'pdf': 'bi bi-file-earmark-pdf text-danger',
+                'image': 'bi bi-file-earmark-image text-primary',
+                'doc': 'bi bi-file-earmark-word text-primary'
+            };
+
+            documentPreviewContainer.innerHTML = `
+                <div class="file-preview-container">
+                    <div class="file-preview">
+                        <i class="${iconClass[icon] || iconClass.pdf} file-icon"></i>
+                        <div class="file-info">
+                            <div class="file-name">${file.name}</div>
+                            <div class="file-size">${formatFileSize(file.size)}</div>
+                        </div>
+                        <button type="button" class="file-remove" onclick="removeDocument()">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            documentUploadWrapper.style.display = 'none';
+        }
+
+        // Remove document
+        window.removeDocument = function() {
+            documentInput.value = '';
+            documentPreviewContainer.innerHTML = '';
+            documentUploadWrapper.style.display = 'block';
+        };
+
+        // ===== Event Listeners =====
+
+        // Update preview when class changes
+        prisonerClassSelect.addEventListener('change', updatePreview);
+
+        // If station is not disabled, update preview on station change
+        if (!prisonStationSelect.disabled) {
+            prisonStationSelect.addEventListener('change', updatePreview);
+        }
+
+        // Image upload
+        imageUploadWrapper.addEventListener('click', function() {
+            imageInput.click();
+        });
+
+        imageInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                handleImagePreview(this.files[0]);
+            }
+        });
+
+        // Document upload
+        documentUploadWrapper.addEventListener('click', function() {
+            documentInput.click();
+        });
+
+        documentInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                handleDocumentPreview(this.files[0]);
+            }
+        });
+
+        // ===== Drag and Drop Support =====
+
+        // Image drag and drop
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            imageUploadWrapper.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            imageUploadWrapper.addEventListener(eventName, function() {
+                this.classList.add('dragover');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            imageUploadWrapper.addEventListener(eventName, function() {
+                this.classList.remove('dragover');
+            });
+        });
+
+        imageUploadWrapper.addEventListener('drop', function(e) {
+            const files = e.dataTransfer.files;
+            if (files && files.length > 0) {
+                const file = files[0];
+                if (file.type.startsWith('image/')) {
+                    imageInput.files = files;
+                    handleImagePreview(file);
+                } else {
+                    alert('Please drop an image file (JPG, PNG, GIF).');
+                }
+            }
+        });
+
+        // Document drag and drop
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            documentUploadWrapper.addEventListener(eventName, preventDefaults, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            documentUploadWrapper.addEventListener(eventName, function() {
+                this.classList.add('dragover');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            documentUploadWrapper.addEventListener(eventName, function() {
+                this.classList.remove('dragover');
+            });
+        });
+
+        documentUploadWrapper.addEventListener('drop', function(e) {
+            const files = e.dataTransfer.files;
+            if (files && files.length > 0) {
+                const file = files[0];
+                if (file.type === 'application/pdf') {
+                    documentInput.files = files;
+                    handleDocumentPreview(file);
+                } else {
+                    alert('Please drop a PDF file.');
+                }
+            }
+        });
+
+        // ===== Form Submission =====
+        form.addEventListener('submit', function(e) {
+            if (!validateForm()) {
+                e.preventDefault();
+                return;
+            }
+
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtn.classList.add('loading');
+
+            // Check if there are files being uploaded
+            const hasImage = imageInput.files && imageInput.files.length > 0;
+            const hasDocument = documentInput.files && documentInput.files.length > 0;
+
+            if (hasImage) {
+                console.log('Uploading image:', imageInput.files[0].name, imageInput.files[0].size);
+            }
+            if (hasDocument) {
+                console.log('Uploading document:', documentInput.files[0].name, documentInput.files[0].size);
+            }
+
+            // Re-enable after 30 seconds if no redirect (fallback)
+            setTimeout(function() {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('loading');
+            }, 30000);
+        });
+
+        // ===== Keyboard Shortcut =====
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                if (validateForm()) {
+                    form.submit();
+                }
+            }
+        });
+
+        // ===== Initial Preview =====
+        updatePreview();
+
+        // ===== Console Info =====
+        console.log('🔐 Prisoner form ready - Auto-numbering enabled');
+        console.log('📌 Convicted format: [Station Code]001/[Year] (e.g., BT001/2026)');
+        console.log('📌 Remand format: [Station Code]-R001/[Year] (e.g., BT-R001/2026)');
+        console.log('📎 File uploads: Image (5MB max), PDF (10MB max)');
+        console.log('💡 The number will be automatically generated when you save');
+
+        // ===== Auto-focus first field =====
+        const firstInput = form.querySelector('select:not([disabled]), input:not([type="hidden"]):not([disabled])');
+        if (firstInput && !firstInput.disabled) {
+            firstInput.focus();
+        }
+
+        // ===== Show station info for disabled field =====
+        if (prisonStationSelect.disabled) {
+            const stationHelp = prisonStationSelect.closest('.col-md-6').querySelector('.help-text');
+            if (stationHelp) {
+                stationHelp.innerHTML = '<i class="bi bi-check-circle-fill text-success"></i> ' + stationHelp.textContent;
+            }
+        }
+    });
+</script>
+{% endblock %}

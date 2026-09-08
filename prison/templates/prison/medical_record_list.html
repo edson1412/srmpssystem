@@ -1,0 +1,69 @@
+{% extends "prison/base.html" %}
+
+{% block title %}Medical Records{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-color: rgba(173, 216, 230, 0.6); /* Light blue with 60% opacity */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Medical Records</h1>
+        <a href="{% url 'medical_record_add' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Add Medical Record
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Prisoner</th>
+                            <th>Record Date</th>
+                            <th>Category</th>
+                            <th>Diagnosis</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in object_list %} {# object_list is common for ListView #}
+                        <tr>
+                            <td><a href="{% url 'prisoner_detail' record.prisoner.id %}">{{ record.prisoner.full_name }} ({{ record.prisoner.prisoner_number }})</a></td>
+                            <td>{{ record.record_date|date:"Y-m-d" }}</td>
+                            <td>{{ record.get_category_display }}</td>
+                            <td>{{ record.diagnosis|truncatechars:50 }}</td>
+
+                            <td>
+                                <a href="{% url 'medical_record_detail' record.id %}" class="btn btn-sm btn-outline-primary" title="View">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{% url 'medical_record_edit' record.id %}" class="btn btn-sm btn-outline-secondary" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                {# Assuming a delete URL for medical records exists #}
+                                {# <a href="{% url 'medical_record_delete' record.id %}" class="btn btn-sm btn-outline-danger delete-btn" title="Delete"> #}
+                                {#     <i class="bi bi-trash"></i> #}
+                                {# </a> #}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">No medical records found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {# Pagination can be added here if needed, similar to prisoner_list.html #}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,374 @@
+{% extends "prison/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block page_title %}{% if is_edit %}Edit Template{% else %}Create Template{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 24px 28px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        margin-bottom: 24px;
+    }
+
+    .form-section-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .form-section-title i {
+        font-size: 1.1rem;
+        color: #8b5cf6;
+    }
+
+    .form-control, .form-select {
+        border-radius: 8px;
+        border-color: #e2e8f0;
+        padding: 8px 14px;
+        font-size: 0.875rem;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #8b5cf6;
+        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+    }
+
+    .form-label {
+        font-weight: 500;
+        font-size: 0.8rem;
+        color: #334155;
+    }
+
+    .help-text {
+        font-size: 0.7rem;
+        color: #94a3b8;
+        margin-top: 4px;
+    }
+
+    .btn-save {
+        padding: 10px 32px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #8b5cf6;
+        border: none;
+        transition: all 0.2s ease;
+        color: #fff;
+    }
+
+    .btn-save:hover {
+        background: #7c3aed;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(139, 92, 246, 0.3);
+        color: #fff;
+    }
+
+    .btn-cancel {
+        padding: 10px 28px;
+        font-weight: 600;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        background: #fff;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-cancel:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        color: #64748b;
+    }
+
+    .json-editor {
+        font-family: 'Courier New', monospace;
+        font-size: 0.8rem;
+        background: #0f172a;
+        color: #e2e8f0;
+        border-radius: 8px;
+        padding: 12px 16px;
+        min-height: 200px;
+        border: none;
+        width: 100%;
+        resize: vertical;
+        tab-size: 4;
+    }
+
+    .json-editor:focus {
+        outline: 2px solid #8b5cf6;
+    }
+
+    .json-editor.error {
+        outline: 2px solid #dc2626;
+    }
+
+    .json-preview {
+        background: #f8fafc;
+        border-radius: 8px;
+        padding: 12px 16px;
+        border: 1px solid #e2e8f0;
+        margin-top: 8px;
+        font-size: 0.8rem;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .json-preview .error-text {
+        color: #dc2626;
+    }
+
+    .json-preview .success-text {
+        color: #16a34a;
+    }
+
+    .form-check-input:checked {
+        background-color: #8b5cf6;
+        border-color: #8b5cf6;
+    }
+
+    @media (max-width: 768px) {
+        .form-section {
+            padding: 16px 18px;
+        }
+        .json-editor {
+            min-height: 120px;
+            font-size: 0.7rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+        <div>
+            <h1 class="h3 fw-bold mb-1">
+                {% if is_edit %}Edit Template{% else %}Create New Template{% endif %}
+            </h1>
+            <p class="text-muted small mb-0">
+                <i class="bi bi-layout-three-columns me-1"></i>
+                {% if is_edit %}Update the template configuration{% else %}Define a new return template{% endif %}
+            </p>
+        </div>
+        <a href="{% url 'template_list' %}" class="btn-cancel">
+            <i class="bi bi-arrow-left me-1"></i> Back to Templates
+        </a>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-info-circle"></i> Basic Information
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    {{ form.name|as_crispy_field }}
+                </div>
+                <div class="col-md-6">
+                    {{ form.return_type|as_crispy_field }}
+                </div>
+            </div>
+            <div class="row g-3 mt-2">
+                <div class="col-12">
+                    {{ form.description|as_crispy_field }}
+                </div>
+            </div>
+            <div class="row g-3 mt-2">
+                <div class="col-md-6">
+                    <div class="form-check">
+                        {{ form.is_active }}
+                        <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                            <i class="bi bi-check-circle text-success"></i> Active
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-check">
+                        {{ form.is_default }}
+                        <label class="form-check-label" for="{{ form.is_default.id_for_label }}">
+                            <i class="bi bi-star-fill text-warning"></i> Default Template
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columns Configuration -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-table"></i> Columns Configuration
+            </div>
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label">Columns (JSON)</label>
+                    <textarea name="columns" id="id_columns" class="json-editor" rows="10" spellcheck="false">{{ form.columns.value|default:'[]'|safe }}</textarea>
+                    <div class="help-text">
+                        Define columns as JSON array. Each column must have: key, header, and can have: type, required.
+                    </div>
+                </div>
+            </div>
+            <div class="row g-3 mt-2">
+                <div class="col-12">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="validateColumnsBtn">
+                        <i class="bi bi-check-circle"></i> Validate
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="formatColumnsBtn">
+                        <i class="bi bi-braces"></i> Format
+                    </button>
+                    <div id="columnsValidationResult" class="mt-2"></div>
+                </div>
+            </div>
+            <div class="row g-3 mt-2">
+                <div class="col-12">
+                    <div class="help-text">
+                        <strong>Example:</strong>
+                        <pre class="bg-light p-2 rounded" style="font-size: 0.7rem;">
+[
+    {"key": "serial_no", "header": "Ser. No.", "type": "number", "required": true},
+    {"key": "prisoner_number", "header": "Pri. No.", "type": "string", "required": true},
+    {"key": "full_name", "header": "Names", "type": "string", "required": true}
+]
+                        </pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sample Data -->
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-file-earmark-code"></i> Sample Data (Optional)
+            </div>
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label">Sample Data (JSON)</label>
+                    <textarea name="sample_data" id="id_sample_data" class="json-editor" rows="6" spellcheck="false">{{ form.sample_data.value|default:'[]'|safe }}</textarea>
+                    <div class="help-text">
+                        JSON array of sample data rows matching your column definitions.
+                    </div>
+                </div>
+            </div>
+            <div class="row g-3 mt-2">
+                <div class="col-12">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="validateSampleBtn">
+                        <i class="bi bi-check-circle"></i> Validate
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="formatSampleBtn">
+                        <i class="bi bi-braces"></i> Format
+                    </button>
+                    <div id="sampleValidationResult" class="mt-2"></div>
+                </div>
+            </div>
+            <div class="row g-3 mt-2">
+                <div class="col-12">
+                    <div class="help-text">
+                        <strong>Example:</strong>
+                        <pre class="bg-light p-2 rounded" style="font-size: 0.7rem;">
+[
+    {"serial_no": 1, "prisoner_number": "P-0001", "full_name": "Sample Prisoner 1"},
+    {"serial_no": 2, "prisoner_number": "P-0002", "full_name": "Sample Prisoner 2"}
+]
+                        </pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="d-flex gap-3 flex-wrap mt-4 mb-4">
+            <button type="submit" class="btn-save">
+                <i class="bi bi-save me-2"></i> {% if is_edit %}Update Template{% else %}Create Template{% endif %}
+            </button>
+            <a href="{% url 'template_list' %}" class="btn-cancel">
+                <i class="bi bi-x-lg me-1"></i> Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const columnsTextarea = document.getElementById('id_columns');
+    const sampleTextarea = document.getElementById('id_sample_data');
+    const columnsValidationResult = document.getElementById('columnsValidationResult');
+    const sampleValidationResult = document.getElementById('sampleValidationResult');
+
+    function validateJSON(textarea, resultContainer, label) {
+        try {
+            const parsed = JSON.parse(textarea.value);
+            resultContainer.innerHTML = `<span class="success-text"><i class="bi bi-check-circle"></i> Valid JSON: ${parsed.length} items</span>`;
+            textarea.classList.remove('error');
+            return parsed;
+        } catch (e) {
+            resultContainer.innerHTML = `<span class="error-text"><i class="bi bi-x-circle"></i> ${e.message}</span>`;
+            textarea.classList.add('error');
+            return null;
+        }
+    }
+
+    function formatJSON(textarea) {
+        try {
+            const parsed = JSON.parse(textarea.value);
+            textarea.value = JSON.stringify(parsed, null, 4);
+            textarea.classList.remove('error');
+        } catch (e) {
+            alert('Cannot format: Invalid JSON - ' + e.message);
+        }
+    }
+
+    // Validate Columns
+    document.getElementById('validateColumnsBtn').addEventListener('click', function() {
+        const parsed = validateJSON(columnsTextarea, columnsValidationResult, 'Columns');
+        if (parsed && Array.isArray(parsed)) {
+            let valid = true;
+            parsed.forEach((col, index) => {
+                if (!col.key) {
+                    valid = false;
+                    columnsValidationResult.innerHTML += `<div class="error-text">Item ${index + 1}: Missing 'key' field</div>`;
+                }
+                if (!col.header) {
+                    valid = false;
+                    columnsValidationResult.innerHTML += `<div class="error-text">Item ${index + 1}: Missing 'header' field</div>`;
+                }
+            });
+            if (valid) {
+                columnsValidationResult.innerHTML += `<div class="success-text"><i class="bi bi-check-circle"></i> All columns are valid</div>`;
+            }
+        }
+    });
+
+    // Format Columns
+    document.getElementById('formatColumnsBtn').addEventListener('click', function() {
+        formatJSON(columnsTextarea);
+    });
+
+    // Validate Sample Data
+    document.getElementById('validateSampleBtn').addEventListener('click', function() {
+        const parsed = validateJSON(sampleTextarea, sampleValidationResult, 'Sample Data');
+        if (parsed && Array.isArray(parsed)) {
+            sampleValidationResult.innerHTML += `<div class="success-text"><i class="bi bi-check-circle"></i> ${parsed.length} sample rows</div>`;
+        }
+    });
+
+    // Format Sample Data
+    document.getElementById('formatSampleBtn').addEventListener('click', function() {
+        formatJSON(sampleTextarea);
+    });
+});
+</script>
+{% endblock %}

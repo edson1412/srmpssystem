@@ -1,0 +1,299 @@
+{% load custom_filters %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>{{ inmate_return.title }}</title>
+    <style>
+        body {
+            font-family: 'DejaVu Sans', Arial, sans-serif;
+            font-size: 11px;
+            color: #333;
+            margin: 40px;
+            line-height: 1.4;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            font-size: 18px;
+            margin: 0 0 4px 0;
+            color: #1a1a2e;
+        }
+        .header .subtitle {
+            font-size: 13px;
+            color: #666;
+        }
+        .header .meta {
+            font-size: 10px;
+            color: #888;
+            margin-top: 4px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 16px;
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 4px;
+        }
+        .info-item .label {
+            font-size: 8px;
+            text-transform: uppercase;
+            color: #888;
+            font-weight: bold;
+        }
+        .info-item .value {
+            font-size: 12px;
+            font-weight: bold;
+            color: #1a1a2e;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .summary-item {
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .summary-item .number {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1a1a2e;
+        }
+        .summary-item .label {
+            font-size: 8px;
+            text-transform: uppercase;
+            color: #888;
+        }
+        .table-container {
+            margin-top: 12px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9px;
+        }
+        thead th {
+            background: #1a1a2e;
+            color: #fff;
+            padding: 6px 8px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        tbody td {
+            padding: 5px 8px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        tbody tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 16px;
+            border-top: 1px solid #ddd;
+            font-size: 9px;
+            color: #888;
+            text-align: center;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 8px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .badge-approved { background: #dcfce7; color: #16a34a; }
+        .badge-submitted { background: #fef3c7; color: #d97706; }
+        .badge-draft { background: #f1f5f9; color: #64748b; }
+        .badge-rejected { background: #fee2e2; color: #dc2626; }
+        .badge-completed { background: #dbeafe; color: #1a73e8; }
+        .badge-processing { background: #dbeafe; color: #1d4ed8; }
+        .badge-under_review { background: #ede9fe; color: #7c3aed; }
+        .page-break {
+            page-break-after: always;
+        }
+        @page {
+            margin: 30px;
+        }
+        .text-muted { color: #888; }
+        .text-right { text-align: right; }
+        .mt-2 { margin-top: 8px; }
+        .mb-2 { margin-bottom: 8px; }
+        .fw-bold { font-weight: bold; }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>{{ inmate_return.title }}</h1>
+        <div class="subtitle">{{ inmate_return.get_return_type_display }}</div>
+        <div class="meta">
+            {{ inmate_return.station.name }} | {{ inmate_return.get_reporting_period_display }}
+            | Generated: {{ today|date:"d-m-Y H:i" }}
+        </div>
+    </div>
+
+    <!-- Info Grid -->
+    <div class="info-grid">
+        <div class="info-item">
+            <div class="label">Return Type</div>
+            <div class="value">{{ inmate_return.get_return_type_display }}</div>
+        </div>
+        <div class="info-item">
+            <div class="label">Station</div>
+            <div class="value">{{ inmate_return.station.name }}</div>
+        </div>
+        <div class="info-item">
+            <div class="label">Period</div>
+            <div class="value">{{ inmate_return.get_reporting_period_display }}</div>
+        </div>
+        <div class="info-item">
+            <div class="label">Status</div>
+            <div class="value">
+                <span class="badge badge-{{ inmate_return.status }}">
+                    {{ inmate_return.get_status_display }}
+                </span>
+            </div>
+        </div>
+        <div class="info-item">
+            <div class="label">Uploaded By</div>
+            <div class="value">{{ inmate_return.created_by.username|default:"System" }}</div>
+        </div>
+        <div class="info-item">
+            <div class="label">Uploaded On</div>
+            <div class="value">{{ inmate_return.created_at|date:"d-m-Y H:i" }}</div>
+        </div>
+        <div class="info-item">
+            <div class="label">Total Records</div>
+            <div class="value">{{ total_rows|default:0 }}</div>
+        </div>
+        <div class="info-item">
+            <div class="label">File</div>
+            <div class="value">{{ inmate_return.file_name|default:"No file" }}</div>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    {% if summary %}
+    <div class="summary-grid">
+        <div class="summary-item">
+            <div class="number">{{ summary.total_records|default:0 }}</div>
+            <div class="label">Total Records</div>
+        </div>
+        <div class="summary-item">
+            <div class="number">{{ summary.unique_prisoners|default:0 }}</div>
+            <div class="label">Unique Prisoners</div>
+        </div>
+        <div class="summary-item">
+            <div class="number">{{ summary.male_count|default:0 }}</div>
+            <div class="label">Male</div>
+        </div>
+        <div class="summary-item">
+            <div class="number">{{ summary.female_count|default:0 }}</div>
+            <div class="label">Female</div>
+        </div>
+    </div>
+
+    <!-- Offense Breakdown -->
+    {% if offense_breakdown %}
+    <div class="mb-2">
+        <h5 style="font-size: 11px; font-weight: bold; margin: 8px 0 4px 0;">Top Offenses</h5>
+        <table style="width: 50%;">
+            <thead>
+                <tr>
+                    <th>Offense</th>
+                    <th class="text-right">Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for offense, count in offense_breakdown|slice:":10" %}
+                <tr>
+                    <td>{{ offense|truncatechars:40 }}</td>
+                    <td class="text-right">{{ count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Age Distribution -->
+    {% if age_distribution %}
+    <div class="mb-2">
+        <h5 style="font-size: 11px; font-weight: bold; margin: 8px 0 4px 0;">Age Distribution</h5>
+        <table style="width: 30%;">
+            <thead>
+                <tr>
+                    <th>Age Group</th>
+                    <th class="text-right">Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for group, count in age_distribution.items %}
+                <tr>
+                    <td>{{ group }}</td>
+                    <td class="text-right">{{ count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- Data Table -->
+    <div class="table-container">
+        <h5 style="font-size: 11px; font-weight: bold; margin: 8px 0 4px 0;">Data Rows</h5>
+        <table>
+            <thead>
+                <tr>
+                    {% for col in columns %}
+                    <th>{{ col.header }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in data_rows %}
+                <tr>
+                    {% for col in columns %}
+                    <td>
+                        {% with value=row|get_item:col.key %}
+                            {% if value %}
+                                {% if value|date:"Y-m-d" %}{{ value|date:"d-m-Y" }}{% else %}{{ value }}{% endif %}
+                            {% else %}
+                                —
+                            {% endif %}
+                        {% endwith %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <p>
+            Malawi Prison Service Management System<br>
+            Generated on {{ today|date:"d-m-Y H:i" }} by {{ user.get_full_name|default:user.username }}
+        </p>
+        <p style="font-size: 8px; color: #aaa;">
+            This is a system-generated report. For official use only.
+        </p>
+    </div>
+</body>
+</html>

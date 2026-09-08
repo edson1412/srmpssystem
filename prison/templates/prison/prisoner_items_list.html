@@ -1,0 +1,411 @@
+<!-- prisoner_items_list.html -->
+{% extends "prison/base.html" %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block page_title %}Prisoner Items - {{ prisoner.full_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .page-header h1 {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .page-header h1 small {
+        font-size: 0.85rem;
+        font-weight: 400;
+        color: #64748b;
+    }
+
+    .prisoner-badge {
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 6px 16px;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .prisoner-badge .number {
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .prisoner-badge .name {
+        color: #64748b;
+    }
+
+    .money-summary {
+        background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+        border: 1px solid #bbf7d0;
+        border-radius: 12px;
+        padding: 16px 24px;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .money-summary .amount {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: #16a34a;
+    }
+
+    .money-summary .label {
+        font-size: 0.8rem;
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    .table-items {
+        font-size: 0.85rem;
+        margin-bottom: 0;
+    }
+
+    .table-items thead th {
+        background: #f8fafc;
+        color: #64748b;
+        font-weight: 600;
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 10px 14px;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .table-items tbody td {
+        padding: 10px 14px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        color: #334155;
+    }
+
+    .table-items tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .btn-add {
+        padding: 8px 20px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #1a73e8;
+        border: none;
+        transition: all 0.2s ease;
+        color: #fff;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-add:hover {
+        background: #1557b0;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+        color: #fff;
+    }
+
+    .btn-back {
+        padding: 8px 18px;
+        font-weight: 500;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        background: #fff;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-back:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        color: #334155;
+    }
+
+    .btn-action-sm {
+        padding: 4px 10px;
+        font-size: 0.7rem;
+        border-radius: 6px;
+        border: none;
+        transition: all 0.15s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .btn-action-sm:hover {
+        transform: translateY(-1px);
+    }
+
+    .item-type-icon {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .item-type-icon .icon {
+        font-size: 0.9rem;
+    }
+
+    .icon-money { color: #16a34a; }
+    .icon-clothing { color: #0ea5e9; }
+    .icon-belonging { color: #8b5cf6; }
+    .icon-other { color: #94a3b8; }
+
+    .status-badge {
+        font-size: 0.6rem;
+        font-weight: 600;
+        padding: 3px 12px;
+        border-radius: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .status-badge.in-custody { background: #dbeafe; color: #1a73e8; }
+    .status-badge.collected { background: #dcfce7; color: #16a34a; }
+
+    .empty-state {
+        padding: 40px 20px;
+        text-align: center;
+        color: #94a3b8;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        display: block;
+        margin-bottom: 12px;
+        color: #cbd5e1;
+    }
+
+    .section-card {
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+
+    .section-card .card-header {
+        background: transparent;
+        padding: 14px 20px;
+        border-bottom: 1px solid #f1f5f9;
+        font-weight: 600;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .section-card .card-header i {
+        color: #1a73e8;
+    }
+
+    .section-card .card-body {
+        padding: 0;
+    }
+
+    @media (max-width: 768px) {
+        .page-header h1 {
+            font-size: 1.1rem;
+            flex-wrap: wrap;
+        }
+        .money-summary {
+            padding: 12px 16px;
+        }
+        .money-summary .amount {
+            font-size: 1.4rem;
+        }
+        .table-items {
+            font-size: 0.75rem;
+        }
+        .table-items thead th,
+        .table-items tbody td {
+            padding: 6px 10px;
+        }
+        .btn-add {
+            padding: 6px 14px;
+            font-size: 0.8rem;
+        }
+        .prisoner-badge {
+            padding: 4px 12px;
+            font-size: 0.8rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="page-header">
+        <div>
+            <h1>
+                <i class="bi bi-box-seam" style="color: #1a73e8;"></i>
+                Prisoner Items
+                <small>Management</small>
+            </h1>
+            <div class="prisoner-badge mt-2">
+                <span class="number">{{ prisoner.prisoner_number }}</span>
+                <span class="name">{{ prisoner.full_name }}</span>
+                <span class="badge {% if prisoner.prisoner_class == 'convicted' %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                    {{ prisoner.get_prisoner_class_display }}
+                </span>
+            </div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'add_prisoner_item' prisoner.id %}" class="btn-add">
+                <i class="bi bi-plus-circle"></i> Add Item
+            </a>
+            <a href="{% url 'prisoner_detail' prisoner.id %}" class="btn-back">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            <i class="bi bi-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}x-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Money Summary -->
+    <div class="money-summary">
+        <div>
+            <div class="label"><i class="bi bi-wallet2 me-1"></i> Total Money Balance</div>
+            <div class="amount">{{ total_money_balance|floatformat:2 }} MWK</div>
+        </div>
+        <div>
+            <span class="badge bg-primary-subtle text-primary">
+                <i class="bi bi-info-circle me-1"></i>
+                Sum of all 'Money' type items
+            </span>
+        </div>
+    </div>
+
+    <!-- Items Table -->
+    <div class="section-card">
+        <div class="card-header">
+            <i class="bi bi-list-ul"></i>
+            All Prisoner Items
+            <span class="badge bg-light text-muted ms-auto">{{ items|length }} item{{ items|pluralize }}</span>
+        </div>
+        <div class="card-body">
+            {% if items %}
+            <div class="table-responsive">
+                <table class="table table-items">
+                    <thead>
+                        <tr>
+                            <th>Item Type</th>
+                            <th>Description</th>
+                            <th>Quantity</th>
+                            <th>Initial Amount</th>
+                            <th>Current Amount</th>
+                            <th>Currency</th>
+                            <th>Date Received</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>
+                                <span class="item-type-icon">
+                                    {% if item.item_type == 'money' %}
+                                        <i class="bi bi-cash-stack icon-money icon"></i>
+                                    {% elif item.item_type == 'clothing' %}
+                                        <i class="bi bi-hdd-stack icon-clothing icon"></i>
+                                    {% elif item.item_type == 'personal_belonging' %}
+                                        <i class="bi bi-suitcase icon-belonging icon"></i>
+                                    {% else %}
+                                        <i class="bi bi-box icon-other icon"></i>
+                                    {% endif %}
+                                    {{ item.get_item_type_display }}
+                                </span>
+                            </td>
+                            <td>{{ item.description|truncatechars:30 }}</td>
+                            <td>{% if item.quantity %}{{ item.quantity }}{% else %}<span class="text-muted">N/A</span>{% endif %}</td>
+                            <td>{% if item.initial_amount %}{{ item.initial_amount|floatformat:2 }}{% else %}<span class="text-muted">N/A</span>{% endif %}</td>
+                            <td>
+                                {% if item.item_type == 'money' %}
+                                    <span class="fw-bold text-success">{{ item.current_amount|floatformat:2 }}</span>
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ item.currency }}</td>
+                            <td>{{ item.date_received|date:"Y-m-d" }}</td>
+                            <td>
+                                <span class="status-badge {% if item.is_collected %}collected{% else %}in-custody{% endif %}">
+                                    {% if item.is_collected %}Collected{% else %}In Custody{% endif %}
+                                </span>
+                            </td>
+                            <td class="text-end">
+                                <div class="d-flex gap-1 justify-content-end">
+                                    <a href="{% url 'prisoner_item_detail' item.id %}" class="btn-action-sm btn-outline-primary" title="View Details">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    {% if item.item_type == 'money' %}
+                                        <a href="{% url 'withdraw_prisoner_money' item.id %}" class="btn-action-sm btn-outline-warning" title="Withdraw Money">
+                                            <i class="bi bi-cash"></i>
+                                        </a>
+                                    {% else %}
+                                        {% if not item.is_collected %}
+                                            <form action="{% url 'collect_prisoner_item' item.id %}" method="post" class="d-inline">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn-action-sm btn-outline-success" title="Mark as Collected" onclick="return confirm('Mark this item as collected?')">
+                                                    <i class="bi bi-check2-circle"></i>
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-box"></i>
+                <p class="mb-0">No items found for this prisoner.</p>
+                <small class="text-muted">Click "Add Item" to record a new item.</small>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

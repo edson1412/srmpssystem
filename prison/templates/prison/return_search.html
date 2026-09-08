@@ -1,0 +1,380 @@
+{% extends "prison/base.html" %}
+{% load crispy_forms_tags %}
+{% load custom_filters %}
+
+{% block page_title %}Search Returns{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .page-header h1 {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .page-header h1 i {
+        color: #1a73e8;
+    }
+
+    .btn-back {
+        padding: 8px 20px;
+        font-weight: 600;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        background: #fff;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-back:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        color: #64748b;
+    }
+
+    .search-section {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 24px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        margin-bottom: 24px;
+    }
+
+    .search-section .section-title {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #64748b;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .search-section .section-title i {
+        color: #1a73e8;
+    }
+
+    .btn-search {
+        padding: 8px 32px;
+        font-weight: 600;
+        border-radius: 10px;
+        background: #1a73e8;
+        border: none;
+        transition: all 0.2s ease;
+        color: #fff;
+    }
+
+    .btn-search:hover {
+        background: #1557b0;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(26, 115, 232, 0.3);
+    }
+
+    .btn-reset {
+        padding: 8px 20px;
+        font-weight: 600;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        background: #fff;
+        transition: all 0.2s ease;
+    }
+
+    .btn-reset:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+
+    .form-control, .form-select {
+        border-radius: 8px;
+        border-color: #e2e8f0;
+        padding: 8px 14px;
+        font-size: 0.875rem;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #1a73e8;
+        box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+    }
+
+    .form-label {
+        font-weight: 500;
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-bottom: 4px;
+    }
+
+    .results-section {
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+    }
+
+    .results-section .card-header {
+        background: transparent;
+        padding: 14px 20px;
+        border-bottom: 1px solid #f1f5f9;
+        font-weight: 600;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .results-section .card-header i {
+        color: #1a73e8;
+    }
+
+    .results-section .card-body {
+        padding: 0;
+    }
+
+    .table-results {
+        font-size: 0.85rem;
+        margin-bottom: 0;
+    }
+
+    .table-results thead th {
+        background: #f8fafc;
+        color: #64748b;
+        font-weight: 600;
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 10px 14px;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .table-results tbody td {
+        padding: 10px 14px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        color: #334155;
+    }
+
+    .table-results tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .table-results .result-link {
+        color: #1a73e8;
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .table-results .result-link:hover {
+        text-decoration: underline;
+    }
+
+    .empty-state {
+        padding: 40px 20px;
+        text-align: center;
+        color: #94a3b8;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        display: block;
+        margin-bottom: 12px;
+        color: #cbd5e1;
+    }
+
+    @media (max-width: 768px) {
+        .page-header h1 {
+            font-size: 1.1rem;
+        }
+        .search-section {
+            padding: 16px;
+        }
+        .table-results {
+            font-size: 0.75rem;
+        }
+        .table-results thead th,
+        .table-results tbody td {
+            padding: 6px 10px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="page-header">
+        <h1>
+            <i class="bi bi-search"></i>
+            Search Returns
+        </h1>
+        <a href="{% url 'returns_hub' %}" class="btn-back">
+            <i class="bi bi-arrow-left me-1"></i> Back to Returns
+        </a>
+    </div>
+
+    <!-- Search Form -->
+    <div class="search-section">
+        <div class="section-title">
+            <i class="bi bi-funnel"></i> Search Criteria
+        </div>
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                {{ form.search_field|as_crispy_field }}
+            </div>
+            <div class="col-md-3">
+                {{ form.search_value|as_crispy_field }}
+            </div>
+            <div class="col-md-2">
+                {{ form.sex|as_crispy_field }}
+            </div>
+            <div class="col-md-2">
+                {{ form.age_from|as_crispy_field }}
+            </div>
+            <div class="col-md-2">
+                {{ form.age_to|as_crispy_field }}
+            </div>
+            <div class="col-md-3">
+                {{ form.return_type|as_crispy_field }}
+            </div>
+            <div class="col-md-3">
+                {{ form.month|as_crispy_field }}
+            </div>
+            <div class="col-md-3">
+                {{ form.year|as_crispy_field }}
+            </div>
+            <div class="col-md-3 d-flex align-items-end gap-2">
+                <button type="submit" class="btn-search">
+                    <i class="bi bi-search me-1"></i> Search
+                </button>
+                <a href="{% url 'return_search' %}" class="btn-reset">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Results -->
+    <div class="results-section">
+        <div class="card-header">
+            <span><i class="bi bi-list-ul"></i> Search Results</span>
+            <span class="badge bg-light text-muted">{{ total_results|default:0 }} found</span>
+        </div>
+        <div class="card-body">
+            {% if has_search %}
+                {% if results %}
+                <div class="table-responsive">
+                    <table class="table table-results">
+                        <thead>
+                            <tr>
+                                <th>Return</th>
+                                <th>Prisoner Number</th>
+                                <th>Full Name</th>
+                                <th>Sex</th>
+                                <th>Age</th>
+                                <th>Offense</th>
+                                <th>Station</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for result in results %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'return_detail' result.inmate_return.id %}" class="result-link">
+                                        {{ result.inmate_return.title|truncatechars:20 }}
+                                    </a>
+                                </td>
+                                <td>{{ result.prisoner_number|default:"—" }}</td>
+                                <td>{{ result.full_name|default:"—" }}</td>
+                                <td>{{ result.get_sex_display|default:"—" }}</td>
+                                <td>{{ result.age|default:"—" }}</td>
+                                <td>{{ result.offense|truncatechars:20|default:"—" }}</td>
+                                <td>{{ result.inmate_return.station.name|truncatechars:12 }}</td>
+                                <td class="text-end">
+                                    <div class="d-flex gap-1 justify-content-end">
+                                        <a href="{% url 'return_detail' result.inmate_return.id %}" class="btn-action-sm btn-outline-primary" title="View Return">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if total_results > 200 %}
+                <div class="text-center text-muted small py-3">
+                    Showing first 200 results. Please refine your search for more specific results.
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-inbox"></i>
+                    <p class="mb-0">No results found.</p>
+                    <small class="text-muted">Try adjusting your search criteria.</small>
+                </div>
+                {% endif %}
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-search"></i>
+                <p class="mb-0">Enter search criteria above to find results.</p>
+                <small class="text-muted">Search across all return data.</small>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.btn-action-sm {
+    padding: 4px 8px;
+    font-size: 0.7rem;
+    border-radius: 6px;
+    border: none;
+    transition: all 0.15s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+}
+
+.btn-action-sm:hover {
+    transform: translateY(-1px);
+}
+
+.btn-outline-primary {
+    border: 1px solid #1a73e8;
+    color: #1a73e8;
+    background: transparent;
+}
+
+.btn-outline-primary:hover {
+    background: #1a73e8;
+    color: #fff;
+}
+</style>
+{% endblock %}

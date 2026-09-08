@@ -1,0 +1,28 @@
+{% extends "prison/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Create User{% endblock %}
+
+{% block content %}
+<style>
+    body {
+        background-color: rgba(173, 216, 230, 0.6); /* Light blue with 60% opacity */
+    }
+</style>
+
+<div class="container-fluid">
+    <h1 class="mb-4">Create New User</h1>
+    
+    <div class="card">
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                {{ form|crispy }}  {# Applied Crispy Forms #}
+
+                <button type="submit" class="btn btn-primary">Create User</button>
+                <a href="{% url 'user_list' %}" class="btn btn-secondary">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "prison/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Approve Visitor - {{ visitor.full_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-color: rgba(173, 216, 230, 0.6); /* Light blue with 60% opacity */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">Approve Visitor</h4>
+                </div>
+                <div class="card-body">
+                    <p>Are you sure you want to approve the visit for <strong>{{ visitor.full_name }}</strong> (ID: {{ visitor.id_number }}) to see <strong>{{ visitor.prisoner.full_name }}</strong>?</p>
+                    <p class="text-muted">Approving this visitor will mark their visit as confirmed.</p>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        {# You might have a hidden field or a simple confirmation button #}
+                        {# If there's a form for additional notes, you can include it here: #}
+                        {# {{ form|crispy }} #}
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'visitor_detail' visitor.id %}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-success">Confirm Approval</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

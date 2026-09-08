@@ -1,0 +1,1281 @@
+<!-- prisoner_detail.html -->
+{% extends "prison/detail_base.html" %}
+{% load static %}
+
+{% block page_title %}Prisoner Details - {{ prisoner.full_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ===== PROFILE CARD ===== */
+    .profile-card {
+        background: #ffffff;
+        border-radius: 14px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+
+    .profile-card .card-body {
+        padding: 24px 28px;
+    }
+
+    .profile-card .profile-row {
+        display: flex;
+        gap: 28px;
+        align-items: flex-start;
+    }
+
+    /* ===== PROFILE AVATAR ===== */
+    .profile-card .profile-avatar {
+        flex-shrink: 0;
+        width: 140px;
+        height: 140px;
+        border-radius: 50%;
+        overflow: hidden;
+        border: 4px solid #e2e8f0;
+        background: #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .profile-card .profile-avatar:hover {
+        border-color: #0ea5e9;
+        transform: scale(1.02);
+        box-shadow: 0 4px 20px rgba(14, 165, 233, 0.2);
+    }
+
+    .profile-card .profile-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .profile-card .profile-avatar .no-photo {
+        font-size: 3rem;
+        color: #94a3b8;
+        text-align: center;
+    }
+
+    .profile-card .profile-avatar .biometric-indicator {
+        position: absolute;
+        bottom: 4px;
+        right: 4px;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #f1f5f9;
+        border: 2px solid #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+    }
+
+    .profile-card .profile-avatar .biometric-indicator.has {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    .profile-card .profile-avatar .biometric-indicator.none {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    /* Photo overlay on hover */
+    .profile-card .profile-avatar .photo-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        color: white;
+    }
+
+    .profile-card .profile-avatar:hover .photo-overlay {
+        opacity: 1;
+    }
+
+    .profile-card .profile-avatar .photo-overlay i {
+        font-size: 1.5rem;
+    }
+
+    .profile-card .profile-avatar .photo-overlay span {
+        font-size: 0.7rem;
+        font-weight: 500;
+    }
+
+    .profile-card .profile-info {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px 24px;
+        align-content: start;
+    }
+
+    .profile-card .profile-info .field {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        padding: 4px 0;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .profile-card .profile-info .field .label {
+        font-size: 0.65rem;
+        font-weight: 600;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        min-width: 80px;
+    }
+
+    .profile-card .profile-info .field .value {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: #0f172a;
+    }
+
+    /* ===== SECTION CARDS ===== */
+    .detail-card {
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid rgba(226, 232, 240, 0.5);
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+        margin-bottom: 20px;
+        transition: box-shadow 0.2s ease;
+    }
+
+    .detail-card:hover {
+        box-shadow: var(--card-hover-shadow);
+    }
+
+    .detail-card .card-header {
+        background: transparent;
+        padding: 12px 20px;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .detail-card .card-header .title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .detail-card .card-header .title i {
+        color: #1a73e8;
+        font-size: 1rem;
+    }
+
+    .detail-card .card-header .badge-count {
+        font-size: 0.6rem;
+        font-weight: 600;
+        padding: 2px 12px;
+        border-radius: 12px;
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    .detail-card .card-body {
+        padding: 16px 20px;
+    }
+
+    /* ===== DOCUMENT PREVIEW ===== */
+    .document-item {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 12px 16px;
+        background: #f8fafc;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s ease;
+        margin-bottom: 8px;
+    }
+
+    .document-item:hover {
+        background: #f1f5f9;
+        border-color: #0ea5e9;
+        transform: translateX(4px);
+    }
+
+    .document-item .doc-icon {
+        font-size: 2.2rem;
+        flex-shrink: 0;
+    }
+
+    .document-item .doc-icon.pdf {
+        color: #dc2626;
+    }
+
+    .document-item .doc-icon.image {
+        color: #0ea5e9;
+    }
+
+    .document-item .doc-icon.doc {
+        color: #2563eb;
+    }
+
+    .document-item .doc-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .document-item .doc-name {
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: #0f172a;
+        word-break: break-all;
+    }
+
+    .document-item .doc-meta {
+        font-size: 0.7rem;
+        color: #94a3b8;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .document-item .doc-actions {
+        display: flex;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    .document-item .doc-actions .btn-doc {
+        padding: 4px 12px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        border-radius: 6px;
+        border: none;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        cursor: pointer;
+    }
+
+    .document-item .doc-actions .btn-doc.view {
+        background: #dbeafe;
+        color: #1a73e8;
+    }
+
+    .document-item .doc-actions .btn-doc.view:hover {
+        background: #bfdbfe;
+        transform: translateY(-1px);
+    }
+
+    .document-item .doc-actions .btn-doc.download {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    .document-item .doc-actions .btn-doc.download:hover {
+        background: #bbf7d0;
+        transform: translateY(-1px);
+    }
+
+    /* ===== PHOTO MODAL ===== */
+    .photo-modal .modal-body {
+        padding: 0;
+        text-align: center;
+        background: #0f172a;
+        border-radius: 0 0 12px 12px;
+        position: relative;
+    }
+
+    .photo-modal .modal-body img {
+        max-height: 80vh;
+        max-width: 100%;
+        object-fit: contain;
+        display: block;
+        margin: 0 auto;
+    }
+
+    .photo-modal .modal-body .photo-info {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(transparent, rgba(15, 23, 42, 0.8));
+        padding: 40px 20px 16px;
+        color: white;
+        text-align: left;
+    }
+
+    .photo-modal .modal-body .photo-info .photo-name {
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+
+    .photo-modal .modal-body .photo-info .photo-meta {
+        font-size: 0.75rem;
+        color: #94a3b8;
+    }
+
+    .photo-modal .modal-header {
+        background: #0f172a;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        border-radius: 12px 12px 0 0;
+        color: white;
+    }
+
+    .photo-modal .modal-header .btn-close {
+        filter: invert(1);
+    }
+
+    .photo-modal .modal-footer {
+        background: #0f172a;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        border-radius: 0 0 12px 12px;
+    }
+
+    .photo-modal .modal-footer .btn {
+        border-radius: 6px;
+        padding: 6px 20px;
+        font-weight: 600;
+        font-size: 0.8rem;
+    }
+
+    .photo-modal .modal-footer .btn-download {
+        background: #0ea5e9;
+        color: white;
+        border: none;
+    }
+
+    .photo-modal .modal-footer .btn-download:hover {
+        background: #0284c7;
+    }
+
+    .photo-modal .modal-footer .btn-close-modal {
+        background: #1e293b;
+        color: #94a3b8;
+        border: none;
+    }
+
+    .photo-modal .modal-footer .btn-close-modal:hover {
+        background: #334155;
+        color: white;
+    }
+
+    /* ===== INFO GRID ===== */
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px 24px;
+    }
+
+    .info-grid .field {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        padding: 3px 0;
+        border-bottom: 1px solid #f8fafc;
+    }
+
+    .info-grid .field .label {
+        font-size: 0.65rem;
+        font-weight: 600;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        min-width: 100px;
+    }
+
+    .info-grid .field .value {
+        font-size: 0.82rem;
+        color: #0f172a;
+    }
+
+    .info-grid .field .value .badge-risk {
+        font-size: 0.6rem;
+        font-weight: 600;
+        padding: 2px 12px;
+        border-radius: 12px;
+    }
+
+    .badge-risk.high { background: #fee2e2; color: #dc2626; }
+    .badge-risk.medium { background: #fef3c7; color: #d97706; }
+    .badge-risk.low { background: #dcfce7; color: #16a34a; }
+    .badge-risk.support { background: #dbeafe; color: #1a73e8; }
+
+    /* ===== TABLES ===== */
+    .table-detail {
+        font-size: 0.8rem;
+        margin-bottom: 0;
+    }
+
+    .table-detail thead th {
+        background: #f8fafc;
+        color: #64748b;
+        font-weight: 600;
+        font-size: 0.6rem;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 8px 12px;
+    }
+
+    .table-detail tbody td {
+        padding: 8px 12px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        color: #334155;
+    }
+
+    .table-detail tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .table-detail .btn-sm-action {
+        padding: 2px 8px;
+        font-size: 0.65rem;
+        border-radius: 6px;
+        border: none;
+        transition: all 0.15s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .table-detail .btn-sm-action:hover {
+        transform: translateY(-1px);
+    }
+
+    .btn-sm-action.info { background: #dbeafe; color: #1a73e8; }
+    .btn-sm-action.info:hover { background: #bfdbfe; }
+    .btn-sm-action.primary { background: #dbeafe; color: #1a73e8; }
+    .btn-sm-action.primary:hover { background: #bfdbfe; }
+    .btn-sm-action.biometric { background: #ede9fe; color: #7c3aed; }
+    .btn-sm-action.biometric:hover { background: #ddd6fe; }
+
+    /* ===== EMPTY STATE ===== */
+    .empty-state {
+        text-align: center;
+        padding: 24px 16px;
+        color: #94a3b8;
+    }
+
+    .empty-state i {
+        font-size: 2rem;
+        display: block;
+        margin-bottom: 8px;
+        color: #cbd5e1;
+    }
+
+    .empty-state p {
+        margin: 0;
+        font-size: 0.85rem;
+    }
+
+    /* ===== BIOMETRIC BADGE ===== */
+    .badge-biometric {
+        font-size: 0.6rem;
+        font-weight: 600;
+        padding: 3px 12px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .badge-biometric.captured { background: #dcfce7; color: #16a34a; }
+    .badge-biometric.not-captured { background: #fee2e2; color: #dc2626; }
+    .badge-biometric.verified { background: #dcfce7; color: #16a34a; }
+    .badge-biometric.unverified { background: #fef3c7; color: #d97706; }
+
+    /* ===== QUALITY SCORE BAR ===== */
+    .quality-bar {
+        height: 6px;
+        border-radius: 10px;
+        background: #f1f5f9;
+        overflow: hidden;
+        min-width: 80px;
+        display: inline-block;
+        vertical-align: middle;
+    }
+
+    .quality-bar .fill {
+        height: 100%;
+        border-radius: 10px;
+        transition: width 0.6s ease;
+    }
+
+    .quality-bar .fill.high { background: #16a34a; }
+    .quality-bar .fill.medium { background: #f59e0b; }
+    .quality-bar .fill.low { background: #dc2626; }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 992px) {
+        .profile-card .profile-row {
+            flex-direction: column;
+            align-items: center;
+        }
+        .profile-card .profile-info {
+            width: 100%;
+        }
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .profile-card .profile-info {
+            grid-template-columns: 1fr;
+        }
+        .profile-card .profile-avatar {
+            width: 100px;
+            height: 100px;
+        }
+        .detail-card .card-body {
+            padding: 12px 14px;
+        }
+        .detail-card .card-header {
+            padding: 10px 14px;
+        }
+        .table-detail {
+            font-size: 0.7rem;
+        }
+        .table-detail thead th,
+        .table-detail tbody td {
+            padding: 4px 8px;
+        }
+        .document-item {
+            flex-wrap: wrap;
+        }
+        .document-item .doc-actions {
+            width: 100%;
+            justify-content: flex-start;
+        }
+        .photo-modal .modal-body img {
+            max-height: 60vh;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .profile-card .profile-avatar {
+            width: 80px;
+            height: 80px;
+        }
+        .profile-card .profile-avatar .biometric-indicator {
+            width: 22px;
+            height: 22px;
+            font-size: 0.55rem;
+        }
+        .document-item .doc-actions .btn-doc {
+            font-size: 0.65rem;
+            padding: 3px 8px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- ===== PROFILE CARD ===== -->
+    <div class="profile-card">
+        <div class="card-body">
+            <div class="profile-row">
+                <div class="profile-avatar" onclick="openPhotoModal()" title="Click to view full photo">
+                    {% if prisoner.image %}
+                        <img src="{{ prisoner.image.url }}" alt="{{ prisoner.full_name }}" id="prisonerPhoto">
+                    {% else %}
+                        <div class="no-photo">
+                            <i class="bi bi-person-circle"></i>
+                        </div>
+                    {% endif %}
+                    <div class="biometric-indicator {% if prisoner.has_fingerprint %}has{% else %}none{% endif %}">
+                        <i class="bi bi-{% if prisoner.has_fingerprint %}check-lg{% else %}x-lg{% endif %}"></i>
+                    </div>
+                    {% if prisoner.image %}
+                    <div class="photo-overlay">
+                        <i class="bi bi-eye"></i>
+                        <span>View Photo</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="profile-info">
+                    <div class="field">
+                        <span class="label">Prisoner No.</span>
+                        <span class="value">{{ prisoner.prisoner_number }}</span>
+                    </div>
+                    <div class="field">
+                        <span class="label">Full Name</span>
+                        <span class="value">{{ prisoner.full_name }}</span>
+                    </div>
+                    <div class="field">
+                        <span class="label">Sex</span>
+                        <span class="value">{{ prisoner.get_sex_display }}</span>
+                    </div>
+                    <div class="field">
+                        <span class="label">Age</span>
+                        <span class="value">{{ prisoner.age }} years</span>
+                    </div>
+                    <div class="field">
+                        <span class="label">Class</span>
+                        <span class="value">{{ prisoner.get_prisoner_class_display }}</span>
+                    </div>
+                    <div class="field">
+                        <span class="label">Prison Station</span>
+                        <span class="value">{{ prisoner.prison_station.name }}</span>
+                    </div>
+                    <div class="field">
+                        <span class="label">Block / Cell</span>
+                        <span class="value">{{ prisoner.block_number }} / {{ prisoner.cell_number }}</span>
+                    </div>
+                    <div class="field">
+                        <span class="label">Date Admitted</span>
+                        <span class="value">{{ prisoner.date_admitted|date:"d M Y" }}</span>
+                    </div>
+                    {% if not prisoner.is_active and prisoner.date_released %}
+                    <div class="field" style="grid-column: 1 / -1; border-bottom: none;">
+                        <span class="label">Date Released</span>
+                        <span class="value text-danger">{{ prisoner.date_released|date:"d M Y" }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== ATTACHED DOCUMENTS ===== -->
+    {% if prisoner.document or prisoner.image or prisoner.attachments.exists %}
+    <div class="detail-card">
+        <div class="card-header">
+            <span class="title"><i class="bi bi-paperclip"></i> Attached Documents</span>
+            <span class="badge-count">
+                {% if prisoner.image and prisoner.document %}2 documents
+                {% elif prisoner.image or prisoner.document %}1 document
+                {% else %}No documents{% endif %}
+            </span>
+        </div>
+        <div class="card-body">
+            {% if prisoner.image %}
+            <div class="document-item">
+                <div class="doc-icon image">
+                    <i class="bi bi-file-image"></i>
+                </div>
+                <div class="doc-info">
+                    <div class="doc-name">Prisoner Photo</div>
+                    <div class="doc-meta">
+                        <span><i class="bi bi-file-earmark me-1"></i>{{ prisoner.image.name|cut:"prisoner_images/" }}</span>
+                        <span><i class="bi bi-calendar me-1"></i>Uploaded: {{ prisoner.last_modified|date:"d M Y" }}</span>
+                    </div>
+                </div>
+                <div class="doc-actions">
+                    <button class="btn-doc view" onclick="openPhotoModal()" title="View Photo">
+                        <i class="bi bi-eye"></i> View
+                    </button>
+                    <a href="{{ prisoner.image.url }}" download class="btn-doc download" title="Download Photo">
+                        <i class="bi bi-download"></i> Download
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if prisoner.document %}
+            <div class="document-item">
+                <div class="doc-icon pdf">
+                    <i class="bi bi-file-earmark-pdf"></i>
+                </div>
+                <div class="doc-info">
+                    <div class="doc-name">{{ prisoner.document.name|cut:"prisoner_documents/" }}</div>
+                    <div class="doc-meta">
+                        <span><i class="bi bi-file-earmark-pdf me-1"></i>PDF Document</span>
+                        <span><i class="bi bi-calendar me-1"></i>Uploaded: {{ prisoner.last_modified|date:"d M Y" }}</span>
+                    </div>
+                </div>
+                <div class="doc-actions">
+                    <a href="{{ prisoner.document.url }}" target="_blank" class="btn-doc view" title="View Document">
+                        <i class="bi bi-eye"></i> View
+                    </a>
+                    <a href="{{ prisoner.document.url }}" download class="btn-doc download" title="Download Document">
+                        <i class="bi bi-download"></i> Download
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+            {% for attachment in prisoner.attachments.all %}
+            <div class="document-item">
+                <i class="bi bi-{% if attachment.attachment_type == 'photo' %}image{% else %}file-earmark-pdf{% endif %} doc-icon {% if attachment.attachment_type == 'photo' %}image{% else %}pdf{% endif %}"></i>
+                <div class="doc-info">
+                    <div class="doc-name">{{ attachment.file.name|cut:"prisoner_attachments/" }}</div>
+                    <div class="doc-meta"><span>{{ attachment.get_attachment_type_display }}</span><span>{{ attachment.uploaded_at|date:"d M Y H:i" }}</span></div>
+                </div>
+                <div class="doc-actions">
+                    <a href="{{ attachment.file.url }}" target="_blank" class="btn-doc view">View</a>
+                    <a href="{{ attachment.file.url }}" download class="btn-doc download">Download</a>
+                </div>
+            </div>
+            {% endfor %}
+
+            {% if not prisoner.image and not prisoner.document %}
+            <div class="empty-state">
+                <i class="bi bi-paperclip"></i>
+                <p>No documents attached to this prisoner</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ===== CONVICTED / REMAND DETAILS ===== -->
+    {% if prisoner.prisoner_class == 'convicted' and convicted_details %}
+    <div class="detail-card">
+        <div class="card-header">
+            <span class="title"><i class="bi bi-gavel"></i> Conviction Details</span>
+            <span class="badge-count">{{ convicted_details.get_offense_display|truncatechars:30 }}</span>
+        </div>
+        <div class="card-body">
+            <div class="info-grid">
+                <div class="field">
+                    <span class="label">Sentence</span>
+                    <span class="value">{{ convicted_details.effective_sentence }} months ({{ convicted_details.get_sentence_structure_display }})</span>
+                </div>
+                {% for term in convicted_details.additional_sentences.all %}
+                <div class="field">
+                    <span class="label">Additional Sentence{% if term.case_number %} ({{ term.case_number }}){% endif %}</span>
+                    <span class="value">{{ term.sentence }} months{% if term.offense %}, {{ term.offense }}{% endif %}</span>
+                </div>
+                {% endfor %}
+                <div class="field">
+                    <span class="label">Court</span>
+                    <span class="value">{{ convicted_details.court }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Offense</span>
+                    <span class="value">{{ convicted_details.offense|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Date of Committal</span>
+                    <span class="value">{{ convicted_details.date_of_committal|date:"d M Y" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">W.E.F. Date</span>
+                    <span class="value">{{ convicted_details.wef_date|date:"d M Y" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Calculated Release</span>
+                    <span class="value">{{ convicted_details.date_of_release|date:"d M Y"|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Release on Remission</span>
+                    <span class="value">
+                        {{ convicted_details.date_of_release_on_remission|date:"d M Y"|default:"N/A" }}
+                        {% if convicted_details.reduction_months > 0 %}
+                            <span class="text-success">(Reduced by {{ convicted_details.reduction_months }} months)</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="field">
+                    <span class="label">Confirmation</span>
+                    <span class="value">
+                        {% if convicted_details.confirmation_status %}
+                            <span class="badge bg-success">Confirmed</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">Pending</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="field" style="grid-column: 1 / -1; border-bottom: none;">
+                    <span class="label">Notes</span>
+                    <span class="value">{{ convicted_details.notes|default:"N/A" }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== RISK ASSESSMENT ===== -->
+    {% if risk_assessment %}
+    <div class="detail-card">
+        <div class="card-header">
+            <span class="title"><i class="bi bi-shield-exclamation"></i> Risk Assessment</span>
+            <span class="badge-risk {{ risk_assessment.risk_level }}">
+                {{ risk_assessment.get_risk_level_display }}
+            </span>
+        </div>
+        <div class="card-body">
+            <div class="info-grid">
+                <div class="field">
+                    <span class="label">Previous Conviction</span>
+                    <span class="value">{{ risk_assessment.previous_conviction|yesno:"Yes,No" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Convictions Count</span>
+                    <span class="value">{{ risk_assessment.previous_convictions_count|default:"0" }}</span>
+                </div>
+                <div class="field" style="grid-column: 1 / -1; border-bottom: none;">
+                    <span class="label">Risk Level</span>
+                    <span class="value">
+                        <span class="badge-risk {{ risk_assessment.risk_level }}">
+                            {{ risk_assessment.get_risk_level_display }}
+                        </span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ===== REHABILITATION ===== -->
+    {% if rehabilitation %}
+    <div class="detail-card">
+        <div class="card-header">
+            <span class="title"><i class="bi bi-hand-heart"></i> Rehabilitation Program</span>
+            <span class="badge-count">{{ rehabilitation.get_program_level_display|default:"Not Enrolled" }}</span>
+        </div>
+        <div class="card-body">
+            <div class="info-grid">
+                <div class="field">
+                    <span class="label">Employed in Program</span>
+                    <span class="value">{{ rehabilitation.employed_in_program|yesno:"Yes,No" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Program Name</span>
+                    <span class="value">{{ rehabilitation.program_name|default:"N/A" }}</span>
+                </div>
+                <div class="field" style="grid-column: 1 / -1; border-bottom: none;">
+                    <span class="label">Program Level</span>
+                    <span class="value">{{ rehabilitation.get_program_level_display|default:"N/A" }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% elif prisoner.prisoner_class == 'remand' and remand_details %}
+    <div class="detail-card">
+        <div class="card-header">
+            <span class="title"><i class="bi bi-balance-scale"></i> Remand Details</span>
+            <span class="badge-count">{{ remand_details.court_case_number }}</span>
+        </div>
+        <div class="card-body">
+            <div class="info-grid">
+                <div class="field">
+                    <span class="label">Court Case Number</span>
+                    <span class="value">{{ remand_details.court_case_number }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Offense</span>
+                    <span class="value">{{ remand_details.offense|default:"N/A" }}</span>
+                </div>
+                <div class="field">
+                    <span class="label">Next Court Date</span>
+                    <span class="value">{{ remand_details.next_court_date|date:"d M Y" }}</span>
+                </div>
+                <div class="field" style="border-bottom: none;">
+                    <span class="label">Remand Extensions</span>
+                    <span class="value">{{ remand_details.remand_extensions }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ===== PERSONAL PARTICULARS ===== -->
+    {% if particulars %}
+    <div class="detail-card">
+        <div class="card-header">
+            <span class="title"><i class="bi bi-person-vcard"></i> Personal Particulars</span>
+            <span class="badge-count">{{ particulars.get_nationality_display }}</span>
+        </div>
+        <div class="card-body">
+            <div class="info-grid">
+                <div class="field"><span class="label">Nationality</span><span class="value">{{ particulars.get_nationality_display }}</span></div>
+                <div class="field"><span class="label">District</span><span class="value">{{ particulars.district }}</span></div>
+                <div class="field"><span class="label">Chief</span><span class="value">{{ particulars.chief }}</span></div>
+                <div class="field"><span class="label">Village</span><span class="value">{{ particulars.village }}</span></div>
+                <div class="field"><span class="label">Home Location</span><span class="value">{{ particulars.home_location|default:"N/A" }}</span></div>
+                <div class="field"><span class="label">Religion</span><span class="value">{{ particulars.get_religion_display }}</span></div>
+                <div class="field"><span class="label">Denomination</span><span class="value">{{ particulars.denomination|default:"N/A" }}</span></div>
+                <div class="field"><span class="label">Father's Name</span><span class="value">{{ particulars.fathers_name }}</span></div>
+                <div class="field"><span class="label">Mother's Name</span><span class="value">{{ particulars.mothers_name }}</span></div>
+                <div class="field"><span class="label">Married</span><span class="value">{{ particulars.married|yesno:"Yes,No" }}</span></div>
+                <div class="field"><span class="label">Spouse Name</span><span class="value">{{ particulars.spouse_name|default:"N/A" }}</span></div>
+                <div class="field"><span class="label">Spouse Location</span><span class="value">{{ particulars.spouse_location|default:"N/A" }}</span></div>
+                <div class="field"><span class="label">Next of Kin</span><span class="value">{{ particulars.next_of_kin }}</span></div>
+                <div class="field"><span class="label">Next of Kin Location</span><span class="value">{{ particulars.next_of_kin_location }}</span></div>
+                <div class="field"><span class="label">Mobile Number</span><span class="value">{{ particulars.mobile_number|default:"N/A" }}</span></div>
+                <div class="field"><span class="label">National ID</span><span class="value">{{ particulars.national_id|default:"N/A" }}</span></div>
+                <div class="field"><span class="label">Passport Number</span><span class="value">{{ particulars.passport_number|default:"N/A" }}</span></div>
+                <div class="field"><span class="label">Driving License</span><span class="value">{{ particulars.driving_license|default:"N/A" }}</span></div>
+                <div class="field"><span class="label">Education Level</span><span class="value">{{ particulars.get_education_level_display }}</span></div>
+                <div class="field"><span class="label">Literate</span><span class="value">{{ particulars.literate|yesno:"Yes,No" }}</span></div>
+                <div class="field"><span class="label">Profession</span><span class="value">{{ particulars.profession|default:"N/A" }}</span></div>
+                <div class="field" style="border-bottom: none;"><span class="label">Past Occupation</span><span class="value">{{ particulars.past_occupation|default:"N/A" }}</span></div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ===== PHYSICAL CHARACTERISTICS ===== -->
+    {% if physical %}
+    <div class="detail-card">
+        <div class="card-header">
+            <span class="title"><i class="bi bi-person-badge"></i> Physical Characteristics</span>
+            <span class="badge-count">{{ physical.get_body_build_display }}</span>
+        </div>
+        <div class="card-body">
+            <div class="info-grid">
+                <div class="field"><span class="label">Height</span><span class="value">{{ physical.height }} cm</span></div>
+                <div class="field"><span class="label">Weight</span><span class="value">{{ physical.weight }} kg</span></div>
+                <div class="field"><span class="label">Body Build</span><span class="value">{{ physical.get_body_build_display }}</span></div>
+                <div class="field"><span class="label">Skin Color</span><span class="value">{{ physical.get_skin_color_display }}</span></div>
+                <div class="field"><span class="label">Eyes Color</span><span class="value">{{ physical.get_eyes_color_display }}</span></div>
+                <div class="field"><span class="label">Health Status</span><span class="value">{{ physical.get_health_status_display }}</span></div>
+                <div class="field"><span class="label">Circumcised</span><span class="value">{{ physical.circumcised|yesno:"Yes,No" }}</span></div>
+                <div class="field"><span class="label">Head Abnormalities</span><span class="value">{{ physical.head_abnormalities|default:"N/A" }}</span></div>
+                <div class="field" style="grid-column: 1 / -1;"><span class="label">Marks / Tattoos / Scars</span><span class="value">{{ physical.marks_tattoos_scars|default:"N/A" }}</span></div>
+                {% if prisoner.sex == 'female' %}
+                <div class="field"><span class="label">Has Child</span><span class="value">{{ physical.has_child|yesno:"Yes,No" }}</span></div>
+                <div class="field" style="border-bottom: none;"><span class="label">Children Count</span><span class="value">{{ physical.children_count }}</span></div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ===== BIOMETRIC / FINGERPRINT STATUS ===== -->
+    <div class="detail-card">
+        <div class="card-header">
+            <span class="title"><i class="bi bi-fingerprint"></i> Biometric Status</span>
+            <span class="badge-count">
+                {% if prisoner.has_fingerprint %}
+                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> Fingerprint Captured</span>
+                {% else %}
+                    <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle"></i> No Fingerprint</span>
+                {% endif %}
+            </span>
+        </div>
+        <div class="card-body">
+            <div class="info-grid">
+                <div class="field">
+                    <span class="label">Fingerprint Status</span>
+                    <span class="value">
+                        {% if prisoner.has_fingerprint %}
+                            <span class="badge-biometric captured"><i class="bi bi-check-circle"></i> Captured</span>
+                        {% else %}
+                            <span class="badge-biometric not-captured"><i class="bi bi-exclamation-triangle"></i> Not Captured</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="field">
+                    <span class="label">Identity Verified</span>
+                    <span class="value">
+                        {% if prisoner.is_identity_verified %}
+                            <span class="badge-biometric verified"><i class="bi bi-check-circle"></i> Verified</span>
+                        {% else %}
+                            <span class="badge-biometric unverified"><i class="bi bi-exclamation-triangle"></i> Unverified</span>
+                        {% endif %}
+                    </span>
+                </div>
+                {% if prisoner.has_fingerprint %}
+                <div class="field">
+                    <span class="label">Quality Score</span>
+                    <span class="value">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fw-semibold">
+                                {% if prisoner.fingerprint_quality %}
+                                    {{ prisoner.fingerprint_quality }}%
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </span>
+                            <div class="quality-bar" style="width: 80px;">
+                                <div class="fill
+                                    {% if prisoner.fingerprint_quality >= 80 %}high
+                                    {% elif prisoner.fingerprint_quality >= 60 %}medium
+                                    {% else %}low{% endif %}"
+                                    style="width: {% if prisoner.fingerprint_quality %}{{ prisoner.fingerprint_quality }}{% else %}0{% endif %}%;">
+                                </div>
+                            </div>
+                            <span class="badge
+                                {% if prisoner.fingerprint_quality >= 80 %}bg-success
+                                {% elif prisoner.fingerprint_quality >= 60 %}bg-warning text-dark
+                                {% else %}bg-danger{% endif %}"
+                                style="font-size: 0.6rem;">
+                                {% if prisoner.fingerprint_quality >= 80 %}Excellent
+                                {% elif prisoner.fingerprint_quality >= 60 %}Good
+                                {% else %}Poor{% endif %}
+                            </span>
+                        </div>
+                    </span>
+                </div>
+                <div class="field">
+                    <span class="label">Captured At</span>
+                    <span class="value">{{ prisoner.fingerprint_captured_at|date:"d M Y H:i"|default:"N/A" }}</span>
+                </div>
+                <div class="field" style="grid-column: 1 / -1; border-bottom: none;">
+                    <span class="label">Captured By</span>
+                    <span class="value">
+                        {% if prisoner.fingerprint_captured_by %}
+                            {{ prisoner.fingerprint_captured_by.get_full_name|default:prisoner.fingerprint_captured_by.username }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </span>
+                </div>
+                {% endif %}
+                {% if prisoner.identity_verification_notes %}
+                <div class="field" style="grid-column: 1 / -1; border-bottom: none;">
+                    <span class="label">Verification Notes</span>
+                    <span class="value">{{ prisoner.identity_verification_notes }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== RECIDIVISM STATUS ===== -->
+    <div class="detail-card">
+        <div class="card-header">
+            <span class="title">
+                <i class="bi bi-exclamation-triangle-fill {% if prisoner.is_recidivist %}text-danger{% else %}text-muted{% endif %}"></i>
+                Recidivism Status
+            </span>
+            <span class="badge-count">
+                {% if prisoner.is_recidivist %}
+                    <span class="badge bg-danger"><i class="bi bi-exclamation-triangle"></i> Recidivist</span>
+                {% else %}
+                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> First Offense</span>
+                {% endif %}
+            </span>
+        </div>
+        <div class="card-body">
+            <div class="info-grid">
+                <div class="field">
+                    <span class="label">Status</span>
+                    <span class="value">
+                        {% if prisoner.is_recidivist %}
+                            <span class="badge bg-danger"><i class="bi bi-exclamation-triangle"></i> Recidivist</span>
+                        {% else %}
+                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> First Offense</span>
+                        {% endif %}
+                    </span>
+                </div>
+                {% if prisoner.is_recidivist %}
+                <div class="field">
+                    <span class="label">Detected At</span>
+                    <span class="value">{{ prisoner.recidivism_detected_at|date:"d M Y H:i"|default:"N/A" }}</span>
+                </div>
+                <div class="field" style="grid-column: 1 / -1;">
+                    <span class="label">Previous Prisoner Numbers</span>
+                    <span class="value">{{ prisoner.previous_prisoner_numbers|default:"N/A" }}</span>
+                </div>
+                <div class="field" style="grid-column: 1 / -1; border-bottom: none;">
+                    <span class="label">Notes</span>
+                    <span class="value">{{ prisoner.recidivism_notes|default:"N/A" }}</span>
+                </div>
+                <div class="field" style="grid-column: 1 / -1; border-bottom: none;">
+                    <span class="label">Linked Previous Records</span>
+                    <span class="value">
+                        {% for identity in prisoner.previous_identities.all %}
+                            <a href="{% url 'prisoner_detail' identity.id %}" class="badge bg-info text-decoration-none">
+                                {{ identity.prisoner_number }} - {{ identity.full_name }}
+                            </a>
+                        {% empty %}
+                            N/A
+                        {% endfor %}
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== TRANSFER HISTORY ===== -->
+    <div class="detail-card">
+        <div class="card-header">
+            <span class="title"><i class="bi bi-arrow-left-right"></i> Transfer History</span>
+            <span class="badge-count">{{ transfers|length }} transfer{{ transfers|length|pluralize }}</span>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            {% if transfers %}
+            <div class="table-responsive">
+                <table class="table table-detail">
+                    <thead>
+                        <tr>
+                            <th>From</th>
+                            <th>To</th>
+                            <th>Date</th>
+                            <th>Reason</th>
+                            <th>Transferred By</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transfer in transfers %}
+                        <tr>
+                            <td>{{ transfer.from_prison.name }}</td>
+                            <td>{{ transfer.to_prison.name }}</td>
+                            <td>{{ transfer.transfer_date|date:"d M Y" }}</td>
+                            <td>{{ transfer.reason|truncatechars:30 }}</td>
+                            <td>{{ transfer.transferred_by.get_full_name|default:transfer.transferred_by.username }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-arrow-left-right"></i>
+                <p>No transfer history available</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ===== MEDICAL RECORDS ===== -->
+    <div class="detail-card">
+        <div class="card-header">
+            <span class="title"><i class="bi bi-heart-pulse"></i> Medical Records</span>
+            <span class="badge-count">{{ medical_records|length }} record{{ medical_records|length|pluralize }}</span>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            {% if medical_records %}
+            <div class="table-responsive">
+                <table class="table table-detail">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Category</th>
+                            <th>Diagnosis</th>
+                            <th>Treatment</th>
+                            <th>Next Checkup</th>
+                            <th style="text-align: center;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in medical_records %}
+                        <tr>
+                            <td>{{ record.record_date|date:"d M Y" }}</td>
+                            <td><span class="badge bg-secondary">{{ record.get_category_display }}</span></td>
+                            <td>{{ record.diagnosis|truncatechars:25 }}</td>
+                            <td>{{ record.treatment|truncatechars:30 }}</td>
+                            <td>{{ record.next_checkup|date:"d M Y"|default:"N/A" }}</td>
+                            <td style="text-align: center;">
+                                <a href="{% url 'medical_record_detail' record.id %}" class="btn-sm-action info" title="View">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{% url 'medical_record_edit' record.id %}" class="btn-sm-action primary" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-heart-pulse"></i>
+                <p>No medical records available</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- ===== PHOTO MODAL ===== -->
+<div class="modal fade photo-modal" id="photoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-image me-2"></i> Prisoner Photo
+                    <span class="text-muted ms-2" style="font-weight: 400; font-size: 0.8rem;">{{ prisoner.full_name }}</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% if prisoner.image %}
+                    <img src="{{ prisoner.image.url }}" alt="{{ prisoner.full_name }}" id="modalPhoto">
+                    <div class="photo-info">
+                        <div class="photo-name">{{ prisoner.full_name }}</div>
+                        <div class="photo-meta">
+                            <span><i class="bi bi-hash me-1"></i>{{ prisoner.prisoner_number }}</span>
+                            <span class="mx-2">•</span>
+                            <span><i class="bi bi-calendar me-1"></i>Uploaded: {{ prisoner.last_modified|date:"d M Y" }}</span>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5 text-white-50">
+                        <i class="bi bi-person-circle" style="font-size: 5rem;"></i>
+                        <p class="mt-3">No photo available for this prisoner</p>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-close-modal" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-1"></i> Close
+                </button>
+                {% if prisoner.image %}
+                <a href="{{ prisoner.image.url }}" download class="btn btn-download">
+                    <i class="bi bi-download me-1"></i> Download Photo
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // ===== PHOTO MODAL =====
+    function openPhotoModal() {
+        {% if prisoner.image %}
+            const modal = new bootstrap.Modal(document.getElementById('photoModal'));
+            modal.show();
+        {% else %}
+            // Show a message if no photo
+            alert('No photo available for this prisoner.');
+        {% endif %}
+    }
+
+    // ===== KEYBOARD SHORTCUTS =====
+    document.addEventListener('keydown', function(e) {
+        // Press 'v' to view photo
+        if (e.key === 'v' || e.key === 'V') {
+            {% if prisoner.image %}
+                openPhotoModal();
+            {% endif %}
+        }
+    });
+
+    // ===== CONSOLE INFO =====
+    console.log('📸 Prisoner Detail Page');
+    console.log('👤 {{ prisoner.full_name }} ({{ prisoner.prisoner_number }})');
+    console.log('💡 Press "V" to view photo');
+    {% if prisoner.image %}
+        console.log('🖼️ Photo available');
+    {% else %}
+        console.log('⚠️ No photo available');
+    {% endif %}
+    {% if prisoner.document %}
+        console.log('📄 Document attached: {{ prisoner.document.name }}');
+    {% else %}
+        console.log('⚠️ No document attached');
+    {% endif %}
+</script>
+{% endblock %}
